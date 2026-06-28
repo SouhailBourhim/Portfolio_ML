@@ -1,0 +1,46 @@
+stages:
+  # ── Stage 1: Bronze — download raw data ────────────────────────────────────
+  ingest:
+    cmd: python src/ingest.py
+    deps:
+      - src/ingest.py
+      - src/schemas.py
+    outs:
+      - data/bronze/raw_prices.parquet
+      - data/bronze/raw_macro.parquet
+      - data/bronze/bvc_prices.parquet
+      - data/bronze/raw_bam_macro.parquet
+    params:
+      - params.yaml:
+          - ingest.start_date
+
+  # ── Stage 2: Silver — clean, align, compute log-returns ────────────────────
+  clean:
+    cmd: python src/clean.py
+    deps:
+      - src/clean.py
+      - src/schemas.py
+      - data/bronze/raw_prices.parquet
+      - data/bronze/bvc_prices.parquet
+    outs:
+      - data/silver/log_returns.parquet
+    params:
+      - params.yaml:
+          - clean.ffill_limit
+
+  # ── Stage 3: Gold — stationarity tests + macro features ────────────────────
+  features:
+    cmd: python src/features.py
+    deps:
+      - src/features.py
+      - src/schemas.py
+      - data/silver/log_returns.parquet
+      - data/bronze/raw_macro.parquet
+      - data/bronze/raw_bam_macro.parquet
+    outs:
+      - data/gold/log_returns.parquet
+      - data/gold/macro_features.parquet
+      - data/gold/stationarity_report.parquet
+    params:
+      - params.yaml:
+          - features.macro_lag_days

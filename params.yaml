@@ -1,0 +1,10 @@
+# Pipeline parameters — edit here and run `dvc repro` to re-execute only affected stages.
+
+ingest:
+  start_date: "2017-01-01"   # covers COVID crash (2020) and 2022 rate shock
+
+clean:
+  ffill_limit: 5             # max consecutive business days to forward-fill
+
+features:
+  macro_lag_days: 1          # lag applied to macro features to prevent lookahead bias
