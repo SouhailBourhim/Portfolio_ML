@@ -270,6 +270,12 @@ def ingest_bvc(start: str = BVC_START) -> pd.DataFrame:
 # quarterly rate, applied from the decision date forward (step function).
 # Source: https://www.bkam.ma/Politique-monetaire/Cadre-strategique/
 #         Decision-de-la-politique-monetaire/Historique-des-decisions
+#
+# MAINTENANCE: BAM's policy committee meets roughly every ~90 days. This list
+# must be updated after every meeting (even "hold" decisions, to confirm no
+# new entry is needed) or TAUX_DIR will silently extend a stale rate forward.
+# ingest_bam_macro() warns at runtime if the last entry is >100 days old —
+# treat that warning as "go check bkam.ma and add the missing entry."
 _TAUX_DIRECTEUR_DECISIONS = [
     ("2017-01-01", 2.25),  # baseline entry for series start
     ("2020-03-17", 2.00),
@@ -327,6 +333,15 @@ def ingest_bam_macro(start: str = START_DATE) -> pd.DataFrame:
     decisions = pd.DataFrame(_TAUX_DIRECTEUR_DECISIONS, columns=["date", "rate"])
     decisions["date"] = pd.to_datetime(decisions["date"])
     decisions = decisions.set_index("date").sort_index()
+
+    days_since_last_decision = (pd.Timestamp.today() - decisions.index.max()).days
+    if days_since_last_decision > 100:
+        log.warning(
+            "_TAUX_DIRECTEUR_DECISIONS' last entry is %s (%d days ago). BAM meets "
+            "roughly every ~90 days — check bkam.ma for a newer decision and add "
+            "it, otherwise TAUX_DIR is silently extending a stale rate forward.",
+            decisions.index.max().date(), days_since_last_decision,
+        )
 
     # Build a daily series: forward-fill rate from each decision date
     full_index = pd.bdate_range(start=start, end=pd.Timestamp.today())

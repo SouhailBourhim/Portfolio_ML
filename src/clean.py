@@ -22,6 +22,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from schemas import validate_log_returns, ALL_ASSETS
+from ingest import START_DATE
 
 logging.basicConfig(
     level=logging.INFO,
@@ -70,6 +71,23 @@ def align_calendars(prices: pd.DataFrame, ffill_limit: int = 5) -> pd.DataFrame:
         raise ValueError(
             f"Tickers have no price data at all (likely rate-limited or delisted): "
             f"{all_nan_cols}. Re-run ingest.py to retry the download."
+        )
+
+    # dropna() below restricts the window to where ALL columns have data.
+    # Log which columns are responsible and how much history is being lost
+    # so a late-starting ticker (e.g. BVC equities) doesn't silently crop
+    # years of ETF history off the front of the dataset.
+    requested_start = reindexed.index.min()
+    effective_start = reindexed.dropna().index.min()
+    if pd.notna(effective_start) and effective_start > requested_start:
+        lost_days = (effective_start - requested_start).days
+        late_cols = reindexed.columns[reindexed.loc[requested_start].isna()].tolist()
+        log.warning(
+            "Calendar alignment is dropping %d days (%s -> %s) because %s "
+            "have no data before that point. Effective history window starts "
+            "at %s, not the requested %s.",
+            lost_days, requested_start.date(), effective_start.date(),
+            late_cols, effective_start.date(), requested_start.date(),
         )
 
     aligned = reindexed.dropna()
@@ -203,6 +221,10 @@ def silver_pipeline(ffill_limit: int = 5) -> pd.DataFrame:
 
 def _write_validation_report(log_returns: pd.DataFrame) -> None:
     """Write a human-readable JSON summary of the Silver layer to data/silver/."""
+    requested_start = pd.Timestamp(START_DATE)
+    effective_start = log_returns.index.min()
+    truncated_days = max(0, (effective_start - requested_start).days)
+
     report = {
         "generated_at": pd.Timestamp.now().isoformat(),
         "n_trading_days": len(log_returns),
@@ -211,6 +233,8 @@ def _write_validation_report(log_returns: pd.DataFrame) -> None:
             "start": str(log_returns.index.min().date()),
             "end":   str(log_returns.index.max().date()),
         },
+        "requested_start_date": str(requested_start.date()),
+        "history_truncated_by_days": truncated_days,
         "assets_present": list(log_returns.columns),
         "assets_missing": [a for a in ALL_ASSETS if a not in log_returns.columns],
         "nan_count": int(log_returns.isna().sum().sum()),
