@@ -28,6 +28,10 @@ mlruns/
 mlflow/mlflow.db
 mlflow/artifacts/
 
+# ── Dagster ──────────────────────────────────────────────────────────────────
+.dagster_home/
+dagster.yaml
+
 # ── OS noise ─────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

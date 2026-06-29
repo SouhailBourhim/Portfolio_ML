@@ -28,6 +28,10 @@ mlflow>=2.12
 # ── Pipeline versioning ──────────────────────────────────────────────────────
 dvc>=3.49
 
+# ── Orchestration / scheduling ────────────────────────────────────────────────
+dagster>=1.8
+dagster-webserver>=1.8
+
 # ── Notebooks & EDA ─────────────────────────────────────────────────────────
 jupyter>=1.0
 notebook>=7.0
