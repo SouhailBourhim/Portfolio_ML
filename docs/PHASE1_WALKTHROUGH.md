@@ -2,7 +2,7 @@
 
 > **Audience:** Zakarya and Yasmine — you can read Python, but you have zero context on this
 > codebase, Medallion architectures, or quantitative finance. That's fine; this document assumes
-> nothing. Souhail will present it live, section by section, in order.
+> nothing.
 >
 > **What you'll be able to do afterwards:** explain every file in `src/`, defend every design
 > decision to Abdelmouttalib, and know exactly where to look when something breaks.
