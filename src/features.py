@@ -196,6 +196,20 @@ def gold_pipeline(lag_days: int = 1) -> dict[str, pd.DataFrame]:
     pq.write_table(pa.Table.from_pandas(log_returns), lr_gold_path)
     log.info("Gold log_returns written → %s", lr_gold_path)
 
+    # ETF-only universe (Phase 2 dual-universe backtesting — restores the
+    # 2017+ history incl. the COVID crash that the BVC merge truncates away).
+    # Produced by silver_pipeline(include_bvc=False); copied through if present.
+    etf_silver_path = SILVER_DIR / "log_returns_etf.parquet"
+    if etf_silver_path.exists():
+        etf_returns = pd.read_parquet(etf_silver_path)
+        etf_returns.index = pd.to_datetime(etf_returns.index)
+        etf_gold_path = GOLD_DIR / "log_returns_etf.parquet"
+        pq.write_table(pa.Table.from_pandas(etf_returns), etf_gold_path)
+        log.info("Gold log_returns_etf written: %d rows × %d columns → %s",
+                 *etf_returns.shape, etf_gold_path)
+    else:
+        log.info("No ETF-only silver matrix found — skipping (run clean.py to produce it).")
+
     # Macro features — FRED global + BAM Moroccan
     fred_path = BRONZE_DIR / "raw_macro.parquet"
     bam_path  = BRONZE_DIR / "raw_bam_macro.parquet"

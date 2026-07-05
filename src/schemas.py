@@ -23,7 +23,7 @@ ETF_ASSETS = ["SPY", "QQQ", "EEM", "GLD", "TLT"]
 ALL_ASSETS = BVC_ASSETS + ETF_ASSETS
 
 
-def validate_log_returns(df: pd.DataFrame) -> pd.DataFrame:
+def validate_log_returns(df: pd.DataFrame, expect_bvc: bool = True) -> pd.DataFrame:
     """
     Validate log-returns DataFrame.
 
@@ -35,6 +35,9 @@ def validate_log_returns(df: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         df: Wide log-returns DataFrame, DatetimeIndex × asset columns.
+        expect_bvc: When False, the absence of BVC columns is intentional
+            (e.g. the ETF-only backtest universe) and no warning is emitted.
+            The silent-loss rule targets *unintentional* absences.
 
     Returns:
         Validated DataFrame.
@@ -50,7 +53,7 @@ def validate_log_returns(df: pd.DataFrame) -> pd.DataFrame:
     if not present:
         raise ValueError("No expected asset columns found in log-returns DataFrame.")
 
-    if bvc_missing:
+    if bvc_missing and expect_bvc:
         warnings.warn(
             f"BVC tickers missing from log-returns (Yahoo Finance may not cover them). "
             f"Missing: {bvc_missing}. "
@@ -60,8 +63,9 @@ def validate_log_returns(df: pd.DataFrame) -> pd.DataFrame:
             stacklevel=2,
         )
 
-    if missing:
-        log.warning("Missing expected tickers: %s", missing)
+    unexplained_missing = missing if expect_bvc else [m for m in missing if m not in BVC_ASSETS]
+    if unexplained_missing:
+        log.warning("Missing expected tickers: %s", unexplained_missing)
 
     schema = DataFrameSchema(
         columns={
