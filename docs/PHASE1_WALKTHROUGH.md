@@ -138,7 +138,7 @@ arbitrary.
 flowchart TD
     subgraph Sources["External sources"]
         YF["Yahoo Finance<br/>(ETF prices, MAD FX rates)"]
-        FRED["FRED API<br/>(VIX, US10Y, DXY, HY_SPREAD)"]
+        FRED["FRED API<br/>(VIX, US10Y, DXY, CREDIT_SPREAD)"]
         BVCS["BVCscrap / medias24<br/>(BVC stock prices)"]
         BKAM["bkam.ma<br/>(BAM policy rate, hardcoded list)"]
     end
@@ -291,7 +291,14 @@ empty Bronze file."
 #### `ingest_macro(start="2017-01-01")`
 
 **What:** downloads 4 FRED series — VIX (fear index), US10Y (10-year Treasury yield), DXY (dollar
-index), HY_SPREAD (junk-bond credit spread) — and writes `raw_macro.parquet`.
+index), CREDIT_SPREAD (Moody's Baa corporate yield minus 10-year Treasury — a daily
+credit-stress gauge) — and writes `raw_macro.parquet`.
+
+**History note (2026-07-05):** CREDIT_SPREAD replaced the original HY_SPREAD
+(`BAMLH0A0HYM2`, ICE BofA high-yield OAS) after FRED began limiting ICE BofA series to a rolling
+~3-year window for licensing reasons, which had silently cut the series down to 2023+. BAA10Y is
+unrestricted with full 2017+ history. `ingest_macro` now also warns whenever any series returns
+materially less history than requested, so this class of silent truncation can't recur unnoticed.
 
 **Why these four:** each is a candidate *regime signal*. The VIX spikes before equity
 correlations do; credit spreads widen when risk appetite dies. They are the external information
@@ -363,8 +370,10 @@ stays in force until the next decision.
 **Why a runtime staleness warning exists:** a hardcoded list rots silently. If nobody adds the
 next BAM decision, `TAUX_DIR` keeps extending the old rate forever and no model would notice. So
 the function computes days-since-last-entry and logs a warning past 100 days (BAM meets roughly
-every 90). As of 2026-06-29, that warning **is firing** — the last entry is 102 days old, which
-means: go check bkam.ma. See §4.4.
+every 90). It has already fired once in practice (June 2026, at 102+ days stale) and led to the
+2026-06-23 hold decision being added — though that entry is currently sourced from secondary
+press only (bkam.ma's own history page lagged behind); the code carries an UNCONFIRMED note
+until someone re-verifies against the primary source. See §4.4.
 
 **Tests:** `test_writes_bronze_parquet_with_mocked_fx`, and `test_taux_directeur_is_step_function`
 which pins the exact semantic: dates before the first post-baseline decision must all carry the
@@ -559,7 +568,7 @@ macro_lagged = macro_scaled.shift(lag_days).dropna(how="all")     # 4. LAG
    `test_rejects_zero_lag` — the test literally asserts the error message contains "lookahead" —
    and `test_lag_prevents_same_day_data`.
 
-**Non-obvious detail:** `dropna(how="all")` instead of plain `dropna()`. HY_SPREAD sometimes has
+**Non-obvious detail:** `dropna(how="all")` instead of plain `dropna()`. Some FRED series have
 gaps; a plain `dropna()` would delete every row where *any* series is missing, letting the
 sparsest FRED series dictate the whole feature matrix's coverage. `how="all"` keeps partial rows
 and lets NaN-tolerance be decided per-model later (the macro schema permits NaN — see §3.4).
@@ -609,7 +618,7 @@ one it *does* fail on a missing column (`test_all_expected_columns_required`).
 ```python
 columns={
     series: Column(dtype=float, nullable=True, required=False)
-    for series in ["VIX", "US10Y", "DXY", "HY_SPREAD"]
+    for series in ["VIX", "US10Y", "DXY", "CREDIT_SPREAD"]
 },
 ```
 
@@ -664,10 +673,22 @@ whether it blocks Phase 2.
 
 ### 4.1 BVC data starts June 2021 — the dataset lost the COVID crash
 
-**Fact:** BVCscrap/medias24 (free tier) has no BVC prices before 2021-06-24. Pre-2021 data needs
+**Fact:** BVCscrap/medias24 (free tier) has no BVC prices before mid-2021. Pre-2021 data needs
 a paid vendor or manual downloads from casablanca-bourse.com.
 
-**Impact:** the merged matrix runs 2021-06-25 → today (1306 rows), not 2017 → today (~2400) as
+**Worse — it's a rolling window (discovered 2026-07-05):** the observed start date has moved
+across successive ingestion runs (2021-06-24 → 2021-06-28 → 2021-07-01), consistent with a
+rolling ~5-year window rather than a fixed floor. `ingest_bvc` originally *overwrote* the Bronze
+file each run, so this erosion silently discarded rows that can never be re-downloaded — the June
+24–30 2021 raw prices were lost this way (DVC had never been run, so no cached copy existed;
+only derived returns survive in MLflow artifacts). **Fixed the same day:** `ingest_bvc` now
+merges each download with the existing Bronze file — new data wins on overlaps, no-longer-served
+rows are preserved — locked in by two tests
+(`test_merge_preserves_rows_the_source_no_longer_serves`,
+`test_merge_new_download_wins_on_overlapping_dates`). Bronze coverage going forward equals the
+earliest window ever downloaded.
+
+**Impact:** the merged matrix runs mid-2021 → today (~1,300 rows), not 2017 → today (~2,400) as
 planned. The 2020 COVID crash — the single best natural experiment for P3, diversification
 breakdown — is **not in our dataset**. Our P3 evidence rests on the 2022 rate shock alone, one
 crisis instead of two. Phase 2's walk-forward backtest also has ~5 years of window instead of ~9:
@@ -717,9 +738,11 @@ adds the next rate decision, and `TAUX_DIR` silently forward-fills an outdated r
 plausible-looking, wrong, invisible to every schema check.
 
 **Mitigation now in place:** a maintenance comment explains the update procedure, and
-`ingest_bam_macro` warns when the last entry exceeds 100 days old. **That warning is live as of
-2026-06-29** (last entry 2026-03-19, 102 days ago) — BAM's June 2026 meeting has presumably
-happened. **Concrete action item: check bkam.ma and append the June 2026 decision.**
+`ingest_bam_macro` warns when the last entry exceeds 100 days old. The warning fired in
+June–July 2026 and the 2026-06-23 decision (hold at 2.25%) was appended on 2026-07-02 — but from
+secondary press sources only (Medias24, BoursNews, LesEco), because bkam.ma's own decision
+history hadn't listed the meeting yet. **Residual action item: re-verify that entry against
+bkam.ma and remove the UNCONFIRMED note in the code.**
 
 **Severity: Low-Medium** (one feature among seven, currently at most one quarter stale).
 **Blocks Phase 2? No** — but do the 5-minute update before the Phase 2 kickoff.
@@ -800,7 +823,7 @@ The view Abdelmouttalib expects — every problem, and exactly which code addres
 |---------|----------------------------------|-----------------------------------|-----|
 | **P1 — Noisy covariance estimation** | Sample covariance amplifies estimation error → unstable, concentrated portfolios | `align_calendars` (clean.py) · `flag_illiquid_assets` (clean.py) · `validate_log_returns` / `LOG_RETURNS_SCHEMA` (schemas.py) · `ingest_prices` (ingest.py) | Removes fake zeros from calendar misalignment; flags illiquid assets whose correlations are unreliable; enforces ±50% return bounds and a 500-row minimum so covariance inputs are clean and sufficient; `auto_adjust=True` prevents split/dividend artifacts |
 | **P2 — Non-stationarity** | Parameters estimated in one period are invalid in the next | `compute_log_returns` (clean.py) · `run_stationarity_tests` (features.py) · `build_macro_features` steps 1–3 (features.py) · `ingest_macro` / `ingest_bam_macro` (ingest.py) | Log-transform makes returns stationary; dual ADF+KPSS *proves* it per asset and writes the proof to Gold; macro levels are first-differenced and standardized; VIX/spreads/BAM rate feed future regime detection |
-| **P3 — Diversification breakdown in crises** | Correlations spike exactly when diversification is needed | `ingest_bvc` (ingest.py) · `ingest_bam_macro` (ingest.py) · `build_macro_features` (features.py) · `merge_bvc_prices` (clean.py) | Supplies the BVC + international cross-market universe whose crisis correlations we study; macro features (VIX, HY_SPREAD, USDMAD, TAUX_DIR) are the early-warning signals for regime shifts; EDA (notebook §7–8) documents the 2022 correlation spike empirically |
+| **P3 — Diversification breakdown in crises** | Correlations spike exactly when diversification is needed | `ingest_bvc` (ingest.py) · `ingest_bam_macro` (ingest.py) · `build_macro_features` (features.py) · `merge_bvc_prices` (clean.py) | Supplies the BVC + international cross-market universe whose crisis correlations we study; macro features (VIX, CREDIT_SPREAD, USDMAD, TAUX_DIR) are the candidate early-warning signals for regime shifts; EDA (notebook §7–8) documents the 2022 correlation spike empirically |
 | **P4 — Backtest overfitting / lookahead** | Future data leaks into past decisions → inflated Sharpe ratios that fail live | `build_macro_features` lag guard (features.py) · forward-fill-only policy in `align_calendars` (clean.py) · index-sorted check in schemas.py · Bronze immutability (ingest.py) | `lag_days ≥ 1` enforced by a raised exception (`test_rejects_zero_lag`); no backfill/interpolation anywhere (`test_forward_fill_not_backfill`); monotonic-index validation protects walk-forward integrity; immutable Bronze makes every experiment reproducible |
 
 Note the asymmetry, and say it out loud in the presentation: **P1–P3 are *addressed* by giving
@@ -812,7 +835,7 @@ zero-lag feature, and the fill policy makes lookahead impossible rather than mer
 
 ## Part 7 — If something breaks, start here
 
-1. **Run the test suite first: `python -m pytest tests/ -q` (47 tests, ~3 s).**
+1. **Run the test suite first: `python -m pytest tests/ -q` (49 tests, ~3 s).**
    The tests are synthetic and offline — no network, no API keys. So the split is diagnostic:
    *tests fail* → the logic is broken (look at the failing test's name; each encodes the rule it
    locks in, e.g. `test_forward_fill_not_backfill`, `test_rejects_zero_lag`). *Tests pass but the
@@ -835,5 +858,6 @@ zero-lag feature, and the fill policy makes lookahead impossible rather than mer
 
 ---
 
-*Written 2026-06-29, matching the code as of commit `9b37b08`. If the code has moved since, trust
-the code and the tests over this document — then update the document.*
+*Written 2026-06-29; last updated 2026-07-05 (CREDIT_SPREAD replacing HY_SPREAD, BAM June-2026
+entry, BVC rolling-window discovery). If the code has moved since, trust the code and the tests
+over this document — then update the document.*

@@ -152,6 +152,65 @@ class TestIngestBvc:
         assert result.index.is_monotonic_increasing
         assert (tmp_path / "bvc_prices.parquet").exists()
 
+    def test_merge_preserves_rows_the_source_no_longer_serves(self, tmp_path, monkeypatch):
+        """The medias24 rolling window drops old dates from fresh downloads;
+        those rows must survive in Bronze rather than being overwritten away."""
+        monkeypatch.setattr(ingest, "BRONZE_DIR", tmp_path)
+
+        # Existing Bronze holds two early dates the source will stop serving
+        existing = pd.DataFrame(
+            {"IAM.CS": [148.0, 149.0], "ATW.CS": [445.0, 447.0],
+             "CIH.CS": [295.0, 296.0], "BCP.CS": [245.0, 246.0]},
+            index=pd.to_datetime(["2021-06-24", "2021-06-25"]),
+        )
+        existing.index.name = "Date"
+        existing.to_parquet(tmp_path / "bvc_prices.parquet")
+
+        # Fresh download only serves later dates (window has rolled forward)
+        raw = pd.DataFrame(
+            {"Maroc Telecom": [150.0, 151.0], "Attijariwafa": [450.0, 452.0],
+             "CIH": [300.0, 301.0], "BCP": [250.0, 251.0]},
+            index=["01/07/2021", "02/07/2021"],
+        )
+        fake_bvc_module = MagicMock()
+        fake_bvc_module.loadmany.return_value = raw
+
+        with patch.dict("sys.modules", {"BVCscrap": fake_bvc_module}):
+            result = ingest.ingest_bvc()
+
+        assert len(result) == 4  # 2 preserved + 2 new
+        assert pd.Timestamp("2021-06-24") in result.index
+        assert result.loc["2021-06-24", "IAM.CS"] == 148.0  # old row intact
+        # The merged union is what landed on disk
+        on_disk = pd.read_parquet(tmp_path / "bvc_prices.parquet")
+        assert len(on_disk) == 4
+
+    def test_merge_new_download_wins_on_overlapping_dates(self, tmp_path, monkeypatch):
+        """On dates both files share, the fresh download is authoritative
+        (the source may have corrected a value)."""
+        monkeypatch.setattr(ingest, "BRONZE_DIR", tmp_path)
+
+        existing = pd.DataFrame(
+            {"IAM.CS": [999.0], "ATW.CS": [999.0], "CIH.CS": [999.0], "BCP.CS": [999.0]},
+            index=pd.to_datetime(["2021-07-01"]),
+        )
+        existing.index.name = "Date"
+        existing.to_parquet(tmp_path / "bvc_prices.parquet")
+
+        raw = pd.DataFrame(
+            {"Maroc Telecom": [150.0], "Attijariwafa": [450.0],
+             "CIH": [300.0], "BCP": [250.0]},
+            index=["01/07/2021"],
+        )
+        fake_bvc_module = MagicMock()
+        fake_bvc_module.loadmany.return_value = raw
+
+        with patch.dict("sys.modules", {"BVCscrap": fake_bvc_module}):
+            result = ingest.ingest_bvc()
+
+        assert len(result) == 1
+        assert result.loc["2021-07-01", "IAM.CS"] == 150.0  # new value won
+
 
 class TestIngestBamMacro:
     def test_writes_bronze_parquet_with_mocked_fx(self, tmp_path, monkeypatch):

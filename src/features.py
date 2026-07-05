@@ -140,7 +140,7 @@ def build_macro_features(
     macro = raw_macro.reindex(returns_index, method="ffill")
 
     # First-difference to remove unit roots. Use dropna(how='all') so sparse
-    # series (e.g. HY_SPREAD which FRED sometimes publishes with gaps) don't
+    # series (FRED publishes some series with gaps) don't
     # wipe out the entire date range — NaN propagates per-column, not per-row.
     macro_diff = macro.diff().dropna(how="all")
 

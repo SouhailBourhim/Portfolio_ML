@@ -52,10 +52,17 @@ ALL_TICKERS = EQUITY_TICKERS + ETF_TICKERS
 # ── Macro series (FRED) ──────────────────────────────────────────────────────
 
 FRED_SERIES = {
-    "VIX":       "VIXCLS",        # Global fear gauge — key regime signal
-    "US10Y":     "DGS10",         # 10-year US Treasury yield
-    "DXY":       "DTWEXBGS",      # US Dollar index
-    "HY_SPREAD": "BAMLH0A0HYM2",  # High-yield credit spread
+    "VIX":           "VIXCLS",    # Global fear gauge — key regime signal
+    "US10Y":         "DGS10",     # 10-year US Treasury yield
+    "DXY":           "DTWEXBGS",  # US Dollar index
+    # Moody's Baa yield minus 10Y Treasury — daily credit-stress / risk-appetite
+    # signal. Replaces BAMLH0A0HYM2 (ICE BofA HY OAS, 2026-07-05): FRED now caps
+    # ICE BofA series to a rolling ~3-year window (licensing), which made HY_SPREAD
+    # unusable over the 2017+ backtest range. BAA10Y is unrestricted with full
+    # history (verified 2478 obs from 2017-01-02). Tradeoff: Baa is investment-
+    # grade, so its spread moves less dramatically than high-yield OAS, but it
+    # widens in the same credit-stress episodes.
+    "CREDIT_SPREAD": "BAA10Y",
 }
 
 START_DATE = "2017-01-01"
@@ -174,11 +181,30 @@ def ingest_macro(start: str = START_DATE) -> pd.DataFrame:
     fred = Fred(api_key=api_key)
     log.info("Downloading %d FRED series from %s", len(FRED_SERIES), start)
 
+    requested_start = pd.Timestamp(start)
     frames: dict[str, pd.Series] = {}
     for name, series_id in FRED_SERIES.items():
         try:
             frames[name] = fred.get_series(series_id, observation_start=start)
             log.info("  %s (%s): %d observations", name, series_id, len(frames[name]))
+
+            # FRED restricts some licensed series (e.g. ICE BofA index series
+            # like BAMLH0A0HYM2 / HY_SPREAD) to a rolling window regardless of
+            # observation_start — the API silently returns less history than
+            # requested instead of erroring. Warn loudly so this doesn't repeat
+            # the same silent-truncation failure mode as the BVC/ETF calendar
+            # merge (see align_calendars in clean.py).
+            actual_start = frames[name].index.min()
+            if pd.notna(actual_start) and actual_start > requested_start + pd.DateOffset(days=30):
+                gap_days = (actual_start - requested_start).days
+                log.warning(
+                    "%s (%s) only has data from %s, not the requested %s (%d days "
+                    "short). FRED may be limiting this series to a rolling window "
+                    "(licensing restriction) — check https://fred.stlouisfed.org/series/%s "
+                    "before assuming this is a bug.",
+                    name, series_id, actual_start.date(), requested_start.date(),
+                    gap_days, series_id,
+                )
         except Exception as exc:
             log.warning("Could not fetch %s (%s): %s", name, series_id, exc)
 
@@ -205,25 +231,29 @@ BVC_NAME_MAP = {
     "BCP":           "BCP.CS",
 }
 
-BVC_START = "2021-06-24"   # earliest date available from medias24 / BVCscrap
+BVC_START = "2021-06-24"   # historical floor — see rolling-window note in ingest_bvc
 
 
 def ingest_bvc(start: str = BVC_START) -> pd.DataFrame:
     """
-    Download BVC (Bourse de Casablanca) closing prices via BVCscrap.
+    Download BVC (Bourse de Casablanca) closing prices via BVCscrap and merge
+    them into the existing Bronze file (never overwrite).
 
     Addresses: P1, P2, P3 — Moroccan equities are the core local asset class.
     Without them, the portfolio has no direct exposure to the Moroccan economy
     that EURAFRIC / BMCE / RMA Assurance actually operate in.
 
     Data source: medias24.com via the BVCscrap library.
-    Coverage:    June 2021 → today (earliest available from free source).
+    Coverage:    a ROLLING ~5-year window, not a fixed start — observed start
+                 dates slid 2021-06-24 → 2021-07-01 across runs in 2026-06/07.
+                 The Bronze merge below preserves rows the source stops
+                 serving, so effective coverage = earliest ever downloaded.
     Limitation:  Pre-2021 BVC data requires a paid data vendor or manual
                  download from casablanca-bourse.com.
 
     Args:
-        start: Start date. Clamped to BVC_START (2021-06-24) since no earlier
-               data is available from the free source.
+        start: Requested start date. Clamped to BVC_START; the source decides
+               what it actually serves (rolling window).
 
     Returns:
         Wide DataFrame — DatetimeIndex named "Date", columns IAM.CS / ATW.CS /
@@ -256,9 +286,35 @@ def ingest_bvc(start: str = BVC_START) -> pd.DataFrame:
         "BVC prices downloaded: %d rows × %d columns (%s → %s)",
         *raw.shape, raw.index.min().date(), raw.index.max().date(),
     )
-    log.info("  Coverage note: data starts %s (medias24 free-tier limit)", BVC_START)
 
+    # The medias24 free tier is a ROLLING ~5-year window (observed 2026-07:
+    # start dates slid 2021-06-24 → 06-28 → 07-01 across successive runs), so
+    # each fresh download is missing rows the previous download still had —
+    # rows that can never be re-downloaded. Merge with the existing Bronze
+    # file instead of overwriting: new data wins on overlapping dates (the
+    # source may correct values), old rows the source no longer serves are
+    # preserved. Overwriting here permanently destroys data (non-negotiable
+    # decision #5: version, don't overwrite).
     out_path = BRONZE_DIR / "bvc_prices.parquet"
+    if out_path.exists():
+        existing = pd.read_parquet(out_path)
+        existing.index = pd.to_datetime(existing.index)
+        preserved = existing.index.difference(raw.index)
+        raw = raw.combine_first(existing).sort_index()
+        raw.index.name = "Date"
+        if len(preserved) > 0:
+            log.info(
+                "Merged with existing Bronze: preserved %d rows the source no "
+                "longer serves (%s → %s).",
+                len(preserved), preserved.min().date(), preserved.max().date(),
+            )
+
+    log.info(
+        "  Effective coverage after merge: %s → %s (%d rows; medias24 serves a "
+        "rolling window, earliest currently downloadable ≈ %s)",
+        raw.index.min().date(), raw.index.max().date(), len(raw), effective_start,
+    )
+
     pq.write_table(pa.Table.from_pandas(raw), out_path)
     log.info("Bronze BVC prices written → %s", out_path)
     return raw
@@ -289,6 +345,12 @@ _TAUX_DIRECTEUR_DECISIONS = [
     ("2024-12-19", 2.50),
     ("2025-03-20", 2.25),
     ("2026-03-19", 2.25),
+    ("2026-06-23", 2.25),  # UNCONFIRMED against bkam.ma (primary source) — as of 2026-07-02
+                           # bkam.ma's own historique-des-decisions page did not list this
+                           # meeting yet. Added on the strength of several secondary Moroccan
+                           # financial news outlets (Medias24, BoursNews, LesEco, Le Matin)
+                           # reporting a hold at 2.25% on this date. Re-verify against bkam.ma
+                           # directly and remove this note once confirmed.
 ]
 
 

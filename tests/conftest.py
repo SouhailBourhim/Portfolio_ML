@@ -16,7 +16,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 ASSETS = ["IAM.CS", "ATW.CS", "CIH.CS", "BCP.CS", "SPY", "QQQ", "EEM", "GLD", "TLT"]
-MACRO_SERIES = ["VIX", "US10Y", "DXY", "HY_SPREAD"]
+MACRO_SERIES = ["VIX", "US10Y", "DXY", "CREDIT_SPREAD"]
 
 
 @pytest.fixture()
@@ -48,7 +48,7 @@ def synthetic_macro() -> pd.DataFrame:
         "VIX":       20 + rng.normal(0, 3, 600),
         "US10Y":     1.5 + rng.normal(0, 0.1, 600),
         "DXY":       95 + rng.normal(0, 1, 600),
-        "HY_SPREAD": 400 + rng.normal(0, 20, 600),
+        "CREDIT_SPREAD": 2.0 + rng.normal(0, 0.1, 600),
     }
     df = pd.DataFrame(data, index=dates)
     df.index.name = "Date"

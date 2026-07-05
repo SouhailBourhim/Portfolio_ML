@@ -121,7 +121,7 @@ MACRO_FEATURES_SCHEMA = DataFrameSchema(
         # a series was unavailable — schema validates whichever columns exist,
         # rather than failing the whole Gold layer because of one missing series.
         series: Column(dtype=float, nullable=True, required=False)
-        for series in ["VIX", "US10Y", "DXY", "HY_SPREAD"]
+        for series in ["VIX", "US10Y", "DXY", "CREDIT_SPREAD"]
     },
     index=pa.Index(pa.DateTime, name="Date", coerce=True),
     checks=[
