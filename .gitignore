@@ -22,6 +22,8 @@ env/
 /data/silver/
 /data/gold/
 *.dvc
+# the DVC config directory itself IS tracked (its own .gitignore excludes the cache)
+!.dvc
 
 # ── MLflow ───────────────────────────────────────────────────────────────────
 mlruns/

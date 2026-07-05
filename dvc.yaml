@@ -8,7 +8,12 @@ stages:
     outs:
       - data/bronze/raw_prices.parquet
       - data/bronze/raw_macro.parquet
-      - data/bronze/bvc_prices.parquet
+      # persist: true — ingest_bvc MERGES each download into this file because
+      # the medias24 source is a rolling window (rows age out and can never be
+      # re-downloaded). Without persist, `dvc repro` would delete the file
+      # before running the stage and destroy the preserved history.
+      - data/bronze/bvc_prices.parquet:
+          persist: true
       - data/bronze/raw_bam_macro.parquet
     params:
       - params.yaml:
@@ -24,6 +29,7 @@ stages:
       - data/bronze/bvc_prices.parquet
     outs:
       - data/silver/log_returns.parquet
+      - data/silver/validation_report.json
     params:
       - params.yaml:
           - clean.ffill_limit

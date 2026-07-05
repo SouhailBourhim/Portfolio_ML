@@ -138,6 +138,22 @@ launchctl kickstart -k gui/$(id -u)/com.portfolioml.dagster-daemon
 launchctl kickstart -k gui/$(id -u)/com.portfolioml.dagster-webserver
 ```
 
+### Versionnage des données (DVC)
+
+Le cache DVC protège les données contre toute perte — indispensable car la source BVC
+(medias24) est une fenêtre glissante : les lignes anciennes disparaissent définitivement.
+
+```bash
+dvc status                  # les données correspondent-elles à dvc.lock ?
+dvc commit                  # snapshot des données actuelles dans le cache (après un run)
+dvc checkout                # restaurer les données depuis le cache (fichier supprimé/corrompu)
+dvc repro                   # ré-exécuter uniquement les étapes affectées par un changement
+git log -p dvc.lock         # historique des versions de données
+```
+
+Après chaque exécution du pipeline qui modifie les données : `dvc commit` puis
+commiter `dvc.lock` dans git — c'est ce couple qui rend chaque version restaurable.
+
 ### Requêtes analytiques sur la couche Gold (DuckDB)
 
 ```python

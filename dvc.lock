@@ -1,0 +1,103 @@
+schema: '2.0'
+stages:
+  ingest:
+    cmd: python src/ingest.py
+    deps:
+    - path: src/ingest.py
+      hash: md5
+      md5: 790eb949c9814eeee59a53cfc96ed6f0
+      size: 18383
+    - path: src/schemas.py
+      hash: md5
+      md5: 810b04d030668012eb5c092e3fa138d6
+      size: 5257
+    params:
+      params.yaml:
+        ingest.start_date: '2017-01-01'
+    outs:
+    - path: data/bronze/bvc_prices.parquet
+      hash: md5
+      md5: b2bb14f2e816d8edede0fabb9cfefa32
+      size: 29635
+    - path: data/bronze/raw_bam_macro.parquet
+      hash: md5
+      md5: f982d2d1b849d3ef4d91afa278f68f03
+      size: 53168
+    - path: data/bronze/raw_macro.parquet
+      hash: md5
+      md5: 175e03ae01b418fb8ea0886478b0c65a
+      size: 61453
+    - path: data/bronze/raw_prices.parquet
+      hash: md5
+      md5: a6ad626676691339f14a98e94ce4e810
+      size: 108514
+  clean:
+    cmd: python src/clean.py
+    deps:
+    - path: data/bronze/bvc_prices.parquet
+      hash: md5
+      md5: b2bb14f2e816d8edede0fabb9cfefa32
+      size: 29635
+    - path: data/bronze/raw_prices.parquet
+      hash: md5
+      md5: a6ad626676691339f14a98e94ce4e810
+      size: 108514
+    - path: src/clean.py
+      hash: md5
+      md5: c8f8b688302c681dd65b5197facd117f
+      size: 10453
+    - path: src/schemas.py
+      hash: md5
+      md5: 810b04d030668012eb5c092e3fa138d6
+      size: 5257
+    params:
+      params.yaml:
+        clean.ffill_limit: 5
+    outs:
+    - path: data/silver/log_returns.parquet
+      hash: md5
+      md5: f80c372ab18412bf625bf7a48137e4b3
+      size: 116422
+    - path: data/silver/validation_report.json
+      hash: md5
+      md5: 403067153fcc3216386d842364b34dba
+      size: 1821
+  features:
+    cmd: python src/features.py
+    deps:
+    - path: data/bronze/raw_bam_macro.parquet
+      hash: md5
+      md5: f982d2d1b849d3ef4d91afa278f68f03
+      size: 53168
+    - path: data/bronze/raw_macro.parquet
+      hash: md5
+      md5: 175e03ae01b418fb8ea0886478b0c65a
+      size: 61453
+    - path: data/silver/log_returns.parquet
+      hash: md5
+      md5: f80c372ab18412bf625bf7a48137e4b3
+      size: 116422
+    - path: src/features.py
+      hash: md5
+      md5: f524691691921cda2657c7b82b45d03c
+      size: 9097
+    - path: src/schemas.py
+      hash: md5
+      md5: 810b04d030668012eb5c092e3fa138d6
+      size: 5257
+    params:
+      params.yaml:
+        features.macro_lag_days: 1
+    outs:
+    - path: data/gold/log_returns.parquet
+      hash: md5
+      md5: f80c372ab18412bf625bf7a48137e4b3
+      size: 116422
+    - path: data/gold/macro_features.parquet
+      hash: md5
+      md5: 9d8ff4f776b6cae92841c9a951c72100
+      size: 56555
+    - path: data/gold/stationarity_report.parquet
+      hash: md5
+      md5: 22cc32129c819612dac85615e7b4f468
+      size: 5258
