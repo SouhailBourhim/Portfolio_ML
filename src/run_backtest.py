@@ -23,9 +23,11 @@ from pathlib import Path
 import mlflow
 import pandas as pd
 
+import json
+
 from backtest import BacktestResult, build_cost_vector, run_backtest
 from metrics import annualized_sharpe, summarize
-from strategies import EqualWeight, MaxSharpe, MinVariance, Strategy
+from strategies import EqualWeight, MaxSharpe, MinVariance, MinVarianceLW, Strategy
 from utils import load_params
 
 logging.basicConfig(
@@ -72,6 +74,7 @@ def run_phase2() -> dict[str, list[BacktestResult]]:
     strategies: list[Strategy] = [
         EqualWeight(),
         MinVariance(max_weight=max_weight),
+        MinVarianceLW(max_weight=max_weight),   # covariance ablation ladder, rung 1
         MaxSharpe(max_weight=max_weight, risk_free_annual=rf),
     ]
 
@@ -162,6 +165,28 @@ def run_phase2() -> dict[str, list[BacktestResult]]:
                         metrics_panel["avg_turnover"],
                         metrics_panel.get("dsr_net", float("nan")),
                     )
+
+        # Machine-readable hurdle: the number Phase 4 must beat, as data.
+        # Phase 4's comparison can assert against this file programmatically
+        # instead of trusting a hand-copied figure from a notebook.
+        hurdle = {}
+        for universe_name, results in all_results.items():
+            best = max(results, key=lambda r: annualized_sharpe(r.net_returns, rf))
+            hurdle[universe_name] = {
+                "strategy": best.strategy_name,
+                "sharpe_net": round(annualized_sharpe(best.net_returns, rf), 4),
+                "n_trials": len(results),
+                "rebalance_freq": params["rebalance_freq"],
+                "max_weight": max_weight,
+                "cost_bps": params["costs_bps"],
+                "oos_start": str(best.net_returns.index.min().date()),
+                "oos_end": str(best.net_returns.index.max().date()),
+            }
+        hurdle_path = ROOT / "data" / "gold" / "phase2_hurdle.json"
+        hurdle_path.write_text(json.dumps(hurdle, indent=2))
+        mlflow.log_artifact(str(hurdle_path))
+        log.info("Phase 4 hurdle written → %s : %s", hurdle_path,
+                 {k: v["sharpe_net"] for k, v in hurdle.items()})
 
         log.info("=== Phase 2 baseline comparison complete. `mlflow ui` to inspect. ===")
 

@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from strategies import EqualWeight, MaxSharpe, MinVariance
+from strategies import EqualWeight, MaxSharpe, MinVariance, MinVarianceLW
 
-ALL_STRATEGIES = [EqualWeight(), MinVariance(), MaxSharpe()]
+ALL_STRATEGIES = [EqualWeight(), MinVariance(), MinVarianceLW(), MaxSharpe()]
 
 
 @pytest.fixture()
@@ -78,3 +78,15 @@ class TestOptimizerEconomics:
         # HIGH: mean 0.002/std 0.03 -> daily SR ~0.067; LOW: SR ~0
         w = MaxSharpe(max_weight=1.0).fit(high_low_vol_returns)
         assert w["HIGH"] > w["LOW"]
+
+    def test_lw_min_variance_prefers_low_volatility_asset(self, high_low_vol_returns):
+        # Shrinkage regularizes the covariance; it must not invert the economics
+        w = MinVarianceLW(max_weight=1.0).fit(high_low_vol_returns)
+        assert w["LOW"] > 0.9
+
+    def test_lw_weights_differ_from_sample_min_variance(self, synthetic_log_returns):
+        # On a 9-asset noisy panel the shrunk and sample covariances differ,
+        # so the optima should too - if they were identical, LW would be dead code
+        w_sample = MinVariance(max_weight=1.0).fit(synthetic_log_returns)
+        w_lw = MinVarianceLW(max_weight=1.0).fit(synthetic_log_returns)
+        assert (w_sample - w_lw).abs().max() > 1e-4

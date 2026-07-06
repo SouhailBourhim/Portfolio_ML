@@ -149,6 +149,39 @@ class MinVariance(Strategy):
         )
 
 
+class MinVarianceLW(Strategy):
+    """
+    Minimum-variance with a Ledoit-Wolf shrunk covariance matrix.
+
+    Addresses: P1 — the first rung of the covariance ablation ladder
+    (sample → Ledoit-Wolf shrinkage → EWMA → DCC-GARCH). Shrinkage pulls
+    the noisy sample covariance toward a structured target, with the
+    shrinkage intensity estimated from the data itself (Ledoit & Wolf
+    2004). Comparing this against plain MinVariance isolates how much of
+    the P1 problem simple statistical regularization already fixes —
+    before any ML is involved. If shrinkage alone closes most of the gap
+    to 1/N, that materially changes what Phase 4 has to prove.
+    """
+
+    name = "min_variance_lw"
+
+    def __init__(self, max_weight: float = 0.25) -> None:
+        self.max_weight = max_weight
+
+    def fit(
+        self,
+        train_returns: pd.DataFrame,
+        extras: Mapping[str, pd.DataFrame] | None = None,
+    ) -> pd.Series:
+        from sklearn.covariance import LedoitWolf
+
+        lw = LedoitWolf().fit(train_returns.to_numpy())
+        cov = lw.covariance_ * TRADING_DAYS_PER_YEAR
+        return _optimize_weights(
+            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name
+        )
+
+
 class MaxSharpe(Strategy):
     """
     Maximum-Sharpe (tangency) portfolio: max (wᵀμ − rf)/√(wᵀΣw), long-only, cap.
