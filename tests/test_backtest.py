@@ -233,6 +233,32 @@ class TestEngineRejectsMalformedWeights:
             run_backtest(synthetic_log_returns, MalformedWeights(mode), min_train_days=100)
 
 
+class TestEngineEnforcesCap:
+    """The cap is enforced at the trust boundary, not just promised by
+    strategies — a Phase 4 model returning a concentrated book must fail."""
+
+    class OverCap(Strategy):
+        name = "over_cap"
+        def fit(self, train_returns, extras=None):
+            w = pd.Series(0.0, index=train_returns.columns)
+            w.iloc[0] = 0.40                       # violates a 0.25 cap
+            w.iloc[1:] = 0.60 / (len(w) - 1)
+            return w
+
+    def test_engine_rejects_weights_above_cap(self, synthetic_log_returns):
+        with pytest.raises(ValueError, match="max_weight"):
+            run_backtest(
+                synthetic_log_returns, self.OverCap(),
+                min_train_days=100, max_weight=0.25,
+            )
+
+    def test_engine_without_cap_allows_concentration(self, synthetic_log_returns):
+        result = run_backtest(
+            synthetic_log_returns, self.OverCap(), min_train_days=100
+        )
+        assert result.target_weights.iloc[0].max() == pytest.approx(0.40)
+
+
 class TestCostVector:
     def test_bvc_assets_cost_more_than_etfs(self):
         cv = build_cost_vector(

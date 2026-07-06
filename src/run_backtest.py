@@ -55,10 +55,15 @@ def run_phase2() -> dict[str, list[BacktestResult]]:
     Execute the full Phase 2 baseline comparison.
 
     Structure: one parent MLflow run holding shared parameters, one nested
-    run per strategy × universe (3 × 2 = 6) holding that combination's
-    metrics and artifacts. `n_trials` (the DSR's N) counts the strategies
-    compared per universe in THIS run — the honest-N limitation is
-    documented in metrics.deflated_sharpe_ratio.
+    run per strategy × universe holding that combination's metrics and
+    artifacts. `n_trials` (the DSR's N) counts the strategies compared per
+    universe in THIS run — the honest-N limitation is documented in
+    metrics.deflated_sharpe_ratio.
+
+    N-honesty rule: ANY additional configuration backtested on the same
+    universe during a comparison (including diagnostic runs in notebooks,
+    e.g. an uncapped variant) must be added to that universe's trial pool.
+    Selection bias doesn't care whether a run was labeled "diagnostic".
     """
     params = load_params()["backtest"]
     max_weight = params["max_weight"]
@@ -105,6 +110,7 @@ def run_phase2() -> dict[str, list[BacktestResult]]:
                     min_train_days=params["min_train_days"],
                     cost_bps=cost_vector,
                     universe_name=universe_name,
+                    max_weight=max_weight,   # engine-enforced, not just promised
                 )
                 for strategy in strategies
             ]

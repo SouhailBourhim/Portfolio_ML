@@ -45,7 +45,11 @@ class BacktestResult:
     drifted_weights: pd.DataFrame   # rebalance date × asset — weights just BEFORE trading
     gross_returns: pd.Series        # daily simple returns, OOS dates only
     net_returns: pd.Series          # gross minus transaction-cost drag
-    turnover: pd.Series             # per rebalance: Σᵢ |w_target,i − w_drifted,i|
+    # Turnover convention: TWO-SIDED sum Σᵢ|w_target,i − w_drifted,i|.
+    # A complete portfolio replacement = 2.0; the initial buy-in from cash = 1.0.
+    # (Some texts report half of this; costs below are per unit traded, so the
+    # cost math is convention-independent.)
+    turnover: pd.Series
     costs: pd.Series                # per rebalance: Σᵢ cᵢ·|Δwᵢ|, as fraction of NAV
 
 
@@ -85,13 +89,21 @@ def build_cost_vector(
     return pd.Series(costs, dtype=float)
 
 
-def _validate_weights(weights: pd.Series, assets: pd.Index, strategy_name: str) -> pd.Series:
+def _validate_weights(
+    weights: pd.Series,
+    assets: pd.Index,
+    strategy_name: str,
+    max_weight: float | None = None,
+) -> pd.Series:
     """
     Engine-side weight validation — the engine never trusts a strategy.
 
     Addresses: P4 — a strategy returning malformed weights (wrong assets,
     shorts, leverage) would corrupt every downstream number; failing loudly
-    at the source is the only acceptable behavior.
+    at the source is the only acceptable behavior. When max_weight is set,
+    the concentration cap is enforced HERE too, not just promised by the
+    strategy — a Phase 4 ML model quietly returning a 60% position must
+    fail the run, not fabricate plausible-looking results.
     """
     if not weights.index.equals(assets):
         raise ValueError(
@@ -104,6 +116,12 @@ def _validate_weights(weights: pd.Series, assets: pd.Index, strategy_name: str) 
         raise ValueError(f"{strategy_name}: negative weights (short selling) not allowed.")
     if abs(weights.sum() - 1.0) > 1e-6:
         raise ValueError(f"{strategy_name}: weights sum to {weights.sum():.8f}, expected 1.")
+    if max_weight is not None and (weights > max_weight + 1e-9).any():
+        worst = weights.idxmax()
+        raise ValueError(
+            f"{strategy_name}: weight {weights.max():.4f} on {worst} exceeds the "
+            f"max_weight cap {max_weight} the engine was told to enforce."
+        )
     return weights.clip(lower=0.0)
 
 
@@ -129,6 +147,7 @@ def run_backtest(
     cost_bps: pd.Series | float = 0.0,
     extras: Mapping[str, pd.DataFrame] | None = None,
     universe_name: str = "",
+    max_weight: float | None = None,
 ) -> BacktestResult:
     """
     Expanding-window walk-forward backtest of one strategy.
@@ -156,6 +175,9 @@ def run_backtest(
         extras: Auxiliary frames for Phase 4 strategies; the ENGINE slices
             each one to the train window before every fit call.
         universe_name: Label carried into the result for reporting.
+        max_weight: When set, the engine REJECTS any fit() output whose
+            largest weight exceeds this cap — the constraint is enforced at
+            the trust boundary, not just promised by strategies.
 
     Addresses: P4, P2 — see module docstring.
     """
@@ -194,7 +216,7 @@ def run_backtest(
             if extras else None
         )
         w_target = _validate_weights(
-            strategy.fit(train, extras_slice), assets, strategy.name
+            strategy.fit(train, extras_slice), assets, strategy.name, max_weight
         ).to_numpy()
 
         w_drifted = w_current.copy()
