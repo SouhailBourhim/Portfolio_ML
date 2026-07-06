@@ -70,11 +70,18 @@ Une visite guidée complète du code de la Phase 1 (en anglais) est disponible d
 ```bash
 # 1. Créer et activer un environnement virtuel
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # macOS / Linux
+# .venv\Scripts\activate         # Windows (PowerShell ou cmd)
 
 # 2. Installer les dépendances
 pip install -r requirements.txt
 ```
+
+> **Vérification rapide sans configuration :** `pytest` fonctionne immédiatement après
+> l'installation — les 52 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
+> et les notebooks se consultent avec leurs résultats déjà exécutés. En revanche,
+> `python src/pipeline.py` nécessite la clé FRED ci-dessous et un accès internet :
+> le dossier `data/` n'est pas versionné dans git et se génère à la première exécution.
 
 Créer un fichier `.env` à la racine avec votre clé API FRED
 (gratuite sur https://fred.stlouisfed.org/docs/api/api_key.html) :

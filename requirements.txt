@@ -6,6 +6,9 @@ pyarrow>=15.0
 # ── Data ingestion ──────────────────────────────────────────────────────────
 yfinance>=0.2
 fredapi>=3.1
+BVCscrap>=0.1        # BVC (Casablanca) prices via medias24
+lxml>=5.0            # required by BVCscrap
+python-dotenv>=1.0   # loads FRED_API_KEY from .env in pipeline.py
 
 # ── Data validation ─────────────────────────────────────────────────────────
 pandera>=0.20
