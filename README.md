@@ -99,6 +99,16 @@ Alternative à l'installation locale : l'image fige l'OS, la version de Python e
 dépendances — le projet s'exécute à l'identique sur macOS, Windows ou Linux (seul
 [Docker Desktop](https://www.docker.com/products/docker-desktop/) est requis).
 
+**Option A — image pré-construite (Docker Hub).** L'image exacte que nous avons validée
+(multi-architecture : amd64 + arm64), sans rien construire :
+
+```bash
+docker pull souhailbourhim/portfolio-ml:phase1
+docker run --rm souhailbourhim/portfolio-ml:phase1        # exécute la suite de tests
+```
+
+**Option B — construire depuis les sources :**
+
 ```bash
 # 1. Vérification sans aucune configuration : la suite de tests (hors-ligne)
 docker compose run --rm test
