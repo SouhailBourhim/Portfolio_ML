@@ -6,7 +6,7 @@ pyyaml>=6.0        # params.yaml loading (also a transitive dep of dvc/mlflow)
 
 # ── Data ingestion ──────────────────────────────────────────────────────────
 yfinance>=0.2
-fredapi>=3.1
+fredapi>=0.5   # NB: fredapi is versioned 0.x on PyPI — the earlier '>=3.1' pin never existed and broke every fresh install
 BVCscrap>=0.1        # BVC (Casablanca) prices via medias24
 lxml>=5.0            # required by BVCscrap
 python-dotenv>=1.0   # loads FRED_API_KEY from .env in pipeline.py

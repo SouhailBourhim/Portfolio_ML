@@ -1,0 +1,27 @@
+# Secrets — never in the image
+.env
+
+# Virtualenv, caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Data and run artifacts — generated at runtime or mounted as volumes
+data/
+mlruns/
+mlflow.db
+*.db
+.dvc/cache/
+.dagster_home/
+.tmp_dagster_home_*/
+
+# VCS and local tooling
+.git/
+.claude/
+CLAUDE.md
+CLAUDE.v2.md
+
+# Docs not needed inside the container
+docs/*.docx

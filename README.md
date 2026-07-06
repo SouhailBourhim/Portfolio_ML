@@ -93,6 +93,28 @@ FRED_API_KEY=votre_clé_ici
 > ⚠️ **macOS :** ne pas placer le projet sous `~/Desktop`, `~/Documents` ou `~/Downloads` —
 > la protection TCC de macOS empêche les processus lancés par launchd (Dagster) d'y accéder.
 
+## Docker (environnement reproductible)
+
+Alternative à l'installation locale : l'image fige l'OS, la version de Python et toutes les
+dépendances — le projet s'exécute à l'identique sur macOS, Windows ou Linux (seul
+[Docker Desktop](https://www.docker.com/products/docker-desktop/) est requis).
+
+```bash
+# 1. Vérification sans aucune configuration : la suite de tests (hors-ligne)
+docker compose run --rm test
+
+# 2. Pipeline complet (nécessite un fichier .env avec FRED_API_KEY)
+docker compose run --rm pipeline
+
+# 3. Notebooks dans le navigateur (token affiché dans les logs)
+docker compose up notebook        # → http://localhost:8888
+```
+
+Les données ne sont pas incluses dans l'image (elles sont générées à l'exécution et gérées
+par DVC) : `data/` et `mlruns/` sont montés depuis l'hôte, donc les sorties persistent et
+restent visibles par DVC. La planification Dagster/launchd reste hors périmètre Docker
+(spécifique macOS).
+
 ## Commandes utiles
 
 ### Pipeline de données
