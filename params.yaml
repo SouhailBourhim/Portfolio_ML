@@ -8,3 +8,15 @@ clean:
 
 features:
   macro_lag_days: 1          # lag applied to macro features to prevent lookahead bias
+
+backtest:
+  rebalance_freq: "ME"       # month-end (pandas offset alias) — decided 2026-07-05
+  min_train_days: 252        # 1 trading year of history before the first rebalance
+  max_weight: 0.25           # per-asset cap; long-only is implied by the optimizer bounds
+  risk_free_annual: 0.0      # MVP simplification; revisit in Phase 5
+  costs_bps:                 # one-way transaction costs applied to turnover
+    etf: 10                  # liquid US-listed ETFs
+    bvc: 30                  # BVC illiquidity premium (CIH/BCP carry standing flags)
+  universes:                 # every strategy runs on BOTH (dual-universe design)
+    etf_2017: "data/gold/log_returns_etf.parquet"    # 5 ETFs, includes COVID + 2022
+    full_2021: "data/gold/log_returns.parquet"       # 9 assets, BVC-limited window

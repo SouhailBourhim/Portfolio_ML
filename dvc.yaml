@@ -30,6 +30,9 @@ stages:
     outs:
       - data/silver/log_returns.parquet
       - data/silver/validation_report.json
+      # ETF-only universe for Phase 2 dual-universe backtesting (2017+ history)
+      - data/silver/log_returns_etf.parquet
+      - data/silver/validation_report_log_returns_etf.json
     params:
       - params.yaml:
           - clean.ffill_limit
@@ -41,10 +44,12 @@ stages:
       - src/features.py
       - src/schemas.py
       - data/silver/log_returns.parquet
+      - data/silver/log_returns_etf.parquet
       - data/bronze/raw_macro.parquet
       - data/bronze/raw_bam_macro.parquet
     outs:
       - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
       - data/gold/macro_features.parquet
       - data/gold/stationarity_report.parquet
     params:

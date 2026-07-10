@@ -184,12 +184,28 @@ def merge_bvc_prices(etf_prices: pd.DataFrame) -> pd.DataFrame:
     return merged
 
 
-def silver_pipeline(ffill_limit: int = 5) -> pd.DataFrame:
+def silver_pipeline(
+    ffill_limit: int = 5,
+    include_bvc: bool = True,
+    output_stem: str = "log_returns",
+) -> pd.DataFrame:
     """
     Full Bronze → Silver transformation.
 
     Steps: load ETF prices → merge BVC prices → calendar align →
            log-returns → illiquidity check → Pandera validate → write Parquet.
+
+    Addresses: P1, P2. With include_bvc=False, also P3/P4 — the ETF-only
+    universe keeps the full 2017+ history (the BVC merge is what truncates
+    to 2021+), restoring the COVID-2020 crisis window for backtesting.
+
+    Args:
+        ffill_limit: Max consecutive business days to forward-fill.
+        include_bvc: Merge BVC prices into the matrix. False produces the
+            ETF-only backtest universe (Phase 2 dual-universe design).
+        output_stem: Base filename for outputs. The default writes the
+            canonical log_returns.parquet / validation_report.json; other
+            stems write alongside without touching the canonical files.
 
     Returns:
         Validated log-returns DataFrame (wide, DatetimeIndex).
@@ -202,24 +218,27 @@ def silver_pipeline(ffill_limit: int = 5) -> pd.DataFrame:
 
     prices = pd.read_parquet(prices_path)
     prices.index = pd.to_datetime(prices.index)
-    prices = merge_bvc_prices(prices)
+    if include_bvc:
+        prices = merge_bvc_prices(prices)
+    else:
+        log.info("ETF-only universe requested — skipping BVC merge.")
 
     aligned = align_calendars(prices, ffill_limit=ffill_limit)
     log_returns = compute_log_returns(aligned)
     flag_illiquid_assets(log_returns)
 
-    validated = validate_log_returns(log_returns)
+    validated = validate_log_returns(log_returns, expect_bvc=include_bvc)
 
-    out_path = SILVER_DIR / "log_returns.parquet"
+    out_path = SILVER_DIR / f"{output_stem}.parquet"
     pq.write_table(pa.Table.from_pandas(validated), out_path)
-    log.info("Silver log_returns written: %d rows × %d columns → %s",
-             *validated.shape, out_path)
+    log.info("Silver %s written: %d rows × %d columns → %s",
+             output_stem, *validated.shape, out_path)
 
-    _write_validation_report(validated)
+    _write_validation_report(validated, output_stem=output_stem)
     return validated
 
 
-def _write_validation_report(log_returns: pd.DataFrame) -> None:
+def _write_validation_report(log_returns: pd.DataFrame, output_stem: str = "log_returns") -> None:
     """Write a human-readable JSON summary of the Silver layer to data/silver/."""
     requested_start = pd.Timestamp(START_DATE)
     effective_start = log_returns.index.min()
@@ -249,10 +268,15 @@ def _write_validation_report(log_returns: pd.DataFrame) -> None:
             for col in log_returns.columns
         },
     }
-    report_path = SILVER_DIR / "validation_report.json"
+    report_name = (
+        "validation_report.json" if output_stem == "log_returns"
+        else f"validation_report_{output_stem}.json"
+    )
+    report_path = SILVER_DIR / report_name
     report_path.write_text(json.dumps(report, indent=2))
     log.info("Validation report written → %s", report_path)
 
 
 if __name__ == "__main__":
-    silver_pipeline()
+    silver_pipeline()                                              # 9-asset universe (2021+)
+    silver_pipeline(include_bvc=False, output_stem="log_returns_etf")  # ETF universe (2017+)

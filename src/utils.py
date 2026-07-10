@@ -7,9 +7,26 @@ from pathlib import Path
 
 import duckdb
 import pandas as pd
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLD_DIR = ROOT / "data" / "gold"
+
+
+def load_params() -> dict:
+    """
+    Load params.yaml — the single source of truth for pipeline and backtest
+    configuration (rebalance frequency, costs, weight caps, universe paths).
+
+    Addresses: P4 — configuration read from one audited file means every
+    backtest run's parameters are reproducible from git history, and the
+    same values feed both `dvc repro` and the Python entry points.
+    """
+    params_path = ROOT / "params.yaml"
+    if not params_path.exists():
+        raise FileNotFoundError(f"params.yaml not found at {params_path}")
+    with open(params_path) as f:
+        return yaml.safe_load(f)
 
 
 def query_gold(sql: str) -> pd.DataFrame:

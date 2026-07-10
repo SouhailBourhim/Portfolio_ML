@@ -74,6 +74,49 @@ class TestSilverPipelineIntegration:
         assert set(ALL_ASSETS).issubset(set(result.columns))
 
 
+class TestEtfOnlyUniverse:
+    """The Phase 2 dual-universe data path: silver_pipeline(include_bvc=False)
+    must keep the full pre-BVC ETF history and never touch the 9-asset files."""
+
+    @pytest.fixture()
+    def dual_universe_bronze(self, tmp_path, monkeypatch):
+        bronze = tmp_path / "bronze"
+        silver = tmp_path / "silver"
+        bronze.mkdir()
+        monkeypatch.setattr(clean, "BRONZE_DIR", bronze)
+        monkeypatch.setattr(clean, "SILVER_DIR", silver)
+        # ETFs start early; BVC starts 200 business days later (the real-world gap)
+        etf_prices = _make_synthetic_prices(ETF_ASSETS, "2021-01-04", N_ROWS + 200)
+        bvc_prices = _make_synthetic_prices(BVC_ASSETS, "2021-01-04", N_ROWS + 200).iloc[200:]
+        pq.write_table(pa.Table.from_pandas(etf_prices), bronze / "raw_prices.parquet")
+        pq.write_table(pa.Table.from_pandas(bvc_prices), bronze / "bvc_prices.parquet")
+        return bronze, silver
+
+    def test_etf_only_universe_keeps_pre_bvc_history(self, dual_universe_bronze):
+        full = silver_pipeline()
+        etf = silver_pipeline(include_bvc=False, output_stem="log_returns_etf")
+        assert etf.index.min() < full.index.min()
+        assert len(etf) > len(full)
+        assert list(etf.columns) == ETF_ASSETS
+
+    def test_etf_only_output_does_not_overwrite_full_universe_file(self, dual_universe_bronze):
+        _, silver = dual_universe_bronze
+        silver_pipeline()
+        silver_pipeline(include_bvc=False, output_stem="log_returns_etf")
+        full_on_disk = pd.read_parquet(silver / "log_returns.parquet")
+        etf_on_disk = pd.read_parquet(silver / "log_returns_etf.parquet")
+        assert set(BVC_ASSETS).issubset(full_on_disk.columns)   # 9-asset file intact
+        assert set(etf_on_disk.columns) == set(ETF_ASSETS)
+        assert (silver / "validation_report.json").exists()
+        assert (silver / "validation_report_log_returns_etf.json").exists()
+
+    def test_no_bvc_warning_when_etf_only_is_intentional(self, dual_universe_bronze):
+        import warnings as warnings_mod
+        with warnings_mod.catch_warnings():
+            warnings_mod.simplefilter("error", UserWarning)
+            silver_pipeline(include_bvc=False, output_stem="log_returns_etf")
+
+
 class TestMergeBvcPrices:
     def test_passthrough_when_no_bvc_file(self, tmp_path, monkeypatch):
         monkeypatch.setattr(clean, "BRONZE_DIR", tmp_path)
