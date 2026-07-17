@@ -117,3 +117,50 @@ stages:
       hash: md5
       md5: 22cc32129c819612dac85615e7b4f468
       size: 5258
+  ml_features:
+    cmd: python src/ml_features.py
+    deps:
+    - path: data/bronze/raw_bam_macro.parquet
+      hash: md5
+      md5: 428a2a11293dc745352198724e89a043
+      size: 53312
+    - path: data/bronze/raw_macro.parquet
+      hash: md5
+      md5: 5fb676c97fff6fb75b78b5f43c8791d7
+      size: 61582
+    - path: data/gold/log_returns.parquet
+      hash: md5
+      md5: 9d57af0aa06fa639602b0a01e262467f
+      size: 116882
+    - path: data/gold/log_returns_etf.parquet
+      hash: md5
+      md5: 1f746fb6e0c794b9b2f23ffbe82a12ee
+      size: 139888
+    - path: src/ml_features.py
+      hash: md5
+      md5: c0157a7e8cd07b20d91b66d1671d7a90
+      size: 15581
+    - path: src/utils.py
+      hash: md5
+      md5: 35b5475e2f85011b00a9079998d8e25a
+      size: 1676
+    params:
+      params.yaml:
+        ml_features.correlation_min_periods: 42
+        ml_features.correlation_window: 63
+        ml_features.macro_lag_days: 1
+        ml_features.volatility_long_window: 63
+        ml_features.volatility_short_window: 21
+    outs:
+    - path: data/gold/ml_features_etf.parquet
+      hash: md5
+      md5: defae66dc82c770398420e90bce07458
+      size: 217263
+    - path: data/gold/ml_features_full.parquet
+      hash: md5
+      md5: ffdda3631355dd47c83f453821264f74
+      size: 120944
+    - path: data/gold/ml_features_manifest.json
+      hash: md5
+      md5: 9f93bd936fcf01b8a2df699e804f0606
+      size: 3323
