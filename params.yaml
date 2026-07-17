@@ -9,6 +9,17 @@ clean:
 features:
   macro_lag_days: 1          # lag applied to macro features to prevent lookahead bias
 
+ml_features:
+  volatility_short_window: 21
+  volatility_long_window: 63
+  correlation_window: 63
+  correlation_min_periods: 42
+  macro_lag_days: 1
+  outputs:
+    etf_2017: "data/gold/ml_features_etf.parquet"
+    full_2021: "data/gold/ml_features_full.parquet"
+  manifest_path: "data/gold/ml_features_manifest.json"
+
 backtest:
   rebalance_freq: "ME"       # month-end (pandas offset alias) — decided 2026-07-05
   min_train_days: 252        # 1 trading year of history before the first rebalance

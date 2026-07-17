@@ -43,8 +43,8 @@ Une visite guidée complète du code de la Phase 1 (en anglais) est disponible d
 | Phase | Description | Statut |
 |-------|--------------|--------|
 | Phase 1 | Infrastructure de données (Bronze/Silver/Gold) | ✅ Terminée |
-| Phase 2 | Baseline Markowitz + backtesting sans biais de lookahead | 🟡 Prochaine |
-| Phase 3 | Feature engineering ML | ⏳ À venir |
+| Phase 2 | Baseline Markowitz + backtesting sans biais de lookahead | ✅ Terminée |
+| Phase 3 | Feature engineering ML | ✅ Terminée |
 | Phase 4 | Modèles ML (HMM + covariance dynamique) | ⏳ À venir |
 | Phase 5 | Évaluation out-of-sample | ⏳ À venir |
 | Phase 6 | Production (API + dashboard) | ⏳ À venir |

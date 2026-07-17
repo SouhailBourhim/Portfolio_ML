@@ -55,3 +55,25 @@ stages:
     params:
       - params.yaml:
           - features.macro_lag_days
+
+  # ── Stage 4: Phase 3 — causal, regime-relevant ML features ────────────────
+  ml_features:
+    cmd: python src/ml_features.py
+    deps:
+      - src/ml_features.py
+      - src/utils.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/bronze/raw_macro.parquet
+      - data/bronze/raw_bam_macro.parquet
+    outs:
+      - data/gold/ml_features_etf.parquet
+      - data/gold/ml_features_full.parquet
+      - data/gold/ml_features_manifest.json
+    params:
+      - params.yaml:
+          - ml_features.volatility_short_window
+          - ml_features.volatility_long_window
+          - ml_features.correlation_window
+          - ml_features.correlation_min_periods
+          - ml_features.macro_lag_days
