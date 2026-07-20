@@ -164,3 +164,122 @@ stages:
       hash: md5
       md5: e1052486b9a5d5b114515f9a6126382c
       size: 4724
+  phase2_hurdle:
+    cmd: python src/run_backtest.py
+    deps:
+    - path: data/gold/log_returns.parquet
+      hash: md5
+      md5: 4ddc15cca2b1a8a8caab2fdc5df94b2e
+      size: 117370
+    - path: data/gold/log_returns_etf.parquet
+      hash: md5
+      md5: f821a6ca738cf7282bb14c00da3112ee
+      size: 140560
+    - path: src/backtest.py
+      hash: md5
+      md5: 928948fa733a50aecd7faf5dba118da0
+      size: 11442
+    - path: src/metrics.py
+      hash: md5
+      md5: 3f69c705d40a5be3046e508033910982
+      size: 7863
+    - path: src/run_backtest.py
+      hash: md5
+      md5: 0c2e18d2aeb6b5340faa88b93211362a
+      size: 8460
+    - path: src/strategies.py
+      hash: md5
+      md5: 67d2612dd9c2c239f6e9659747761996
+      size: 15559
+    params:
+      params.yaml:
+        backtest.costs_bps:
+          etf: 10
+          bvc: 30
+        backtest.max_weight: 0.25
+        backtest.min_train_days: 252
+        backtest.rebalance_freq: ME
+        backtest.risk_free_annual: 0.0
+    outs:
+    - path: data/gold/phase2_hurdle.json
+      hash: md5
+      md5: d0122509681a81b3e61152fce3879bca
+      size: 534
+  phase4_compare:
+    cmd: python src/run_phase4.py
+    deps:
+    - path: data/gold/log_returns.parquet
+      hash: md5
+      md5: 4ddc15cca2b1a8a8caab2fdc5df94b2e
+      size: 117370
+    - path: data/gold/log_returns_etf.parquet
+      hash: md5
+      md5: f821a6ca738cf7282bb14c00da3112ee
+      size: 140560
+    - path: data/gold/ml_features_etf.parquet
+      hash: md5
+      md5: 5ad86ef8472bdca29f7c91fc0ff04f8a
+      size: 221248
+    - path: data/gold/ml_features_full.parquet
+      hash: md5
+      md5: 3a28cacb222945bde34374e258eb3b27
+      size: 121350
+    - path: data/gold/phase2_hurdle.json
+      hash: md5
+      md5: d0122509681a81b3e61152fce3879bca
+      size: 534
+    - path: src/backtest.py
+      hash: md5
+      md5: 928948fa733a50aecd7faf5dba118da0
+      size: 11442
+    - path: src/dcc_garch.py
+      hash: md5
+      md5: 1001a8c008b810979289bfe215501a49
+      size: 7882
+    - path: src/metrics.py
+      hash: md5
+      md5: 3f69c705d40a5be3046e508033910982
+      size: 7863
+    - path: src/regime.py
+      hash: md5
+      md5: 2e1f90561ebcbfbe6d90809a2fb05460
+      size: 7018
+    - path: src/run_phase4.py
+      hash: md5
+      md5: 636cbcf1bbead7bc1c64f64591b2db2f
+      size: 14080
+    - path: src/strategies.py
+      hash: md5
+      md5: 67d2612dd9c2c239f6e9659747761996
+      size: 15559
+    params:
+      params.yaml:
+        backtest.costs_bps:
+          etf: 10
+          bvc: 30
+        backtest.max_weight: 0.25
+        backtest.min_train_days: 252
+        backtest.rebalance_freq: ME
+        backtest.risk_free_annual: 0.0
+        covariance_dcc_garch.dcc_a_init: 0.02
+        covariance_dcc_garch.dcc_b_init: 0.95
+        covariance_dcc_garch.garch_p: 1
+        covariance_dcc_garch.garch_q: 1
+        covariance_dcc_garch.rescale_factor: 100
+        covariance_ewma.halflife_days: 63
+        regime.bear_strategy: min_variance_lw
+        regime.bull_strategy: max_sharpe
+        regime.covariance_type: diag
+        regime.features:
+        - MARKET_RETURN
+        - MARKET_VOL_SHORT
+        - AVG_PAIRWISE_CORR
+        regime.min_regime_train_days: 252
+        regime.n_restarts: 5
+        regime.n_states: 2
+        regime.random_state_base: 0
+    outs:
+    - path: data/gold/phase4_results.json
+      hash: md5
+      md5: 7d0463639755c0afe458d3c41f5fefdf
+      size: 673

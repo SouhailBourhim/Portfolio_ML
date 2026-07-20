@@ -34,3 +34,29 @@ backtest:
   universes:                 # every strategy runs on BOTH (dual-universe design)
     etf_2017: "data/gold/log_returns_etf.parquet"    # 5 ETFs, includes COVID + 2022
     full_2021: "data/gold/log_returns.parquet"       # 9 assets, BVC-limited window
+
+# ── Phase 4: covariance ablation ladder, rung 3 (EWMA) ──────────────────────
+covariance_ewma:
+  halflife_days: 63          # matches ml_features' volatility_long_window for repo consistency
+
+# ── Phase 4: covariance ablation ladder, rung 4 (DCC-GARCH, Engle 2002) ─────
+covariance_dcc_garch:
+  garch_p: 1
+  garch_q: 1
+  dcc_a_init: 0.02           # short-run correlation shock persistence, starting guess
+  dcc_b_init: 0.95           # long-run correlation persistence, starting guess
+  rescale_factor: 100        # arch's own convention for MLE numerical stability; undone after fit
+
+# ── Phase 4: HMM regime detection ───────────────────────────────────────────
+regime:
+  n_states: 2                # bull/bear MVP — see CLAUDE.md §12 for the 3-state trade-off
+  features: ["MARKET_RETURN", "MARKET_VOL_SHORT", "AVG_PAIRWISE_CORR"]  # causal Phase 3 outputs
+  covariance_type: "diag"    # fewer params than "full" given 252-2500 row training windows
+  n_restarts: 5              # multi-start EM, keep highest log-likelihood (hmmlearn is seed-sensitive)
+  random_state_base: 0
+  min_regime_train_days: 252 # below this: neutral 50/50 posterior fallback, never raise
+  bull_strategy: "max_sharpe"
+  bear_strategy: "min_variance_lw"
+
+phase4:
+  results_path: "data/gold/phase4_results.json"

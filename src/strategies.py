@@ -182,6 +182,97 @@ class MinVarianceLW(Strategy):
         )
 
 
+class MinVarianceEWMA(Strategy):
+    """
+    Minimum-variance with an exponentially-weighted (EWMA) covariance matrix.
+
+    Addresses: P1, P2 — the second rung of the covariance ablation ladder
+    (sample → Ledoit-Wolf → EWMA → DCC-GARCH). Unlike the flat sample window
+    MinVariance/MinVarianceLW use, EWMA weights recent observations more
+    heavily (RiskMetrics-style decay via `halflife_days`), so the covariance
+    estimate reacts to a volatility/correlation shift within the training
+    window instead of averaging it away — a direct P2 (non-stationarity) fix
+    for covariance estimation, not just P1 regularization.
+
+    Known caveat inherited from Phase 1 (CLAUDE.md §8.4): EEM is
+    stationarity-AMBIGUOUS. EWMA's recency-weighting arguably self-mitigates
+    a stale structural break better than a flat sample window would, but
+    that is not a guarantee — no special-case handling is added here.
+    """
+
+    name = "min_variance_ewma"
+
+    def __init__(self, max_weight: float = 0.25, halflife_days: int = 63) -> None:
+        self.max_weight = max_weight
+        self.halflife_days = halflife_days
+
+    def fit(
+        self,
+        train_returns: pd.DataFrame,
+        extras: Mapping[str, pd.DataFrame] | None = None,
+    ) -> pd.Series:
+        ewm_cov = train_returns.ewm(halflife=self.halflife_days).cov()
+        cov = ewm_cov.loc[train_returns.index[-1]].to_numpy() * TRADING_DAYS_PER_YEAR
+        return _optimize_weights(
+            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name
+        )
+
+
+class DCCGarchStrategy(Strategy):
+    """
+    Minimum-variance with a DCC-GARCH covariance matrix (Engle 2002).
+
+    Addresses: P1, P2, P3 — the fourth and final rung of the covariance
+    ablation ladder (sample → Ledoit-Wolf → EWMA → DCC-GARCH). Unlike EWMA's
+    single global decay parameter, DCC-GARCH lets each asset's own
+    volatility evolve under its own fitted GARCH(1,1) process and models
+    correlation dynamics separately — directly targeting P3 (correlations
+    spiking in a crisis) at the estimation level. See `dcc_garch.py` for the
+    full two-stage estimator and its non-convergence fallback policy.
+
+    Known caveat inherited from Phase 1 (CLAUDE.md §8.4): EEM is
+    stationarity-AMBIGUOUS and the asset most likely to trigger
+    `dcc_garch.py`'s Ledoit-Wolf fallback — an expected, monitored case.
+    """
+
+    name = "dcc_garch"
+
+    def __init__(
+        self,
+        max_weight: float = 0.25,
+        garch_p: int = 1,
+        garch_q: int = 1,
+        dcc_a_init: float = 0.02,
+        dcc_b_init: float = 0.95,
+        rescale_factor: float = 100.0,
+    ) -> None:
+        self.max_weight = max_weight
+        self.garch_p = garch_p
+        self.garch_q = garch_q
+        self.dcc_a_init = dcc_a_init
+        self.dcc_b_init = dcc_b_init
+        self.rescale_factor = rescale_factor
+
+    def fit(
+        self,
+        train_returns: pd.DataFrame,
+        extras: Mapping[str, pd.DataFrame] | None = None,
+    ) -> pd.Series:
+        from dcc_garch import dcc_covariance
+
+        cov = dcc_covariance(
+            train_returns,
+            garch_p=self.garch_p,
+            garch_q=self.garch_q,
+            dcc_a_init=self.dcc_a_init,
+            dcc_b_init=self.dcc_b_init,
+            rescale_factor=self.rescale_factor,
+        )
+        return _optimize_weights(
+            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name
+        )
+
+
 class MaxSharpe(Strategy):
     """
     Maximum-Sharpe (tangency) portfolio: max (wᵀμ − rf)/√(wᵀΣw), long-only, cap.
@@ -213,3 +304,100 @@ class MaxSharpe(Strategy):
             return -(float(w @ mu) - self.risk_free_annual) / vol
 
         return _optimize_weights(neg_sharpe, train_returns.columns, self.max_weight, self.name)
+
+
+class RegimeConditionalStrategy(Strategy):
+    """
+    HMM regime detection gating a bull sub-strategy vs. a bear sub-strategy.
+
+    Addresses: P2, P3 — market parameters estimated in one regime are not
+    valid in another (P2); a "bear" regime is exactly where diversification
+    breaks down and defensive weighting matters most (P3). Detects the
+    regime from causal Phase 3 features (`regime.REGIME_FEATURES`) via a
+    2-state HMM (see `regime.py` for why 2 states, not 3), then hands the
+    ENTIRE decision to whichever already-tested Phase 2 baseline matches:
+    `bull_strategy` (default `MaxSharpe`) or `bear_strategy` (default
+    `MinVarianceLW`). This strategy adds no new optimizer — the only new
+    surface is regime detection plus a switch, which is what makes it
+    defensible line-by-line (CLAUDE.md §12, decision 2).
+
+    Reuses the exact `extras["features"]` key Phase 3 already established
+    (`tests/test_phase3_integration.py`) — no new engine contract. Falls
+    back to equal weight if `extras["features"]` is missing or empty (e.g.
+    a caller that never wired Phase 3 features in), and defers to
+    `regime.fit_hmm`'s own neutral-posterior policy for thin/non-converging
+    windows — but resolves that neutral case to the DEFENSIVE sub-strategy
+    (`bear_strategy`), not an arbitrary tie-break: when the model has no
+    confident regime read, guessing bullish is the wrong direction to err.
+
+    Known trade-off, accepted for the MVP (CLAUDE.md §12, decision 2): a
+    hard regime switch can move weights sharply right at a regime boundary
+    (a turnover/cost spike that day) — monitor via `regime_log` rather than
+    adding a hysteresis hyperparameter up front.
+    """
+
+    name = "regime_conditional"
+
+    def __init__(
+        self,
+        bull_strategy: Strategy | None = None,
+        bear_strategy: Strategy | None = None,
+        n_states: int = 2,
+        n_restarts: int = 5,
+        random_state_base: int = 0,
+        covariance_type: str = "diag",
+        min_regime_train_days: int = 252,
+    ) -> None:
+        self.bull_strategy = bull_strategy if bull_strategy is not None else MaxSharpe()
+        self.bear_strategy = bear_strategy if bear_strategy is not None else MinVarianceLW()
+        self.n_states = n_states
+        self.n_restarts = n_restarts
+        self.random_state_base = random_state_base
+        self.covariance_type = covariance_type
+        self.min_regime_train_days = min_regime_train_days
+        # Diagnostic-only: the engine reuses this same instance across the
+        # whole backtest and neither assists nor prevents this kind of
+        # internal state (src/backtest.py docstring). Never read by fit().
+        self.regime_log: list[dict] = []
+
+    def fit(
+        self,
+        train_returns: pd.DataFrame,
+        extras: Mapping[str, pd.DataFrame] | None = None,
+    ) -> pd.Series:
+        n = train_returns.shape[1]
+        if not extras or "features" not in extras or extras["features"].empty:
+            return pd.Series(1.0 / n, index=train_returns.columns)
+
+        from regime import fit_hmm, predict_regime_posterior
+
+        feature_window = extras["features"]
+        hmm_fit = fit_hmm(
+            feature_window,
+            n_states=self.n_states,
+            n_restarts=self.n_restarts,
+            random_state_base=self.random_state_base,
+            covariance_type=self.covariance_type,
+            min_regime_train_days=self.min_regime_train_days,
+        )
+        posterior = predict_regime_posterior(hmm_fit, feature_window)
+
+        if hmm_fit.converged:
+            regime_label = max(posterior, key=posterior.get)
+        else:
+            # No confident regime read — default to the defensive
+            # sub-strategy rather than an arbitrary tie-break on the
+            # neutral 50/50 posterior (see class docstring).
+            regime_label = "bear"
+
+        self.regime_log.append(
+            {
+                "date": train_returns.index[-1],
+                "regime": regime_label,
+                "posterior": posterior,
+                "converged": hmm_fit.converged,
+            }
+        )
+
+        sub_strategy = self.bull_strategy if regime_label == "bull" else self.bear_strategy
+        return sub_strategy.fit(train_returns, extras)

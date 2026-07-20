@@ -77,3 +77,70 @@ stages:
           - ml_features.correlation_window
           - ml_features.correlation_min_periods
           - ml_features.macro_lag_days
+
+  # ── Stage 5: Phase 2 comparison — Markowitz baselines, net-of-cost hurdle ──
+  # Was a manually-regenerated artifact outside dvc.yaml until 2026-07-20,
+  # when it drifted one universe-window stale after a data resync (CLAUDE.md
+  # §17.1) — wired in here so `dvc repro`/`dvc status` catch that class of
+  # staleness automatically instead of relying on someone remembering to
+  # rerun the script by hand.
+  phase2_hurdle:
+    cmd: python src/run_backtest.py
+    deps:
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/run_backtest.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+    outs:
+      - data/gold/phase2_hurdle.json
+    params:
+      - params.yaml:
+          - backtest.rebalance_freq
+          - backtest.min_train_days
+          - backtest.max_weight
+          - backtest.risk_free_annual
+          - backtest.costs_bps
+
+  # ── Stage 6: Phase 4 — HMM regime + dynamic covariance vs. the hurdle ──────
+  # Slow (~10-15 min, dominated by DCC-GARCH's per-asset GARCH refits) —
+  # `dvc repro` only reruns this when its deps actually change, same as any
+  # other stage; not something to run on every commit.
+  phase4_compare:
+    cmd: python src/run_phase4.py
+    deps:
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/regime.py
+      - src/dcc_garch.py
+      - src/run_phase4.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/ml_features_full.parquet
+      - data/gold/phase2_hurdle.json
+    outs:
+      - data/gold/phase4_results.json
+    params:
+      - params.yaml:
+          - backtest.rebalance_freq
+          - backtest.min_train_days
+          - backtest.max_weight
+          - backtest.risk_free_annual
+          - backtest.costs_bps
+          - covariance_ewma.halflife_days
+          - covariance_dcc_garch.garch_p
+          - covariance_dcc_garch.garch_q
+          - covariance_dcc_garch.dcc_a_init
+          - covariance_dcc_garch.dcc_b_init
+          - covariance_dcc_garch.rescale_factor
+          - regime.n_states
+          - regime.features
+          - regime.covariance_type
+          - regime.n_restarts
+          - regime.random_state_base
+          - regime.min_regime_train_days
+          - regime.bull_strategy
+          - regime.bear_strategy

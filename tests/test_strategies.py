@@ -6,9 +6,23 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from strategies import EqualWeight, MaxSharpe, MinVariance, MinVarianceLW
+from strategies import (
+    DCCGarchStrategy,
+    EqualWeight,
+    MaxSharpe,
+    MinVariance,
+    MinVarianceEWMA,
+    MinVarianceLW,
+)
 
-ALL_STRATEGIES = [EqualWeight(), MinVariance(), MinVarianceLW(), MaxSharpe()]
+ALL_STRATEGIES = [
+    EqualWeight(),
+    MinVariance(),
+    MinVarianceLW(),
+    MinVarianceEWMA(),
+    DCCGarchStrategy(),
+    MaxSharpe(),
+]
 
 
 @pytest.fixture()
@@ -90,3 +104,29 @@ class TestOptimizerEconomics:
         w_sample = MinVariance(max_weight=1.0).fit(synthetic_log_returns)
         w_lw = MinVarianceLW(max_weight=1.0).fit(synthetic_log_returns)
         assert (w_sample - w_lw).abs().max() > 1e-4
+
+    def test_ewma_min_variance_prefers_low_volatility_asset(self, high_low_vol_returns):
+        # Sanity floor: EWMA must not invert basic min-variance economics either
+        w = MinVarianceEWMA(max_weight=1.0).fit(high_low_vol_returns)
+        assert w["LOW"] > 0.9
+
+    def test_ewma_reacts_faster_than_lw_to_a_volatility_shift(self):
+        # A is calm for the first half of the window, then turns volatile; B stays
+        # calm throughout. A flat-window estimator (LW) still credits A's calm
+        # past, diluting the shift; EWMA's recency weighting has already priced
+        # the recent spike in and should shed more of A than LW does. This is the
+        # load-bearing proof that EWMA is genuinely "dynamic" (P2), not a rename
+        # of the same static estimate MinVarianceLW already provides.
+        rng = np.random.default_rng(11)
+        n = 300
+        dates = pd.bdate_range("2022-01-03", periods=n)
+        a_vol = np.concatenate([np.full(n // 2, 0.001), np.full(n - n // 2, 0.03)])
+        b_vol = np.full(n, 0.001)
+        returns = pd.DataFrame(
+            {"A": rng.normal(0.0, a_vol), "B": rng.normal(0.0, b_vol)}, index=dates
+        )
+
+        w_lw = MinVarianceLW(max_weight=1.0).fit(returns)
+        w_ewma = MinVarianceEWMA(max_weight=1.0, halflife_days=20).fit(returns)
+
+        assert w_ewma["A"] < w_lw["A"]
