@@ -116,8 +116,14 @@ def gold_layer(context: AssetExecutionContext) -> None:
 )
 def ml_features_layer(context: AssetExecutionContext) -> None:
     results = run_phase3()
+    # run_phase3() -> build_ml_feature_set() already raises ValueError before
+    # returning an empty universe (no rows survive the warm-up filter), so this
+    # can't fire today — guarded anyway so a future change to that upstream
+    # invariant fails here with a clear message, not an opaque .min() crash.
     context.add_output_metadata({
         universe: MetadataValue.md(
+            f"EMPTY — 0 rows (unexpected; check build_ml_feature_set warm-up filtering)"
+            if df.empty else
             f"{df.shape[0]} rows x {df.shape[1]} cols, "
             f"{df.index.min().date()} -> {df.index.max().date()}"
         )
