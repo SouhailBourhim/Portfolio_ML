@@ -43,9 +43,9 @@ Medallion architecture is a data-engineering pattern with three layers, named li
 
 | Layer | Contents | Rule |
 |-------|----------|------|
-| 🥉 **Bronze** | Data exactly as the API returned it | Immutable — never edited, only re-downloaded |
-| 🥈 **Silver** | Cleaned, aligned, validated data | Every write passes schema validation |
-| 🥇 **Gold** | ML-ready features | This is what Phase 2 consumes |
+| **Bronze** | Data exactly as the API returned it | Immutable — never edited, only re-downloaded |
+| **Silver** | Cleaned, aligned, validated data | Every write passes schema validation |
+| **Gold** | ML-ready features | This is what Phase 2 consumes |
 
 Each layer is a folder of Parquet files under `data/` (`data/bronze/`, `data/silver/`,
 `data/gold/`), and each layer is produced *only* from the previous one by a deterministic script.
@@ -143,19 +143,19 @@ flowchart TD
         BKAM["bkam.ma<br/>(BAM policy rate, hardcoded list)"]
     end
 
-    subgraph Bronze["🥉 BRONZE — data/bronze/ (immutable)"]
+    subgraph Bronze["BRONZE — data/bronze/ (immutable)"]
         RP["raw_prices.parquet"]
         RM["raw_macro.parquet"]
         BP["bvc_prices.parquet"]
         BM["raw_bam_macro.parquet"]
     end
 
-    subgraph Silver["🥈 SILVER — data/silver/ (validated)"]
+    subgraph Silver["SILVER — data/silver/ (validated)"]
         LR["log_returns.parquet"]
         VR["validation_report.json"]
     end
 
-    subgraph Gold["🥇 GOLD — data/gold/ (ML-ready)"]
+    subgraph Gold["GOLD — data/gold/ (ML-ready)"]
         GLR["log_returns.parquet"]
         MF["macro_features.parquet"]
         SR["stationarity_report.parquet"]
