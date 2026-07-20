@@ -38,6 +38,20 @@ Bronze (données brutes, immuables)
 Une visite guidée complète du code de la Phase 1 (en anglais) est disponible dans
 [`docs/PHASE1_WALKTHROUGH.md`](docs/PHASE1_WALKTHROUGH.md).
 
+## Documentation (livrables encadrant)
+
+Un livrable détaillé (français, Word) accompagne chaque phase — architecture, choix de
+conception justifiés, résultats réels, tests, limitations et traçabilité P1–P4 :
+
+- [`docs/Livrable_Phase1_Infrastructure_Donnees.docx`](docs/Livrable_Phase1_Infrastructure_Donnees.docx)
+- [`docs/Livrable_Phase2_Backtesting_Markowitz.docx`](docs/Livrable_Phase2_Backtesting_Markowitz.docx)
+- [`docs/Livrable_Phase3_Feature_Engineering_ML.docx`](docs/Livrable_Phase3_Feature_Engineering_ML.docx)
+
+Notebooks de validation, exécutés et lisibles avec leurs résultats :
+[`phase1_eda.ipynb`](notebooks/phase1_eda.ipynb) ·
+[`phase2_backtest.ipynb`](notebooks/phase2_backtest.ipynb) ·
+[`phase3_features.ipynb`](notebooks/phase3_features.ipynb).
+
 ## État du projet
 
 | Phase | Description | Statut |
@@ -54,8 +68,8 @@ Une visite guidée complète du code de la Phase 1 (en anglais) est disponible d
 ```
 ├── src/                  # Pipeline de données (ingestion, nettoyage, features, validation)
 │   └── orchestration/    # Assets Dagster (planification quotidienne du pipeline)
-├── docs/                 # Documentation technique (walkthrough Phase 1)
-├── notebooks/            # Analyse exploratoire (EDA évidentielle pour P1-P4)
+├── docs/                 # Walkthrough Phase 1 + livrables encadrant (Phases 1-3)
+├── notebooks/            # Notebooks de validation évidentielle (P1-P4, par phase)
 ├── tests/                # Tests unitaires + test d'intégration (fixtures synthétiques, hors ligne)
 ├── scripts/              # setup_launchd.sh — planification autonome sous macOS
 ├── data/                 # Bronze/Silver/Gold (géré par DVC, non versionné dans git)
@@ -207,10 +221,12 @@ df = query_gold("""
 """)
 ```
 
-### Notebook EDA
+### Notebooks
 
 ```bash
-jupyter notebook notebooks/phase1_eda.ipynb
+jupyter notebook notebooks/phase1_eda.ipynb        # EDA évidentielle (P1-P4)
+jupyter notebook notebooks/phase2_backtest.ipynb   # baselines + backtesting
+jupyter notebook notebooks/phase3_features.ipynb   # validation des features ML
 ```
 
 ## Références principales
