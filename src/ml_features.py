@@ -45,6 +45,19 @@ ML_CORE_FEATURES = [
 ]
 
 
+def _leading_nan_count(series: pd.Series) -> int:
+    """Number of NaN rows before the first real value (the column's warm-up).
+
+    Distinct from a total NaN count: only the *leading* gap matters for the
+    Phase 4 contract, because the residual macro warm-up (e.g. CREDIT_SPREAD,
+    which starts in 2023) is entirely at the front of the frame.
+    """
+    first_valid = series.first_valid_index()
+    if first_valid is None:
+        return int(len(series))
+    return int(series.index.get_loc(first_valid))
+
+
 def _validate_returns(log_returns: pd.DataFrame) -> pd.DataFrame:
     """Validate the returns matrix before causal feature construction."""
     if not isinstance(log_returns, pd.DataFrame) or log_returns.empty:
@@ -120,6 +133,16 @@ def build_return_features(
     Addresses: P2, P3 — represents volatility clustering, market losses,
     return dispersion, and dynamic correlation using only observations at or
     before each feature date.
+
+    Causality note — return features are deliberately NOT lagged (unlike the
+    macro signals in build_lagged_macro_signals). A feature at date t uses
+    observations up to and INCLUDING t, all of which are known at t's close
+    (returns are realized end-of-day). These features are safe because the
+    Phase 2 engine fits at the close of a rebalance date τ and only earns
+    returns from τ+1 — so feature[τ], which encodes returns up to τ, drives a
+    decision that acts from τ+1. Lagging them here as well would double-count
+    the delay and throw away a day of legitimate information. (Macro is lagged
+    because a release dated t may not be knowable intraday at t.)
 
     Args:
         log_returns: Clean Gold log-returns, dates × assets.
@@ -204,7 +227,16 @@ def build_lagged_macro_signals(
         duplicates = macro.columns[macro.columns.duplicated()].tolist()
         raise ValueError(f"raw_macro contains duplicate columns: {duplicates}")
 
-    aligned = macro.reindex(returns_index, method="ffill")
+    # reindex().ffill(), NOT reindex(method="ffill"): when several macro sources
+    # (FRED + BAM) are concatenated onto a union calendar, each column carries
+    # interior NaN on dates only the other source published. reindex(method=
+    # "ffill") fills gaps for missing target labels but leaves those pre-existing
+    # interior NaNs in place, scattering NaN through the differenced signal.
+    # A plain reindex followed by ffill carries the last known level forward over
+    # both cases — the project's forward-fill-only convention, and causal
+    # (it never looks ahead). Genuinely late-starting series keep a leading
+    # NaN warm-up, which the manifest reports as max_leading_nan.
+    aligned = macro.reindex(returns_index).ffill()
     lagged = aligned.diff().shift(lag_days)
     lagged = lagged.replace([np.inf, -np.inf], np.nan)
 
@@ -235,7 +267,9 @@ def build_ml_feature_set(
 
     Returns:
         Feature matrix beginning at the first date where every required return
-        feature is available. Optional macro NaN values are retained explicitly.
+        feature is available. Optional macro NaN values are retained explicitly
+        — see the manifest's `warmup_policy` and per-universe `max_leading_nan`
+        for the Phase 4 contract on tolerating that residual warm-up.
     """
     return_features = build_return_features(
         log_returns,
@@ -339,6 +373,16 @@ def run_phase3(
             "CROSS_SECTIONAL_DISPERSION": "Same-day standard deviation across asset returns.",
             "MARKET_DRAWDOWN": "Drawdown of cumulative equal-weight market wealth.",
         },
+        "warmup_policy": (
+            "Core return features are dense from row 0 of the output (leading rows "
+            "are already trimmed). Some macro *_DIFF_L1 columns retain a leading-NaN "
+            "warm-up because their source series start late (e.g. CREDIT_SPREAD from "
+            "2023). A Phase 4 backtest must either set min_train_days >= the "
+            "universe's max_leading_nan so the first fit sees a dense feature vector, "
+            "or its strategy must tolerate NaN macro features explicitly. With the "
+            "current params (min_train_days=252) every warm-up clears before the "
+            "first rebalance — a property that must be re-checked if either changes."
+        ),
         "universes": {},
     }
 
@@ -360,6 +404,11 @@ def run_phase3(
         features.to_parquet(output_path)
         results[universe_name] = features
 
+        # Scan each column's leading NaN once, then derive the max from it.
+        leading_nan_by_column = {
+            column: _leading_nan_count(features[column]) for column in features.columns
+        }
+
         manifest["universes"][universe_name] = {
             "input": str(input_relative),
             "output": str(outputs[universe_name]),
@@ -373,8 +422,17 @@ def run_phase3(
             "missing_values_by_column": {
                 column: int(count) for column, count in features.isna().sum().items()
             },
+            "leading_nan_by_column": leading_nan_by_column,
+            "max_leading_nan": max(
+                leading_nan_by_column.values(),
+                default=0,
+            ),
         }
-        log.info("Phase 3 %s written → %s", universe_name, output_path)
+        log.info(
+            "Phase 3 %s written → %s (max feature warm-up %d rows)",
+            universe_name, output_path,
+            manifest["universes"][universe_name]["max_leading_nan"],
+        )
 
     manifest_path = root / ml_config["manifest_path"]
     manifest_path.parent.mkdir(parents=True, exist_ok=True)

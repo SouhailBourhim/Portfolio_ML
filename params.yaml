@@ -14,6 +14,9 @@ ml_features:
   volatility_long_window: 63
   correlation_window: 63
   correlation_min_periods: 42
+  # Intentionally separate from features.macro_lag_days above: that lag governs
+  # the Phase 1 Gold macro_features; this one governs the Phase 3 ML signals.
+  # Same value today, but the two stages are tunable independently.
   macro_lag_days: 1
   outputs:
     etf_2017: "data/gold/ml_features_etf.parquet"
