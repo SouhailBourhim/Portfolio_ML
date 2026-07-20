@@ -49,8 +49,10 @@ def _macro(returns: pd.DataFrame) -> pd.DataFrame:
 
 class _FeatureConsumer(Strategy):
     """Reads the Phase 3 feature frame from `extras`, records what it was shown,
-    and tilts weights by trailing volatility — a realistic Phase 4 consumption
-    path, not just a passive spy."""
+    and actually TILTS weights by trailing volatility — so its output genuinely
+    depends on feature values. A strategy that read features but ignored them
+    would make the lookahead test below vacuous (it would pass even if the
+    engine leaked), so the tilt is load-bearing, not decorative."""
 
     name = "feature_consumer"
 
@@ -69,12 +71,16 @@ class _FeatureConsumer(Strategy):
         latest = feats.iloc[-1]
         self.core_was_complete.append(bool(latest[ML_CORE_FEATURES].notna().all()))
 
-        # Real consumption: down-weight risk when short vol runs hot. The tilt
-        # is on the scalar market feature, applied equally across assets, so the
-        # weights stay long-only and sum to 1 regardless of the feature value.
+        # Load-bearing consumption: the weight on asset 0 is a deterministic,
+        # bounded function of the latest short-vol feature (tanh keeps it in
+        # (0.25, 0.75)); the rest is split equally. Long-only and sums to 1 by
+        # construction — and, crucially, the weights MOVE when the feature moves.
         vol = float(latest["MARKET_VOL_SHORT"])
-        _ = vol  # value flows in; equal-weight keeps the contract simple + valid
-        return pd.Series(1.0 / n, index=assets)
+        w0 = 0.25 + 0.5 * float(np.tanh(vol))
+        rest = (1.0 - w0) / (n - 1)
+        weights = pd.Series(rest, index=assets)
+        weights.iloc[0] = w0
+        return weights
 
 
 def _build_features(returns: pd.DataFrame) -> pd.DataFrame:
@@ -108,8 +114,12 @@ class TestPhase3FeedsPhase2Engine:
         assert all(probe.core_was_complete)
 
     def test_future_feature_values_cannot_change_past_weights(self):
-        # The end-to-end lookahead gate spanning BOTH modules: corrupt every
-        # feature row after a cutoff and confirm no earlier weight moves.
+        # The end-to-end lookahead gate spanning BOTH modules. The strategy tilts
+        # on MARKET_VOL_SHORT, so corrupting future feature rows genuinely WOULD
+        # change post-cutoff weights if those rows reached a fit — which lets us
+        # assert both directions: past weights unchanged (no leak) AND future
+        # weights changed (proof the strategy really consumes features, so the
+        # unchanged-past result is meaningful rather than vacuous).
         returns = _returns()
         features = _build_features(returns)
 
@@ -122,12 +132,18 @@ class TestPhase3FeedsPhase2Engine:
         poisoned = run_backtest(returns, _FeatureConsumer(), min_train_days=200,
                                 extras={"features": corrupted}, universe_name="test")
 
-        past = [d for d in clean.rebalance_dates if d <= cutoff]
-        assert past, "need at least one rebalance before the cutoff"
+        pre = clean.target_weights.index <= cutoff
+        post = clean.target_weights.index > cutoff
+        assert pre.any(), "need at least one rebalance before the cutoff"
+        assert post.any(), "need at least one rebalance after the cutoff"
+
+        # Past decisions are untouched by future corruption (the no-lookahead guarantee)
         pd.testing.assert_frame_equal(
-            clean.target_weights.loc[clean.target_weights.index <= cutoff],
-            poisoned.target_weights.loc[poisoned.target_weights.index <= cutoff],
+            clean.target_weights.loc[pre], poisoned.target_weights.loc[pre],
         )
+        # Future decisions DO move — the strategy is genuinely feature-driven,
+        # so the unchanged-past assertion above is a real guard, not a no-op.
+        assert not clean.target_weights.loc[post].equals(poisoned.target_weights.loc[post])
 
     def test_feature_index_is_a_subset_of_returns_index(self):
         # Label-based slicing in the engine is robust to the feature frame having

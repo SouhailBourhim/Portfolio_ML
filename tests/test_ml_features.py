@@ -220,4 +220,9 @@ class TestFeatureSetAndPipeline:
         assert "max_leading_nan" in etf and "leading_nan_by_column" in etf
         # core features carry no leading NaN in the output; the late macro does
         assert etf["leading_nan_by_column"]["MARKET_RETURN"] == 0
+        # The late-starting macro series MUST show a strictly positive warm-up and
+        # must drive max_leading_nan — otherwise warm-up accounting has silently
+        # stopped treating late macro history as leading NaN.
+        assert etf["leading_nan_by_column"]["VIX_DIFF_L1"] > 0
         assert etf["max_leading_nan"] >= etf["leading_nan_by_column"]["VIX_DIFF_L1"]
+        assert etf["max_leading_nan"] > 0

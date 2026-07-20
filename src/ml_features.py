@@ -404,6 +404,11 @@ def run_phase3(
         features.to_parquet(output_path)
         results[universe_name] = features
 
+        # Scan each column's leading NaN once, then derive the max from it.
+        leading_nan_by_column = {
+            column: _leading_nan_count(features[column]) for column in features.columns
+        }
+
         manifest["universes"][universe_name] = {
             "input": str(input_relative),
             "output": str(outputs[universe_name]),
@@ -417,11 +422,9 @@ def run_phase3(
             "missing_values_by_column": {
                 column: int(count) for column, count in features.isna().sum().items()
             },
-            "leading_nan_by_column": {
-                column: _leading_nan_count(features[column]) for column in features.columns
-            },
+            "leading_nan_by_column": leading_nan_by_column,
             "max_leading_nan": max(
-                (_leading_nan_count(features[column]) for column in features.columns),
+                leading_nan_by_column.values(),
                 default=0,
             ),
         }
