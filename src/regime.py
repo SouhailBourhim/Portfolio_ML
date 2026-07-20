@@ -86,9 +86,10 @@ def fit_hmm(
     random_state_base: int = 0,
     covariance_type: str = "diag",
     min_regime_train_days: int = 252,
+    features: list[str] = REGIME_FEATURES,
 ) -> HMMFit:
     """
-    Fit a GaussianHMM on `feature_window[REGIME_FEATURES]`.
+    Fit a GaussianHMM on `feature_window[features]`.
 
     Addresses: P2, P3 — see module docstring.
 
@@ -97,10 +98,22 @@ def fit_hmm(
     `min_regime_train_days`, or if every restart fails to converge, returns
     a neutral `HMMFit` (`converged=False`, `model=None`) that
     `predict_regime_posterior` turns into a flat 50/50 posterior.
+
+    `features` defaults to the module's `REGIME_FEATURES` but is
+    configurable (wired from `params.yaml: regime.features` via
+    `strategies.RegimeConditionalStrategy`) — `label_regimes` needs
+    `"MARKET_RETURN"` to be present in whatever list is passed.
     """
+    if n_states != 2:
+        # label_regimes() would raise this anyway, but only AFTER n_restarts
+        # GaussianHMM fits — fail immediately instead of wasting the EM runs.
+        raise ValueError(
+            f"fit_hmm only supports 2-state (bull/bear) models; got n_states={n_states}."
+        )
+
     from hmmlearn.hmm import GaussianHMM
 
-    clean = feature_window[REGIME_FEATURES].dropna()
+    clean = feature_window[features].dropna()
     if len(clean) < min_regime_train_days:
         log.warning(
             "regime: only %d usable rows (< min_regime_train_days=%d) — "
@@ -148,27 +161,34 @@ def fit_hmm(
         return HMMFit(None, None, False, float("nan"), None, {})
 
     model, ll, seed = best
-    label_map = label_regimes(model)
+    label_map = label_regimes(model, features)
     return HMMFit(model, scaler, True, float(ll), seed, label_map)
 
 
-def predict_regime_posterior(hmm_fit: HMMFit, feature_window: pd.DataFrame) -> dict[str, float]:
+def predict_regime_posterior(
+    hmm_fit: HMMFit, feature_window: pd.DataFrame, features: list[str] = REGIME_FEATURES
+) -> dict[str, float]:
     """
     Return the LAST row's regime posterior, keyed by human label.
 
     Addresses: P2, P3 — the single number `RegimeConditionalStrategy` needs
     to decide bull vs. bear at τ. `feature_window` must already be sliced to
     `:τ` by the caller (the engine does this via `extras`) — this function
-    only ever looks at the final row of whatever it's given.
+    only ever looks at the final row of whatever it's given. `features` must
+    match whatever list `hmm_fit` was trained on (see `fit_hmm`).
 
     Returns the neutral `{"bull": 0.5, "bear": 0.5}` if `hmm_fit` did not
-    converge (see `fit_hmm`'s failure policy) — the caller can treat this
-    exactly like any other posterior, no special-casing required.
+    converge (see `fit_hmm`'s failure policy), OR if `feature_window` has no
+    usable (non-NaN) rows to predict on — the caller can treat this exactly
+    like any other posterior, no special-casing required.
     """
     if not hmm_fit.converged or hmm_fit.model is None:
         return {"bull": 0.5, "bear": 0.5}
 
-    clean = feature_window[REGIME_FEATURES].dropna()
+    clean = feature_window[features].dropna()
+    if clean.empty:
+        return {"bull": 0.5, "bear": 0.5}
+
     X = hmm_fit.scaler.transform(clean.to_numpy())
     proba_last = hmm_fit.model.predict_proba(X)[-1]
     return {hmm_fit.label_map[i]: float(p) for i, p in enumerate(proba_last)}

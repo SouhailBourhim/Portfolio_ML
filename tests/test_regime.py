@@ -113,10 +113,21 @@ class TestFailurePolicy:
 
         assert not hmm_fit.converged
         assert hmm_fit.model is None
+        # The neutral fallback must never leak partially-initialized fit
+        # metadata to downstream code (e.g. MLflow logging of seed_used).
+        assert hmm_fit.seed_used is None
+        assert hmm_fit.label_map == {}
         assert any("returning neutral" in r.message for r in caplog.records)
 
         posterior = predict_regime_posterior(hmm_fit, features)
         assert posterior == {"bull": 0.5, "bear": 0.5}
+
+    def test_rejects_non_two_state_request_before_any_restart(self, caplog):
+        # fit_hmm must fail fast on n_states != 2 rather than burning through
+        # n_restarts GaussianHMM fits before label_regimes rejects it anyway.
+        features = _two_regime_features()
+        with pytest.raises(ValueError, match="2-state"):
+            fit_hmm(features, n_states=3, min_regime_train_days=50)
 
     def test_neutral_fallback_never_raises(self):
         # Degenerate window: far below min_regime_train_days, but the
@@ -124,6 +135,19 @@ class TestFailurePolicy:
         features = _two_regime_features(n=2)
         hmm_fit = fit_hmm(features, min_regime_train_days=252)
         posterior = predict_regime_posterior(hmm_fit, features)
+        assert posterior == {"bull": 0.5, "bear": 0.5}
+
+    def test_predict_on_all_nan_feature_window_returns_neutral_posterior(self):
+        # A converged hmm_fit handed a prediction window with no usable rows
+        # (e.g. all-NaN REGIME_FEATURES) must not crash on an empty array —
+        # predict_proba(X)[-1] would raise on X.shape[0] == 0.
+        features = _two_regime_features()
+        hmm_fit = fit_hmm(features, min_regime_train_days=50)
+        assert hmm_fit.converged
+
+        all_nan = features.copy()
+        all_nan[REGIME_FEATURES] = float("nan")
+        posterior = predict_regime_posterior(hmm_fit, all_nan)
         assert posterior == {"bull": 0.5, "bear": 0.5}
 
 

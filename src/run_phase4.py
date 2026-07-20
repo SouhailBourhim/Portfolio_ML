@@ -75,6 +75,23 @@ _BASELINE_FACTORY = {
 }
 
 
+def _validate_regime_strategy_names(regime_params: dict) -> None:
+    """
+    Fail fast with a clear error if `params.yaml: regime.bull_strategy` /
+    `bear_strategy` name something outside `_BASELINE_FACTORY` — a typo here
+    would otherwise surface as an opaque KeyError deep inside
+    `build_strategies`, on whichever universe happens to run first.
+    """
+    allowed = ", ".join(sorted(_BASELINE_FACTORY))
+    for key in ("bull_strategy", "bear_strategy"):
+        name = regime_params.get(key)
+        if name not in _BASELINE_FACTORY:
+            raise ValueError(
+                f"params.yaml: regime.{key}='{name}' is not a recognized baseline strategy. "
+                f"Allowed values: {allowed}."
+            )
+
+
 def load_universe(path: str | Path) -> pd.DataFrame:
     """Load a gold-layer log-returns matrix with a proper DatetimeIndex."""
     full_path = ROOT / path
@@ -112,6 +129,7 @@ def build_strategies(params: dict) -> list[Strategy]:
     ewma_params = params["covariance_ewma"]
     dcc_params = params["covariance_dcc_garch"]
     regime_params = params["regime"]
+    _validate_regime_strategy_names(regime_params)
 
     return [
         EqualWeight(),
@@ -135,6 +153,7 @@ def build_strategies(params: dict) -> list[Strategy]:
             random_state_base=regime_params["random_state_base"],
             covariance_type=regime_params["covariance_type"],
             min_regime_train_days=regime_params["min_regime_train_days"],
+            features=regime_params.get("features"),
         ),
     ]
 
@@ -218,8 +237,14 @@ def run_phase4() -> dict[str, list[BacktestResult]]:
             # DSR inputs: per-period (daily, non-annualized) net Sharpe of
             # EVERY strategy tried on this universe, baselines and Phase 4
             # models alike — the N-honesty rule from the module docstring.
+            # A flat (zero-variance) net-return series would otherwise divide
+            # by zero here; 0.0 is the honest Sharpe for "no realized risk or
+            # reward", not a crash or a silently-dropped trial.
             trial_sharpes = [
-                float(r.net_returns.mean() / r.net_returns.std()) for r in results
+                float(r.net_returns.mean() / r.net_returns.std())
+                if r.net_returns.std() > 0
+                else 0.0
+                for r in results
             ]
             ew_net = next(r for r in results if r.strategy_name == "equal_weight").net_returns
 

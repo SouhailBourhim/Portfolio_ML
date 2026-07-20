@@ -189,8 +189,8 @@ stages:
       size: 8460
     - path: src/strategies.py
       hash: md5
-      md5: 67d2612dd9c2c239f6e9659747761996
-      size: 15559
+      md5: dbacf5e547577b2f792ecc3e8de288ae
+      size: 15784
     params:
       params.yaml:
         backtest.costs_bps:
@@ -242,16 +242,16 @@ stages:
       size: 7863
     - path: src/regime.py
       hash: md5
-      md5: 2e1f90561ebcbfbe6d90809a2fb05460
-      size: 7018
+      md5: c6f8678b57ced3597ee5616e05209fd3
+      size: 7881
     - path: src/run_phase4.py
       hash: md5
-      md5: 636cbcf1bbead7bc1c64f64591b2db2f
-      size: 14080
+      md5: 6ddd7878edcafe2dc560abb32488994d
+      size: 15220
     - path: src/strategies.py
       hash: md5
-      md5: 67d2612dd9c2c239f6e9659747761996
-      size: 15559
+      md5: dbacf5e547577b2f792ecc3e8de288ae
+      size: 15784
     params:
       params.yaml:
         backtest.costs_bps:

@@ -347,7 +347,10 @@ class RegimeConditionalStrategy(Strategy):
         random_state_base: int = 0,
         covariance_type: str = "diag",
         min_regime_train_days: int = 252,
+        features: list[str] | None = None,
     ) -> None:
+        from regime import REGIME_FEATURES
+
         self.bull_strategy = bull_strategy if bull_strategy is not None else MaxSharpe()
         self.bear_strategy = bear_strategy if bear_strategy is not None else MinVarianceLW()
         self.n_states = n_states
@@ -355,6 +358,7 @@ class RegimeConditionalStrategy(Strategy):
         self.random_state_base = random_state_base
         self.covariance_type = covariance_type
         self.min_regime_train_days = min_regime_train_days
+        self.features = features if features is not None else REGIME_FEATURES
         # Diagnostic-only: the engine reuses this same instance across the
         # whole backtest and neither assists nor prevents this kind of
         # internal state (src/backtest.py docstring). Never read by fit().
@@ -379,8 +383,9 @@ class RegimeConditionalStrategy(Strategy):
             random_state_base=self.random_state_base,
             covariance_type=self.covariance_type,
             min_regime_train_days=self.min_regime_train_days,
+            features=self.features,
         )
-        posterior = predict_regime_posterior(hmm_fit, feature_window)
+        posterior = predict_regime_posterior(hmm_fit, feature_window, features=self.features)
 
         if hmm_fit.converged:
             regime_label = max(posterior, key=posterior.get)

@@ -14,6 +14,7 @@ import json
 
 import numpy as np
 import pandas as pd
+import pytest
 
 import run_phase4
 from ml_features import build_ml_feature_set
@@ -135,3 +136,27 @@ def test_run_phase4_compares_against_a_stored_hurdle(tmp_path, monkeypatch):
     for entry in output.values():
         # An absurdly low stored hurdle (-999) must be beaten by anything real.
         assert entry["beats_phase2_hurdle"] is True
+
+
+class TestValidateRegimeStrategyNames:
+    def test_rejects_unrecognized_strategy_name(self):
+        with pytest.raises(ValueError, match="not a recognized baseline strategy"):
+            run_phase4._validate_regime_strategy_names(
+                {"bull_strategy": "typo_sharpe", "bear_strategy": "min_variance_lw"}
+            )
+
+    def test_rejects_missing_key(self):
+        with pytest.raises(ValueError, match="not a recognized baseline strategy"):
+            run_phase4._validate_regime_strategy_names({"bull_strategy": "max_sharpe"})
+
+    def test_accepts_valid_names(self):
+        # Must not raise.
+        run_phase4._validate_regime_strategy_names(
+            {"bull_strategy": "max_sharpe", "bear_strategy": "min_variance_lw"}
+        )
+
+    def test_build_strategies_surfaces_the_clear_error_not_a_keyerror(self, tmp_path):
+        params = _params()
+        params["regime"]["bull_strategy"] = "not_a_real_strategy"
+        with pytest.raises(ValueError, match="not a recognized baseline strategy"):
+            run_phase4.build_strategies(params)
