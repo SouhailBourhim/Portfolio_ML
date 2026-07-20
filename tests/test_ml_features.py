@@ -98,6 +98,21 @@ class TestMacroSignals:
         with pytest.raises(ValueError, match="lookahead"):
             build_lagged_macro_signals(macro, index, lag_days=0)
 
+    def test_interior_nan_from_multi_source_calendars_is_forward_filled(self):
+        # Two macro sources on different calendars, concatenated, leave interior
+        # NaN holes on dates only one source published. Those must be carried
+        # forward (causal), not scattered through the differenced signal — else
+        # a Phase 4 fit at any date could hit a NaN macro feature.
+        index = pd.bdate_range("2020-01-01", periods=6, name="Date")
+        macro = pd.DataFrame(
+            {"VIX": [10.0, np.nan, 12.0, np.nan, 15.0, 16.0]},  # interior holes
+            index=index,
+        )
+        result = build_lagged_macro_signals(macro, index, lag_days=1)
+        # No interior NaN survives after the first valid observation
+        signal = result["VIX_DIFF_L1"]
+        assert not signal.loc[signal.first_valid_index():].isna().any()
+
     def test_alignment_does_not_backfill_before_first_macro_date(self):
         returns_index = pd.bdate_range("2020-01-01", periods=6, name="Date")
         macro = pd.DataFrame(
@@ -169,3 +184,40 @@ class TestFeatureSetAndPipeline:
         manifest = json.loads((gold / "ml_features_manifest.json").read_text())
         assert manifest["global_standardization"] is False
         assert set(manifest["universes"]) == {"etf_2017", "full_2021"}
+
+    def test_manifest_records_feature_warmup(self, tmp_path):
+        # The warm-up must be reported so Phase 4 can guard min_train_days
+        # against it instead of discovering NaN features at fit time.
+        returns = _small_returns()
+        gold = tmp_path / "data" / "gold"
+        bronze = tmp_path / "data" / "bronze"
+        gold.mkdir(parents=True)
+        bronze.mkdir(parents=True)
+        returns.to_parquet(gold / "log_returns_etf.parquet")
+        returns.iloc[20:].to_parquet(gold / "log_returns.parquet")
+        # macro that starts late → a genuine leading-NaN warm-up on its column
+        late_macro = pd.DataFrame(
+            {"VIX": np.linspace(10, 30, len(returns) - 30)},
+            index=returns.index[30:],
+        )
+        late_macro.to_parquet(bronze / "raw_macro.parquet")
+
+        config = {
+            "backtest": {"universes": {
+                "etf_2017": "data/gold/log_returns_etf.parquet",
+                "full_2021": "data/gold/log_returns.parquet",
+            }},
+            "ml_features": {**_config(), "outputs": {
+                "etf_2017": "data/gold/ml_features_etf.parquet",
+                "full_2021": "data/gold/ml_features_full.parquet",
+            }, "manifest_path": "data/gold/ml_features_manifest.json"},
+        }
+        run_phase3(config=config, project_root=tmp_path)
+        manifest = json.loads((gold / "ml_features_manifest.json").read_text())
+
+        assert "warmup_policy" in manifest
+        etf = manifest["universes"]["etf_2017"]
+        assert "max_leading_nan" in etf and "leading_nan_by_column" in etf
+        # core features carry no leading NaN in the output; the late macro does
+        assert etf["leading_nan_by_column"]["MARKET_RETURN"] == 0
+        assert etf["max_leading_nan"] >= etf["leading_nan_by_column"]["VIX_DIFF_L1"]
