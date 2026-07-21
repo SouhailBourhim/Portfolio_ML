@@ -33,6 +33,24 @@ from strategies import Strategy
 
 log = logging.getLogger("backtest")
 
+# Reserved `extras` key carrying the portfolio's CURRENT (drifted) weights at
+# the close of the rebalance date, for strategies that need to know what they
+# already hold — a turnover-penalized objective cannot be written without it.
+#
+# Not a lookahead risk, and this is worth stating precisely because the whole
+# project rests on that guarantee: these weights are a deterministic function
+# of (a) past fit() outputs and (b) realized returns strictly BEFORE τ. No
+# future information enters. The frame is delivered as a ONE-ROW DataFrame
+# indexed by τ specifically so it satisfies the identical `index.max() <= τ`
+# invariant `tests/test_backtest.py::TestNoLookahead` already enforces over
+# every other extras frame — it is checked by the same rule, not exempted
+# from it.
+#
+# Injected ONLY for strategies that set `wants_current_weights = True`, so
+# strategies that never asked for portfolio state cannot accidentally consume
+# it, and the existing extras contract is unchanged for everything else.
+CURRENT_WEIGHTS_KEY = "current_weights"
+
 
 @dataclass(frozen=True)
 class BacktestResult:
@@ -173,7 +191,12 @@ def run_backtest(
         cost_bps: Per-asset one-way costs (pd.Series from build_cost_vector)
             or a flat scalar for all assets. 0.0 → gross == net.
         extras: Auxiliary frames for Phase 4 strategies; the ENGINE slices
-            each one to the train window before every fit call.
+            each one to the train window before every fit call. For a
+            strategy declaring `wants_current_weights = True`, the engine
+            additionally injects `extras[CURRENT_WEIGHTS_KEY]` — the
+            portfolio's drifted weights as of τ, as a one-row frame indexed
+            by τ (see that constant's comment for why this carries no
+            lookahead).
         universe_name: Label carried into the result for reporting.
         max_weight: When set, the engine REJECTS any fit() output whose
             largest weight exceeds this cap — the constraint is enforced at
@@ -215,6 +238,11 @@ def run_backtest(
             {name: frame.loc[:tau].copy() for name, frame in extras.items()}
             if extras else None
         )
+        if getattr(strategy, "wants_current_weights", False):
+            extras_slice = dict(extras_slice or {})
+            extras_slice[CURRENT_WEIGHTS_KEY] = pd.DataFrame(
+                [w_current], index=pd.DatetimeIndex([tau]), columns=assets
+            )
         w_target = _validate_weights(
             strategy.fit(train, extras_slice), assets, strategy.name, max_weight
         ).to_numpy()

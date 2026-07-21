@@ -38,9 +38,17 @@ class Strategy(ABC):
     `extras` is the Phase 4 seam: a mapping of auxiliary frames (macro
     features, regime labels), each pre-sliced BY THE ENGINE to the train
     window. Baselines accept and ignore it; Phase 4 models consume it.
+
+    `wants_current_weights` is opt-in: when True, the engine additionally
+    puts the portfolio's drifted weights at τ into
+    `extras[backtest.CURRENT_WEIGHTS_KEY]`. Only strategies whose objective
+    genuinely depends on what is already held (a turnover penalty) should
+    set it — see `backtest.CURRENT_WEIGHTS_KEY` for why this is not a
+    lookahead channel.
     """
 
     name: str = "abstract"
+    wants_current_weights: bool = False
 
     @abstractmethod
     def fit(
@@ -78,17 +86,68 @@ class EqualWeight(Strategy):
         return pd.Series(1.0 / n, index=train_returns.columns)
 
 
+def _extract_current_weights(
+    extras: Mapping[str, pd.DataFrame] | None, assets: pd.Index
+) -> np.ndarray | None:
+    """
+    Read the engine-injected drifted weights out of `extras`, or None.
+
+    Returns None whenever the key is absent (strategy called directly in a
+    test, or first rebalance before the engine has any position) — callers
+    treat that as "no turnover penalty available this fit", never as an
+    error. Reindexed to `assets` so a universe reordering cannot silently
+    misalign the penalty against the wrong instrument.
+    """
+    from backtest import CURRENT_WEIGHTS_KEY
+
+    frame = (extras or {}).get(CURRENT_WEIGHTS_KEY)
+    if frame is None or len(frame) == 0:
+        return None
+    return frame.iloc[-1].reindex(assets).fillna(0.0).to_numpy(dtype=float)
+
+
+def _smooth_turnover(w: np.ndarray, w_prev: np.ndarray, epsilon: float = 1e-8) -> float:
+    """
+    Differentiable surrogate for Σ|wᵢ − w_prev,i|: Σ√((wᵢ − w_prev,i)² + ε).
+
+    SLSQP is a *gradient-based* method and assumes a smooth objective; a
+    raw L1 term is non-differentiable exactly at wᵢ = w_prev,i, which is
+    precisely where a turnover-penalized optimum wants to sit (don't trade
+    this asset at all). Feeding it raw |·| makes the solver chatter around
+    that kink and report spurious failures. With ε = 1e-8 the surrogate is
+    within 1e-4 per asset of true absolute value — far below any weight
+    difference that matters — while being smooth everywhere.
+    """
+    return float(np.sqrt((w - w_prev) ** 2 + epsilon).sum())
+
+
 def _optimize_weights(
     objective: Callable[[np.ndarray], float],
     assets: pd.Index,
     max_weight: float,
     strategy_name: str,
+    w_prev: np.ndarray | None = None,
+    turnover_penalty: float = 0.0,
 ) -> pd.Series:
     """
     Shared SLSQP wrapper: long-only bounds (0, max_weight), Σw = 1, x0 = 1/N.
 
     Addresses: P1 — the cap stops noisy estimates from producing the
     concentrated corner solutions that collapse out-of-sample.
+    Addresses: P1, P4 — with `turnover_penalty > 0` and `w_prev` supplied,
+    the objective becomes `objective(w) + λ·Σ|w − w_prev|`, so the optimizer
+    prices the cost of *getting to* a portfolio rather than only the merit
+    of being in it. This is the direct fix for the Phase 4B finding that
+    `rf_signal` had the best GROSS Sharpe of any strategy on `full_2021`
+    (1.240) yet lost 0.178 of it to a 0.885 average turnover: a signal can
+    be genuinely informative and still be untradeable if acting on every
+    revision costs more than the revision is worth.
+
+    λ is in "objective units per unit of turnover" — for the Sharpe
+    objective, roughly "annualized Sharpe sacrificed to fully replace the
+    portfolio". It is a hyperparameter, NOT estimated from data here;
+    Phase 5's purged CV is the honest place to tune it, and until then any
+    chosen value is a judgement call that must be reported as one.
 
     Failure policy: retry once from a perturbed start, then fall back to
     equal weights with a WARNING — a logged fallback mid-backtest is honest;
@@ -104,6 +163,12 @@ def _optimize_weights(
             f"Infeasible constraints: {n} assets × cap {max_weight} < 1 — "
             f"weights cannot sum to 1. Raise max_weight or add assets."
         )
+
+    if turnover_penalty > 0.0 and w_prev is not None:
+        base_objective = objective
+
+        def objective(w: np.ndarray) -> float:  # noqa: F811 — deliberate wrap
+            return base_objective(w) + turnover_penalty * _smooth_turnover(w, w_prev)
 
     bounds = [(0.0, max_weight)] * n
     constraints = [{"type": "eq", "fun": lambda w: w.sum() - 1.0}]
@@ -273,6 +338,63 @@ class DCCGarchStrategy(Strategy):
         )
 
 
+def estimate_covariance(
+    train_returns: pd.DataFrame,
+    estimator: str = "ledoit_wolf",
+    halflife_days: int = 63,
+    garch_p: int = 1,
+    garch_q: int = 1,
+    dcc_a_init: float = 0.02,
+    dcc_b_init: float = 0.95,
+    rescale_factor: float = 100.0,
+) -> np.ndarray:
+    """
+    Annualized covariance from any rung of the Phase 4 ablation ladder.
+
+    Addresses: P1, P2 — factored out so a strategy's covariance choice
+    becomes a parameter rather than a hardcoded import. `MinVarianceLW`,
+    `MinVarianceEWMA` and `DCCGarchStrategy` each pin one rung as their
+    identity and are left alone; this exists for strategies whose identity
+    is their `mu` (F7's signal models), so "best predicted mu + best
+    covariance" is a config change instead of a new class.
+
+    Args:
+        train_returns: `:τ`-sliced log-return window.
+        estimator: `"sample"`, `"ledoit_wolf"`, `"ewma"` or `"dcc_garch"`.
+        halflife_days: EWMA decay, used only by `"ewma"`.
+        garch_p, garch_q, dcc_a_init, dcc_b_init, rescale_factor: forwarded
+            to `dcc_garch.dcc_covariance`, used only by `"dcc_garch"`.
+
+    Raises:
+        ValueError: on an unknown estimator name — a misspelled config key
+            must not silently resolve to a different risk model.
+    """
+    if estimator == "sample":
+        return train_returns.cov().to_numpy() * TRADING_DAYS_PER_YEAR
+    if estimator == "ledoit_wolf":
+        from sklearn.covariance import LedoitWolf
+
+        return LedoitWolf().fit(train_returns.to_numpy()).covariance_ * TRADING_DAYS_PER_YEAR
+    if estimator == "ewma":
+        ewm_cov = train_returns.ewm(halflife=halflife_days).cov()
+        return ewm_cov.loc[train_returns.index[-1]].to_numpy() * TRADING_DAYS_PER_YEAR
+    if estimator == "dcc_garch":
+        from dcc_garch import dcc_covariance
+
+        return dcc_covariance(
+            train_returns,
+            garch_p=garch_p,
+            garch_q=garch_q,
+            dcc_a_init=dcc_a_init,
+            dcc_b_init=dcc_b_init,
+            rescale_factor=rescale_factor,
+        )
+    raise ValueError(
+        f"Unknown covariance estimator: {estimator!r} — expected 'sample', "
+        f"'ledoit_wolf', 'ewma' or 'dcc_garch'."
+    )
+
+
 def _neg_sharpe(w: np.ndarray, mu: np.ndarray, cov: np.ndarray, risk_free_annual: float) -> float:
     """
     Shared Sharpe-maximization objective: -(wᵀμ − rf)/√(wᵀΣw).
@@ -323,15 +445,25 @@ class _MLSignalStrategy(Strategy):
     """
     Shared implementation for F7's adaptive ML signal strategies
     (`RandomForestSignalStrategy`, `XGBoostSignalStrategy`): predicted
-    `mu` from `ml_signals.fit_predict_expected_returns`, covariance held
-    fixed at Ledoit-Wolf (already-tested, already fast — an orthogonal,
-    already-solved rung; coupling with DCC-GARCH is a documented stretch,
-    not built here), fed into the identical `_neg_sharpe` objective
-    `MaxSharpe` uses. Subclasses set only `name` and `model_type`.
+    `mu` from `ml_signals.fit_predict_expected_returns`, a covariance from
+    any rung of the Phase 4 ladder, both fed into the identical
+    `_neg_sharpe` objective `MaxSharpe` uses. Subclasses set only `name`
+    and `model_type`.
 
     Addresses: P1, P2, P3 — see `ml_signals.py`'s module docstring. This
     class adds ZERO new optimizer code — it is "swap one moment into the
     unmodified engine," the same pattern every prior Phase 4 addition used.
+
+    Phase 4C adds three levers, all defaulting OFF so the Phase 4B result
+    stays exactly reproducible as the honest floor to compare against:
+      - `turnover_penalty` (+ `wants_current_weights`) — prices the cost of
+        trading into the target, the direct fix for Phase 4B's finding that
+        `rf_signal` had the best gross Sharpe on `full_2021` (1.240) and
+        lost 0.178 of it to 0.885 turnover.
+      - `mu_transform`/`shrinkage_weight` — regularizes the predicted `mu`
+        (Chopra & Ziemba 1993), see `ml_signals.apply_mu_transform`.
+      - `cov_estimator` — pairs a predicted `mu` with any covariance rung,
+        making "best mu + best cov" a config change, not a new class.
     """
 
     model_type: str = "abstract"
@@ -351,6 +483,17 @@ class _MLSignalStrategy(Strategy):
         random_state_base: int = 0,
         covariance_type: str = "diag",
         min_regime_train_days: int = 252,
+        cov_estimator: str = "ledoit_wolf",
+        halflife_days: int = 63,
+        garch_p: int = 1,
+        garch_q: int = 1,
+        dcc_a_init: float = 0.02,
+        dcc_b_init: float = 0.95,
+        rescale_factor: float = 100.0,
+        turnover_penalty: float = 0.0,
+        mu_transform: str = "none",
+        shrinkage_weight: float = 0.5,
+        name: str | None = None,
     ) -> None:
         self.max_weight = max_weight
         self.risk_free_annual = risk_free_annual
@@ -365,14 +508,31 @@ class _MLSignalStrategy(Strategy):
         self.random_state_base = random_state_base
         self.covariance_type = covariance_type
         self.min_regime_train_days = min_regime_train_days
+        self.cov_estimator = cov_estimator
+        self.halflife_days = halflife_days
+        self.garch_p = garch_p
+        self.garch_q = garch_q
+        self.dcc_a_init = dcc_a_init
+        self.dcc_b_init = dcc_b_init
+        self.rescale_factor = rescale_factor
+        self.turnover_penalty = turnover_penalty
+        self.mu_transform = mu_transform
+        self.shrinkage_weight = shrinkage_weight
+        # Per-instance label so one class can appear as several distinct rows
+        # in an ablation table (rf_signal vs rf_signal_cost vs ...) without a
+        # subclass per configuration. Falls back to the class attribute.
+        if name is not None:
+            self.name = name
+        # Only ask the engine for portfolio state if it is actually used —
+        # an unused injection would be a silent widening of what this
+        # strategy can see.
+        self.wants_current_weights = turnover_penalty > 0.0
 
     def fit(
         self,
         train_returns: pd.DataFrame,
         extras: Mapping[str, pd.DataFrame] | None = None,
     ) -> pd.Series:
-        from sklearn.covariance import LedoitWolf
-
         from ml_signals import fit_predict_expected_returns
 
         mu = fit_predict_expected_returns(
@@ -390,13 +550,25 @@ class _MLSignalStrategy(Strategy):
             random_state_base=self.random_state_base,
             covariance_type=self.covariance_type,
             min_regime_train_days=self.min_regime_train_days,
+            mu_transform=self.mu_transform,
+            shrinkage_weight=self.shrinkage_weight,
         ).to_numpy()
 
-        lw = LedoitWolf().fit(train_returns.to_numpy())
-        cov = lw.covariance_ * TRADING_DAYS_PER_YEAR
+        cov = estimate_covariance(
+            train_returns,
+            estimator=self.cov_estimator,
+            halflife_days=self.halflife_days,
+            garch_p=self.garch_p,
+            garch_q=self.garch_q,
+            dcc_a_init=self.dcc_a_init,
+            dcc_b_init=self.dcc_b_init,
+            rescale_factor=self.rescale_factor,
+        )
         return _optimize_weights(
             lambda w: _neg_sharpe(w, mu, cov, self.risk_free_annual),
             train_returns.columns, self.max_weight, self.name,
+            w_prev=_extract_current_weights(extras, train_returns.columns),
+            turnover_penalty=self.turnover_penalty,
         )
 
 
