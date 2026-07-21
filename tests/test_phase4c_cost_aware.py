@@ -143,6 +143,91 @@ class TestTurnoverPenalty:
         assert value == pytest.approx(0.0, abs=1e-3)
 
 
+class TestRenormalizationRespectsTheCap:
+    """
+    Regression suite for a latent bug Phase 4C surfaced on live data.
+
+    `_as_weight_series` forces Σw = 1 by dividing by the sum. SLSQP satisfies
+    its equality constraint only to solver tolerance, so that sum can be
+    0.9999998 — and dividing by it INFLATES every weight, lifting an asset
+    sitting exactly on the (0, max_weight) bound to just above the cap. The
+    optimizer never violated its bounds; the renormalization did. A turnover
+    penalty rewards not-trading, which parks solutions on the cap boundary
+    and turns a rare edge case into a routine one (`xgb_signal_cost` died on
+    GLD at exactly 0.25 in the first live Phase 4C run).
+    """
+
+    def test_renormalizing_a_short_sum_cannot_push_a_weight_over_the_cap(self):
+        # Exactly the failing shape: at the cap, summing to slightly under 1.
+        raw = np.array([0.25, 0.25, 0.25, 0.2499998])
+        weights = Strategy._as_weight_series(raw, pd.Index(list("ABCD")), 0.25)
+        assert weights.sum() == pytest.approx(1.0)
+        assert weights.max() <= 0.25 + 1e-9
+
+    def test_above_cap_mass_is_redistributed_not_discarded(self):
+        raw = np.array([0.90, 0.05, 0.03, 0.02])
+        weights = Strategy._as_weight_series(raw, pd.Index(list("ABCD")), 0.30)
+        assert weights.sum() == pytest.approx(1.0)
+        assert weights.max() <= 0.30 + 1e-9
+
+    def test_uniform_at_the_cap_when_the_cap_exactly_binds(self):
+        """n × cap == 1 leaves no headroom; the only feasible answer is uniform."""
+        raw = np.array([0.7, 0.1, 0.1, 0.1])
+        weights = Strategy._as_weight_series(raw, pd.Index(list("ABCD")), 0.25)
+        np.testing.assert_allclose(weights.to_numpy(), 0.25, atol=1e-9)
+
+    def test_no_cap_argument_preserves_the_previous_behavior(self):
+        raw = np.array([0.5, 0.3, 0.2])
+        weights = Strategy._as_weight_series(raw, pd.Index(list("ABC")))
+        np.testing.assert_allclose(weights.to_numpy(), raw)
+
+    def test_zero_sum_fallback_still_respects_the_cap(self):
+        """The all-zero (SLSQP-gave-nothing) branch must obey `max_weight`
+        like every other branch, not return an uncapped uniform vector.
+
+        Feasible cap: 4 assets, cap 0.30 → uniform 0.25 already fits, so the
+        result stays uniform AND under the cap. The bug Sourcery flagged was
+        this branch returning early before the cap logic ran at all.
+        """
+        weights = Strategy._as_weight_series(
+            np.zeros(4), pd.Index(list("ABCD")), 0.30
+        )
+        assert weights.sum() == pytest.approx(1.0)
+        assert weights.max() <= 0.30 + 1e-9
+        np.testing.assert_allclose(weights.to_numpy(), 0.25)
+
+    def test_infeasible_cap_raises_rather_than_returning_a_sub_one_vector(self):
+        """A cap no valid vector can satisfy (n × cap < 1) must fail loudly at
+        the source — matching `_optimize_weights`' own feasibility guard —
+        not defer a guaranteed failure to the engine's validator. Applies to
+        the zero-sum branch and the normal branch identically."""
+        assets = pd.Index(list("ABCD"))
+        with pytest.raises(ValueError, match="Infeasible cap"):
+            Strategy._as_weight_series(np.zeros(4), assets, 0.10)   # 4 × 0.10 < 1
+        with pytest.raises(ValueError, match="Infeasible cap"):
+            Strategy._as_weight_series(np.array([0.4, 0.3, 0.2, 0.1]), assets, 0.10)
+
+    def test_engine_still_rejects_a_genuinely_over_cap_strategy(self, small_returns):
+        """The fix must NOT become a silent repair of real violations.
+
+        Water-filling lives in `_optimize_weights` (completing the projection
+        SLSQP's own bounds already intended). A strategy that bypasses it and
+        hands the engine a 60% position must still fail the run loudly —
+        that check is the trust boundary, and Phase 4C did not touch it.
+        """
+        class Overweight(Strategy):
+            name = "overweight"
+
+            def fit(self, train_returns, extras=None):
+                w = pd.Series(0.0, index=train_returns.columns)
+                w.iloc[0] = 0.6
+                w.iloc[1:] = 0.4 / (len(w) - 1)
+                return w
+
+        with pytest.raises(ValueError, match="exceeds the max_weight cap"):
+            run_backtest(small_returns, Overweight(), min_train_days=252, max_weight=0.25)
+
+
 # ────────────────────────────────────────────────────────────────────────
 # The engine's current_weights channel
 # ────────────────────────────────────────────────────────────────────────
@@ -287,6 +372,34 @@ class TestMuTransforms:
         predicted, naive = mu_pair
         with pytest.raises(ValueError, match="mu_transform"):
             apply_mu_transform(predicted, naive, "definitely_not_a_transform")
+
+    @pytest.mark.parametrize("bad_weight", [-0.1, 1.1, 1.5, -1.0])
+    def test_shrinkage_weight_outside_unit_interval_raises(self, mu_pair, bad_weight):
+        """Outside [0, 1] the blend stops being convex and becomes
+        extrapolation, amplifying the noise shrink exists to damp. A
+        misconfiguration must fail loudly, not silently extrapolate."""
+        predicted, naive = mu_pair
+        with pytest.raises(ValueError, match="shrinkage_weight"):
+            apply_mu_transform(predicted, naive, "shrink", bad_weight)
+
+    @pytest.mark.parametrize("ok_weight", [0.0, 0.5, 1.0])
+    def test_shrinkage_weight_at_the_boundaries_is_accepted(self, mu_pair, ok_weight):
+        predicted, naive = mu_pair
+        result = apply_mu_transform(predicted, naive, "shrink", ok_weight)
+        assert not result.isna().any()
+
+    def test_out_of_range_shrinkage_fails_fast_before_model_fit(self, small_returns):
+        """The fail-fast guard in fit_predict_expected_returns uses the SAME
+        validator, so a bad config surfaces before an expensive fit rather
+        than only at the final transform."""
+        from ml_signals import fit_predict_expected_returns
+
+        with pytest.raises(ValueError, match="shrinkage_weight"):
+            fit_predict_expected_returns(
+                small_returns.iloc[:300], extras=None,
+                mu_transform="shrink", shrinkage_weight=2.0,
+                min_train_rows=50, condition_on_regime=False,
+            )
 
 
 class TestMuTransformReachesTheStrategy:

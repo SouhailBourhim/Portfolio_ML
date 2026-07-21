@@ -53,6 +53,36 @@ log = logging.getLogger("ml_signals")
 ROOT = Path(__file__).resolve().parents[1]
 TRADING_DAYS_PER_YEAR = 252
 
+VALID_MU_TRANSFORMS = ("none", "shrink", "rank")
+
+
+def _validate_mu_transform(mu_transform: str, shrinkage_weight: float) -> None:
+    """
+    Single source of truth for mu-regularization config validity.
+
+    Called both at the top of `fit_predict_expected_returns` (fail-fast,
+    before an expensive model fit) and inside `apply_mu_transform` (which is
+    also a public entry point) — one function, so the two call sites cannot
+    drift if a new transform mode is added.
+
+    A misspelled config value is a caller bug that must surface immediately,
+    NOT degrade to the naive mean the way a runtime estimator failure does —
+    the two are different failure classes and must not be conflated.
+    """
+    if mu_transform not in VALID_MU_TRANSFORMS:
+        raise ValueError(
+            f"Unknown mu_transform: {mu_transform!r} — expected one of {VALID_MU_TRANSFORMS}."
+        )
+    if mu_transform == "shrink" and not 0.0 <= shrinkage_weight <= 1.0:
+        # Outside [0, 1] this stops being a convex blend and becomes
+        # extrapolation (e.g. 1.5·predicted − 0.5·naive), which contradicts
+        # the documented "damp toward the naive estimate" behavior and would
+        # AMPLIFY the very estimation noise the shrink mode exists to temper.
+        raise ValueError(
+            f"shrinkage_weight must be within [0, 1] for a convex blend, "
+            f"got {shrinkage_weight!r}."
+        )
+
 
 def _validate_log_returns(log_returns: pd.DataFrame) -> pd.DataFrame:
     """Minimal defensive validation — mirrors ml_features._validate_returns."""
@@ -358,31 +388,33 @@ def apply_mu_transform(
         naive: The sample-mean estimate `MaxSharpe` already uses, same index
             and units — the shrinkage target and the dispersion donor.
         mu_transform: One of `"none"`, `"shrink"`, `"rank"`.
-        shrinkage_weight: Weight on `predicted` when `mu_transform="shrink"`.
+        shrinkage_weight: Weight on `predicted` when `mu_transform="shrink"`;
+            must be within [0, 1] so the blend stays convex.
 
     Returns:
         Transformed expected returns, same index as `predicted`.
 
     Raises:
-        ValueError: on an unknown `mu_transform` — unlike a runtime
-            estimator failure (which degrades to the naive mean by design),
-            a misspelled config value is a caller bug that should surface
-            immediately rather than silently selecting a different model.
+        ValueError: on an unknown `mu_transform`, or a `shrinkage_weight`
+            outside [0, 1] under the shrink mode — unlike a runtime estimator
+            failure (which degrades to the naive mean by design), a
+            misspelled/out-of-range config value is a caller bug that should
+            surface immediately rather than silently misbehaving. Validated
+            via the shared `_validate_mu_transform`.
     """
+    _validate_mu_transform(mu_transform, shrinkage_weight)
+
     if mu_transform == "none":
         return predicted
     if mu_transform == "shrink":
         return shrinkage_weight * predicted + (1.0 - shrinkage_weight) * naive
-    if mu_transform == "rank":
-        ranks = predicted.rank(method="average")
-        spread = float(ranks.std(ddof=0))
-        if spread < 1e-12:  # single asset, or a perfectly flat prediction
-            return naive
-        centered = (ranks - ranks.mean()) / spread
-        return float(naive.mean()) + centered * float(naive.std(ddof=0))
-    raise ValueError(
-        f"Unknown mu_transform: {mu_transform!r} — expected 'none', 'shrink' or 'rank'."
-    )
+    # mu_transform == "rank" — the only remaining valid mode after validation.
+    ranks = predicted.rank(method="average")
+    spread = float(ranks.std(ddof=0))
+    if spread < 1e-12:  # single asset, or a perfectly flat prediction
+        return naive
+    centered = (ranks - ranks.mean()) / spread
+    return float(naive.mean()) + centered * float(naive.std(ddof=0))
 
 
 def fit_predict_expected_returns(
@@ -448,10 +480,9 @@ def fit_predict_expected_returns(
     """
     fallback = train_returns.mean() * TRADING_DAYS_PER_YEAR
 
-    if mu_transform not in ("none", "shrink", "rank"):
-        raise ValueError(
-            f"Unknown mu_transform: {mu_transform!r} — expected 'none', 'shrink' or 'rank'."
-        )
+    # Fail fast on a bad transform config BEFORE the expensive model fit,
+    # using the same validator apply_mu_transform enforces at the end.
+    _validate_mu_transform(mu_transform, shrinkage_weight)
 
     if model_type not in ("random_forest", "xgboost"):
         log.warning(
