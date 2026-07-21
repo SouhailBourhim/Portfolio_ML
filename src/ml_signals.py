@@ -129,7 +129,7 @@ def build_asset_features(
         for window in (short_window, long_window):
             columns[f"{asset}__VOL_{window}D"] = series.rolling(
                 window, min_periods=window
-            ).std() * np.sqrt(252.0)
+            ).std() * np.sqrt(TRADING_DAYS_PER_YEAR)
 
         moving_avg = wealth.rolling(long_window, min_periods=long_window).mean()
         columns[f"{asset}__PRICE_REL_MA_{long_window}D"] = wealth / moving_avg - 1.0
@@ -377,6 +377,14 @@ def fit_predict_expected_returns(
     """
     fallback = train_returns.mean() * TRADING_DAYS_PER_YEAR
 
+    if model_type not in ("random_forest", "xgboost"):
+        log.warning(
+            "ml_signals(%s): unknown model_type (expected 'random_forest' or "
+            "'xgboost') — falling back to the naive sample mean for this rebalance.",
+            model_type,
+        )
+        return fallback
+
     wide = build_asset_features(
         train_returns,
         short_window=short_window,
@@ -430,12 +438,10 @@ def fit_predict_expected_returns(
             from sklearn.ensemble import RandomForestRegressor
 
             model = RandomForestRegressor(**resolved_params)
-        elif model_type == "xgboost":
+        else:
             from xgboost import XGBRegressor
 
             model = XGBRegressor(**resolved_params)
-        else:
-            raise ValueError(f"Unknown model_type: {model_type!r}")
 
         model.fit(X.to_numpy(), y.to_numpy())
         raw_predictions = model.predict(X_predict_ordered.to_numpy())

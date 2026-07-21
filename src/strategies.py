@@ -16,7 +16,7 @@ for lookahead.
 
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -344,7 +344,7 @@ class _MLSignalStrategy(Strategy):
         min_train_rows: int = 504,
         short_window: int = 21,
         long_window: int = 63,
-        momentum_windows: list[int] = (5, 21, 63),
+        momentum_windows: Sequence[int] = (5, 21, 63),
         condition_on_regime: bool = True,
         n_states: int = 2,
         n_restarts: int = 5,
