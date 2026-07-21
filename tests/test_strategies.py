@@ -33,6 +33,16 @@ ALL_STRATEGIES = [
     MaxSharpe(),
     RandomForestSignalStrategy(min_train_rows=50),
     XGBoostSignalStrategy(min_train_rows=50),
+    # Phase 4C: the composed cost-aware variant inherits every invariant
+    # above (sum-to-1, long-only, index match, cap respected, extras
+    # accepted-and-ignored) for free. Called WITHOUT the engine here, so
+    # `current_weights` is absent and the turnover penalty is inert — which
+    # is itself the property being locked in: the levers must not make a
+    # strategy depend on portfolio state being present.
+    RandomForestSignalStrategy(
+        min_train_rows=50, turnover_penalty=1.0, mu_transform="shrink",
+        shrinkage_weight=0.3, cov_estimator="ewma", name="rf_signal_phase4c",
+    ),
 ]
 
 
