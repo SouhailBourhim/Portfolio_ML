@@ -83,12 +83,21 @@ class Strategy(ABC):
         engine's check — the engine validating strategy output is the trust
         boundary this whole project rests on, and a producer bug must be
         fixed in the producer.
+
+        The all-zero fallback (SLSQP returned nothing usable) uses uniform
+        1/N, but is NOT returned early — it flows through the same cap
+        enforcement below, so it respects `max_weight` identically to every
+        other branch. Uniform 1/N already satisfies any feasible cap
+        (`_optimize_weights` guarantees `N × max_weight ≥ 1`, i.e.
+        `1/N ≤ max_weight`, before it ever calls this), so for that caller the
+        cap loop is a no-op; a direct caller passing an infeasible cap gets
+        the same water-filled best effort as any other branch rather than an
+        early return that silently ignored the cap (the case Sourcery flagged
+        on PR #13).
         """
         w = np.clip(np.asarray(values, dtype=float), 0.0, None)
         total = w.sum()
-        if total <= 0.0:
-            return pd.Series(1.0 / len(assets), index=assets)
-        w = w / total
+        w = np.full(len(assets), 1.0 / len(assets)) if total <= 0.0 else w / total
 
         if max_weight is not None:
             # Terminates in at most one pass per asset; the guard is a

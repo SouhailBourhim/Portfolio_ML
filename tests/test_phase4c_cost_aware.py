@@ -181,6 +181,21 @@ class TestRenormalizationRespectsTheCap:
         weights = Strategy._as_weight_series(raw, pd.Index(list("ABC")))
         np.testing.assert_allclose(weights.to_numpy(), raw)
 
+    def test_zero_sum_fallback_still_respects_the_cap(self):
+        """The all-zero (SLSQP-gave-nothing) branch must obey `max_weight`
+        like every other branch, not return an uncapped uniform vector.
+
+        Feasible cap: 4 assets, cap 0.30 → uniform 0.25 already fits, so the
+        result stays uniform AND under the cap. The bug Sourcery flagged was
+        this branch returning early before the cap logic ran at all.
+        """
+        weights = Strategy._as_weight_series(
+            np.zeros(4), pd.Index(list("ABCD")), 0.30
+        )
+        assert weights.sum() == pytest.approx(1.0)
+        assert weights.max() <= 0.30 + 1e-9
+        np.testing.assert_allclose(weights.to_numpy(), 0.25)
+
     def test_engine_still_rejects_a_genuinely_over_cap_strategy(self, small_returns):
         """The fix must NOT become a silent repair of real violations.
 
