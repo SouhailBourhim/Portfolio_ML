@@ -60,3 +60,33 @@ regime:
 
 phase4:
   results_path: "data/gold/phase4_results.json"
+
+# ── Phase 4B: adaptive ML signal models (F7) ────────────────────────────────
+ml_signals:
+  short_window: 21               # matches ml_features.volatility_short_window
+  long_window: 63                # matches ml_features.volatility_long_window
+  momentum_windows: [5, 21, 63]
+  min_train_rows: 504            # ~2 years of pooled-panel rows before trusting the model
+  cov_estimator: "ledoit_wolf"
+  condition_on_regime: true
+  outputs:
+    etf_2017: "data/gold/ml_signal_features_etf.parquet"
+    full_2021: "data/gold/ml_signal_features_full.parquet"
+  manifest_path: "data/gold/ml_signal_features_manifest.json"
+  random_forest:
+    n_estimators: 200
+    max_depth: 4
+    min_samples_leaf: 20
+    random_state: 0
+  xgboost:
+    n_estimators: 200
+    max_depth: 3
+    learning_rate: 0.05
+    random_state: 0
+  # lstm block intentionally removed: LSTMSignalStrategy was built and
+  # tested standalone, then dropped from this pass after torch + xgboost
+  # segfaulted when loaded together in the same process on this machine.
+  # Deferred, not abandoned — see CLAUDE.md's Phase 4B notes.
+
+phase4b:
+  results_path: "data/gold/phase4b_results.json"

@@ -26,6 +26,14 @@ scikit-learn>=1.4
 hmmlearn>=0.3
 arch>=6.0
 
+# ── Supervised ML signal models (Phase 4B / F7) ──────────────────────────────
+xgboost>=2.0
+# torch is deliberately NOT listed here: an LSTM signal strategy was built
+# and tested in isolation, then dropped from this pass after torch +
+# xgboost loaded together in the same process segfaulted on this machine
+# (a native/OpenMP library conflict, not a code defect in either library).
+# Deferred to a run on more capable hardware — see CLAUDE.md's Phase 4B notes.
+
 # ── Experiment tracking ──────────────────────────────────────────────────────
 mlflow>=2.12
 

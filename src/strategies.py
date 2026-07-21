@@ -273,6 +273,23 @@ class DCCGarchStrategy(Strategy):
         )
 
 
+def _neg_sharpe(w: np.ndarray, mu: np.ndarray, cov: np.ndarray, risk_free_annual: float) -> float:
+    """
+    Shared Sharpe-maximization objective: -(wᵀμ − rf)/√(wᵀΣw).
+
+    Addresses: P1 — factored out of `MaxSharpe` so every strategy that only
+    changes HOW `mu` is estimated (naive sample mean, or an F7 ML signal
+    model) reuses the identical objective and optimizer, rather than each
+    duplicating this closure. Mirrors how the covariance ladder
+    (`MinVarianceLW`/`MinVarianceEWMA`/`DCCGarchStrategy`) all share one
+    min-variance objective and only swap `cov`.
+    """
+    vol = float(np.sqrt(w @ cov @ w))
+    if vol < 1e-12:
+        return 0.0
+    return -(float(w @ mu) - risk_free_annual) / vol
+
+
 class MaxSharpe(Strategy):
     """
     Maximum-Sharpe (tangency) portfolio: max (wᵀμ − rf)/√(wᵀΣw), long-only, cap.
@@ -296,14 +313,122 @@ class MaxSharpe(Strategy):
     ) -> pd.Series:
         mu = train_returns.mean().to_numpy() * TRADING_DAYS_PER_YEAR
         cov = train_returns.cov().to_numpy() * TRADING_DAYS_PER_YEAR
+        return _optimize_weights(
+            lambda w: _neg_sharpe(w, mu, cov, self.risk_free_annual),
+            train_returns.columns, self.max_weight, self.name,
+        )
 
-        def neg_sharpe(w: np.ndarray) -> float:
-            vol = float(np.sqrt(w @ cov @ w))
-            if vol < 1e-12:
-                return 0.0
-            return -(float(w @ mu) - self.risk_free_annual) / vol
 
-        return _optimize_weights(neg_sharpe, train_returns.columns, self.max_weight, self.name)
+class _MLSignalStrategy(Strategy):
+    """
+    Shared implementation for F7's adaptive ML signal strategies
+    (`RandomForestSignalStrategy`, `XGBoostSignalStrategy`): predicted
+    `mu` from `ml_signals.fit_predict_expected_returns`, covariance held
+    fixed at Ledoit-Wolf (already-tested, already fast — an orthogonal,
+    already-solved rung; coupling with DCC-GARCH is a documented stretch,
+    not built here), fed into the identical `_neg_sharpe` objective
+    `MaxSharpe` uses. Subclasses set only `name` and `model_type`.
+
+    Addresses: P1, P2, P3 — see `ml_signals.py`'s module docstring. This
+    class adds ZERO new optimizer code — it is "swap one moment into the
+    unmodified engine," the same pattern every prior Phase 4 addition used.
+    """
+
+    model_type: str = "abstract"
+
+    def __init__(
+        self,
+        max_weight: float = 0.25,
+        risk_free_annual: float = 0.0,
+        model_params: Mapping | None = None,
+        min_train_rows: int = 504,
+        short_window: int = 21,
+        long_window: int = 63,
+        momentum_windows: list[int] = (5, 21, 63),
+        condition_on_regime: bool = True,
+        n_states: int = 2,
+        n_restarts: int = 5,
+        random_state_base: int = 0,
+        covariance_type: str = "diag",
+        min_regime_train_days: int = 252,
+    ) -> None:
+        self.max_weight = max_weight
+        self.risk_free_annual = risk_free_annual
+        self.model_params = model_params
+        self.min_train_rows = min_train_rows
+        self.short_window = short_window
+        self.long_window = long_window
+        self.momentum_windows = momentum_windows
+        self.condition_on_regime = condition_on_regime
+        self.n_states = n_states
+        self.n_restarts = n_restarts
+        self.random_state_base = random_state_base
+        self.covariance_type = covariance_type
+        self.min_regime_train_days = min_regime_train_days
+
+    def fit(
+        self,
+        train_returns: pd.DataFrame,
+        extras: Mapping[str, pd.DataFrame] | None = None,
+    ) -> pd.Series:
+        from sklearn.covariance import LedoitWolf
+
+        from ml_signals import fit_predict_expected_returns
+
+        mu = fit_predict_expected_returns(
+            train_returns,
+            extras,
+            model_type=self.model_type,
+            model_params=self.model_params,
+            min_train_rows=self.min_train_rows,
+            short_window=self.short_window,
+            long_window=self.long_window,
+            momentum_windows=self.momentum_windows,
+            condition_on_regime=self.condition_on_regime,
+            n_states=self.n_states,
+            n_restarts=self.n_restarts,
+            random_state_base=self.random_state_base,
+            covariance_type=self.covariance_type,
+            min_regime_train_days=self.min_regime_train_days,
+        ).to_numpy()
+
+        lw = LedoitWolf().fit(train_returns.to_numpy())
+        cov = lw.covariance_ * TRADING_DAYS_PER_YEAR
+        return _optimize_weights(
+            lambda w: _neg_sharpe(w, mu, cov, self.risk_free_annual),
+            train_returns.columns, self.max_weight, self.name,
+        )
+
+
+class RandomForestSignalStrategy(_MLSignalStrategy):
+    """
+    F7 — RandomForest return-prediction signal feeding the Sharpe objective.
+
+    Addresses: P1, P2, P3 — see `_MLSignalStrategy` and `ml_signals.py`.
+    """
+
+    name = "rf_signal"
+    model_type = "random_forest"
+
+
+class XGBoostSignalStrategy(_MLSignalStrategy):
+    """
+    F7 — XGBoost return-prediction signal feeding the Sharpe objective.
+
+    Addresses: P1, P2, P3 — see `_MLSignalStrategy` and `ml_signals.py`.
+    """
+
+    name = "xgb_signal"
+    model_type = "xgboost"
+
+
+# LSTMSignalStrategy (a third F7 model family, torch-based) was built and
+# passed its own isolated test suite, but was DROPPED from this pass after
+# a segfault appeared when running the full suite — torch and xgboost both
+# load native/OpenMP-linked libraries, and having both loaded in the same
+# process crashed on this machine. Not a code defect in either library;
+# deferred to a run on more capable hardware rather than shipped unstable.
+# See CLAUDE.md's Phase 4B notes for the full account.
 
 
 class RegimeConditionalStrategy(Strategy):

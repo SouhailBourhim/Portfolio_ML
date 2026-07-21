@@ -13,8 +13,17 @@ from strategies import (
     MinVariance,
     MinVarianceEWMA,
     MinVarianceLW,
+    RandomForestSignalStrategy,
+    XGBoostSignalStrategy,
 )
 
+# LSTMSignalStrategy is deliberately excluded here: retraining a torch LSTM
+# 5 times per invariant test (parametrize x extras-comparison) on the full
+# 599-row/9-asset synthetic fixture made this suite impractically slow on
+# this machine. LSTMSignalStrategy has its own fast, isolated coverage in
+# tests/test_lstm_signal.py (10 tests, ~6s, tiny fixtures) and is excluded
+# from src/run_phase4b.py's live comparison for the same reason — deferred,
+# not abandoned. See CLAUDE.md Phase 4B notes.
 ALL_STRATEGIES = [
     EqualWeight(),
     MinVariance(),
@@ -22,6 +31,8 @@ ALL_STRATEGIES = [
     MinVarianceEWMA(),
     DCCGarchStrategy(),
     MaxSharpe(),
+    RandomForestSignalStrategy(min_train_rows=50),
+    XGBoostSignalStrategy(min_train_rows=50),
 ]
 
 
