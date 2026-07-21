@@ -47,12 +47,14 @@ conception justifiés, résultats réels, tests, limitations et traçabilité P1
 - [`docs/Livrable_Phase2_Backtesting_Markowitz.docx`](docs/Livrable_Phase2_Backtesting_Markowitz.docx)
 - [`docs/Livrable_Phase3_Feature_Engineering_ML.docx`](docs/Livrable_Phase3_Feature_Engineering_ML.docx)
 - [`docs/Livrable_Phase4_Regime_Covariance.docx`](docs/Livrable_Phase4_Regime_Covariance.docx)
+- [`docs/Livrable_Phase4B_Adaptive_ML_Signals.docx`](docs/Livrable_Phase4B_Adaptive_ML_Signals.docx)
 
 Notebooks de validation, exécutés et lisibles avec leurs résultats :
 [`phase1_eda.ipynb`](notebooks/phase1_eda.ipynb) ·
 [`phase2_backtest.ipynb`](notebooks/phase2_backtest.ipynb) ·
 [`phase3_features.ipynb`](notebooks/phase3_features.ipynb) ·
-[`phase4_regime_covariance.ipynb`](notebooks/phase4_regime_covariance.ipynb).
+[`phase4_regime_covariance.ipynb`](notebooks/phase4_regime_covariance.ipynb) ·
+[`phase4b_adaptive_ml_signals.ipynb`](notebooks/phase4b_adaptive_ml_signals.ipynb).
 
 ## État du projet
 
@@ -62,6 +64,7 @@ Notebooks de validation, exécutés et lisibles avec leurs résultats :
 | Phase 2 | Baseline Markowitz + backtesting sans biais de lookahead | ✅ Terminée |
 | Phase 3 | Feature engineering ML | ✅ Terminée |
 | Phase 4 | Modèles ML (HMM + covariance dynamique) | ✅ Terminée |
+| Phase 4B | Modèles de signal ML adaptatifs (F7 : RandomForest + XGBoost) | ✅ Terminée |
 | Phase 5 | Évaluation out-of-sample | ⏳ À venir |
 | Phase 6 | Production (API + dashboard) | ⏳ À venir |
 
@@ -72,8 +75,10 @@ Notebooks de validation, exécutés et lisibles avec leurs résultats :
 │   ├── regime.py         # Détection de régime HMM (Phase 4)
 │   ├── dcc_garch.py      # Estimateur DCC-GARCH (Phase 4)
 │   ├── run_phase4.py     # Comparaison Phase 4 vs. haie Phase 2 (MLflow)
+│   ├── ml_signals.py     # Panel de features par actif + prédiction de rendement (Phase 4B / F7)
+│   ├── run_phase4b.py    # Comparaison Phase 4B vs. haie Phase 4 (MLflow)
 │   └── orchestration/    # Assets Dagster (planification quotidienne du pipeline)
-├── docs/                 # Walkthrough Phase 1 + livrables encadrant (Phases 1-4)
+├── docs/                 # Walkthrough Phase 1 + livrables encadrant (Phases 1-4B)
 ├── notebooks/            # Notebooks de validation évidentielle (P1-P4, par phase)
 ├── tests/                # Tests unitaires + test d'intégration (fixtures synthétiques, hors ligne)
 ├── scripts/              # setup_launchd.sh — planification autonome sous macOS
@@ -97,7 +102,7 @@ pip install -r requirements.txt
 ```
 
 > **Vérification rapide sans configuration :** `pytest` fonctionne immédiatement après
-> l'installation — les 165 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
+> l'installation — les 213 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
 > et les notebooks se consultent avec leurs résultats déjà exécutés. En revanche,
 > `python src/pipeline.py` nécessite la clé FRED ci-dessous et un accès internet :
 > le dossier `data/` n'est pas versionné dans git et se génère à la première exécution.
@@ -159,12 +164,13 @@ python src/features.py      # Gold   : tests de stationnarité, features macro
 python src/ml_features.py   # Gold   : features ML causales (Phase 3, les 2 univers)
 python src/run_backtest.py  # Backtest walk-forward + haie Phase 4 (Phase 2)
 python src/run_phase4.py    # HMM régime + covariance dynamique vs. haie (Phase 4)
+python src/run_phase4b.py   # Signaux ML adaptatifs (RF/XGBoost) vs. haie Phase 4 (Phase 4B)
 ```
 
 ### Tests
 
 ```bash
-pytest                      # suite complète (165 tests, ~20 s, aucun accès réseau)
+pytest                      # suite complète (213 tests, ~55 s, aucun accès réseau)
 pytest -q                   # sortie compacte
 pytest tests/test_clean.py  # un seul module
 pytest -k "forward_fill"    # tests dont le nom correspond au motif
@@ -234,6 +240,7 @@ jupyter notebook notebooks/phase1_eda.ipynb                # EDA évidentielle (
 jupyter notebook notebooks/phase2_backtest.ipynb            # baselines + backtesting
 jupyter notebook notebooks/phase3_features.ipynb            # validation des features ML
 jupyter notebook notebooks/phase4_regime_covariance.ipynb   # régime HMM + covariance dynamique
+jupyter notebook notebooks/phase4b_adaptive_ml_signals.ipynb # signaux ML adaptatifs (RF/XGBoost, F7)
 ```
 
 ## Références principales
