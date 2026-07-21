@@ -85,26 +85,46 @@ class Strategy(ABC):
         fixed in the producer.
 
         The all-zero fallback (SLSQP returned nothing usable) uses uniform
-        1/N, but is NOT returned early — it flows through the same cap
-        enforcement below, so it respects `max_weight` identically to every
-        other branch. Uniform 1/N already satisfies any feasible cap
-        (`_optimize_weights` guarantees `N × max_weight ≥ 1`, i.e.
-        `1/N ≤ max_weight`, before it ever calls this), so for that caller the
-        cap loop is a no-op; a direct caller passing an infeasible cap gets
-        the same water-filled best effort as any other branch rather than an
-        early return that silently ignored the cap (the case Sourcery flagged
-        on PR #13).
+        1/N, but is NOT returned early — it flows through the same feasibility
+        check and cap enforcement below, so it respects `max_weight`
+        identically to every other branch (the case Sourcery flagged on
+        PR #13). Uniform 1/N already satisfies any feasible cap, so for the
+        `_optimize_weights` caller — which guarantees `N × max_weight ≥ 1`
+        before it ever calls this — the cap loop is a no-op.
+
+        An INFEASIBLE cap (`N × max_weight < 1`, so not even 1/N fits) raises
+        here, exactly as `_optimize_weights` raises for the same condition —
+        no combination of long-only weights can both sum to 1 and stay under
+        such a cap, so returning a sub-1 vector would only defer a guaranteed
+        failure to the engine's validator one step later. Raising at the
+        source is this project's loud-failure convention.
+
+        Raises:
+            ValueError: if a cap is given that no valid weight vector can
+                satisfy (`N × max_weight < 1`).
         """
+        n = len(assets)
         w = np.clip(np.asarray(values, dtype=float), 0.0, None)
         total = w.sum()
-        w = np.full(len(assets), 1.0 / len(assets)) if total <= 0.0 else w / total
+        w = np.full(n, 1.0 / n) if total <= 0.0 else w / total
 
         if max_weight is not None:
-            # Terminates in at most one pass per asset; the guard is a
-            # belt-and-braces bound, not an expected iteration count.
-            for _ in range(len(w) + 1):
+            if n * max_weight < 1.0 - 1e-9:
+                raise ValueError(
+                    f"Infeasible cap: {n} assets × max_weight {max_weight} < 1 — "
+                    f"no long-only weights summing to 1 can satisfy it."
+                )
+            # Water-filling: cap the over-limit assets, spread their excess
+            # into those with headroom. Each pass freezes at least one more
+            # asset at the cap, so it converges in ≤ N passes for any feasible
+            # cap; the loop is driven by the `excess` tolerance, and the
+            # for-else RAISES rather than silently returning an over-cap
+            # vector if convergence ever fails numerically (unreachable given
+            # the feasibility guard above, but the trust boundary does not
+            # rely on "unreachable").
+            for _ in range(n + 1):
                 excess = float(np.maximum(w - max_weight, 0.0).sum())
-                if excess <= 1e-15:
+                if excess <= 1e-12:
                     break
                 w = np.minimum(w, max_weight)
                 headroom = max_weight - w
@@ -112,6 +132,12 @@ class Strategy(ABC):
                 if room <= 1e-15:      # every asset already at the cap
                     break
                 w = w + excess * headroom / room
+            else:
+                if float(np.maximum(w - max_weight, 0.0).sum()) > 1e-9:
+                    raise RuntimeError(
+                        "cap projection failed to converge — residual weight "
+                        "above max_weight after water-filling."
+                    )
 
         return pd.Series(w, index=assets)
 

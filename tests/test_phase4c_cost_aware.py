@@ -196,6 +196,17 @@ class TestRenormalizationRespectsTheCap:
         assert weights.max() <= 0.30 + 1e-9
         np.testing.assert_allclose(weights.to_numpy(), 0.25)
 
+    def test_infeasible_cap_raises_rather_than_returning_a_sub_one_vector(self):
+        """A cap no valid vector can satisfy (n × cap < 1) must fail loudly at
+        the source — matching `_optimize_weights`' own feasibility guard —
+        not defer a guaranteed failure to the engine's validator. Applies to
+        the zero-sum branch and the normal branch identically."""
+        assets = pd.Index(list("ABCD"))
+        with pytest.raises(ValueError, match="Infeasible cap"):
+            Strategy._as_weight_series(np.zeros(4), assets, 0.10)   # 4 × 0.10 < 1
+        with pytest.raises(ValueError, match="Infeasible cap"):
+            Strategy._as_weight_series(np.array([0.4, 0.3, 0.2, 0.1]), assets, 0.10)
+
     def test_engine_still_rejects_a_genuinely_over_cap_strategy(self, small_returns):
         """The fix must NOT become a silent repair of real violations.
 
