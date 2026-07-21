@@ -322,6 +322,69 @@ def build_supervised_dataset(
     return X, y, X_predict
 
 
+def apply_mu_transform(
+    predicted: pd.Series,
+    naive: pd.Series,
+    mu_transform: str = "none",
+    shrinkage_weight: float = 0.5,
+) -> pd.Series:
+    """Regularize a predicted expected-return vector before it reaches the optimizer.
+
+    Addresses: P1 — Chopra & Ziemba (1993) showed estimation error in
+    EXPECTED RETURNS is roughly an order of magnitude more damaging to a
+    mean-variance optimizer than equivalent error in the covariance. That
+    result explains the entire Phase 4/4B pattern on this project's own
+    data: Phase 4 improved the covariance input and beat its hurdle on
+    `full_2021` (+15%), while Phase 4B improved the `mu` input and had its
+    best-in-class GROSS Sharpe (1.240) destroyed by the weight swings a
+    noisy `mu` provokes (0.885 turnover). These transforms attack that
+    directly, by refusing to take the model's point estimates at face value.
+
+    Modes:
+      - `"none"`: pass the prediction through unchanged (the Phase 4B
+        behavior, kept as the honest floor to compare against).
+      - `"shrink"`: convex blend `w·predicted + (1−w)·naive`. The standard
+        remedy — keep the signal, damp its magnitude toward the estimate
+        that at least has no model risk. `shrinkage_weight=0` recovers the
+        naive sample mean exactly, `=1` recovers the raw prediction.
+      - `"rank"`: keep only the model's cross-sectional ORDERING and borrow
+        the level and dispersion from `naive`. The strongest form of "trust
+        the ranking, not the magnitudes" — standard in cross-sectional
+        equity ML precisely because predicted return magnitudes are far
+        less reliable than the ordering they imply.
+
+    Args:
+        predicted: Model output, indexed by asset (annualized).
+        naive: The sample-mean estimate `MaxSharpe` already uses, same index
+            and units — the shrinkage target and the dispersion donor.
+        mu_transform: One of `"none"`, `"shrink"`, `"rank"`.
+        shrinkage_weight: Weight on `predicted` when `mu_transform="shrink"`.
+
+    Returns:
+        Transformed expected returns, same index as `predicted`.
+
+    Raises:
+        ValueError: on an unknown `mu_transform` — unlike a runtime
+            estimator failure (which degrades to the naive mean by design),
+            a misspelled config value is a caller bug that should surface
+            immediately rather than silently selecting a different model.
+    """
+    if mu_transform == "none":
+        return predicted
+    if mu_transform == "shrink":
+        return shrinkage_weight * predicted + (1.0 - shrinkage_weight) * naive
+    if mu_transform == "rank":
+        ranks = predicted.rank(method="average")
+        spread = float(ranks.std(ddof=0))
+        if spread < 1e-12:  # single asset, or a perfectly flat prediction
+            return naive
+        centered = (ranks - ranks.mean()) / spread
+        return float(naive.mean()) + centered * float(naive.std(ddof=0))
+    raise ValueError(
+        f"Unknown mu_transform: {mu_transform!r} — expected 'none', 'shrink' or 'rank'."
+    )
+
+
 def fit_predict_expected_returns(
     train_returns: pd.DataFrame,
     extras: Mapping[str, pd.DataFrame] | None = None,
@@ -337,6 +400,8 @@ def fit_predict_expected_returns(
     random_state_base: int = 0,
     covariance_type: str = "diag",
     min_regime_train_days: int = 252,
+    mu_transform: str = "none",
+    shrinkage_weight: float = 0.5,
 ) -> pd.Series:
     """Predict each asset's next-period expected return via a pooled panel model.
 
@@ -369,6 +434,12 @@ def fit_predict_expected_returns(
             condition_on_regime, n_states, n_restarts, random_state_base,
             covariance_type, min_regime_train_days: See `build_asset_
             features`/`attach_regime_feature`.
+        mu_transform, shrinkage_weight: Regularization applied to the
+            prediction before it is returned — see `apply_mu_transform`.
+            Every fallback path below returns the naive mean directly and is
+            therefore unaffected by these (a transform of the naive estimate
+            toward itself is a no-op for `"shrink"`, and `"rank"` on an
+            estimate we already decided not to trust would be noise).
 
     Returns:
         Annualized (×252) expected-return `pd.Series`, indexed exactly by
@@ -376,6 +447,11 @@ def fit_predict_expected_returns(
         weights` needs for its `mu` argument.
     """
     fallback = train_returns.mean() * TRADING_DAYS_PER_YEAR
+
+    if mu_transform not in ("none", "shrink", "rank"):
+        raise ValueError(
+            f"Unknown mu_transform: {mu_transform!r} — expected 'none', 'shrink' or 'rank'."
+        )
 
     if model_type not in ("random_forest", "xgboost"):
         log.warning(
@@ -466,7 +542,7 @@ def fit_predict_expected_returns(
         )
         return fallback
 
-    return result
+    return apply_mu_transform(result, fallback, mu_transform, shrinkage_weight)
 
 
 def run_ml_signal_features(

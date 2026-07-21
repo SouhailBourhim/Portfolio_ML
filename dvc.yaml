@@ -195,3 +195,60 @@ stages:
           - ml_signals.condition_on_regime
           - ml_signals.random_forest
           - ml_signals.xgboost
+
+  # ── Stage 8: Phase 4C — cost-aware optimization + mu regularization ────────
+  # Phase 4B's negative result was diagnosable: rf_signal had the best GROSS
+  # Sharpe on full_2021 (1.240) and lost 0.178 of it to 0.885 turnover. This
+  # stage runs the ablation that attacks that — turnover penalty, mu shrinkage,
+  # rank tilt, and best-mu+best-cov — against the same Phase 4 hurdle.
+  # Slowest stage in the pipeline (adds a DCC-GARCH-covariance signal variant
+  # on top of everything phase4b_compare already ran).
+  phase4c_compare:
+    cmd: python src/run_phase4c.py
+    deps:
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/regime.py
+      - src/dcc_garch.py
+      - src/ml_signals.py
+      - src/run_phase4.py
+      - src/run_phase4b.py
+      - src/run_phase4c.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/ml_features_full.parquet
+      - data/gold/phase4_results.json
+    outs:
+      - data/gold/phase4c_results.json
+    params:
+      - params.yaml:
+          - backtest.rebalance_freq
+          - backtest.min_train_days
+          - backtest.max_weight
+          - backtest.risk_free_annual
+          - backtest.costs_bps
+          - covariance_ewma.halflife_days
+          - covariance_dcc_garch.garch_p
+          - covariance_dcc_garch.garch_q
+          - covariance_dcc_garch.dcc_a_init
+          - covariance_dcc_garch.dcc_b_init
+          - covariance_dcc_garch.rescale_factor
+          - regime.n_states
+          - regime.features
+          - regime.covariance_type
+          - regime.n_restarts
+          - regime.random_state_base
+          - regime.min_regime_train_days
+          - regime.bull_strategy
+          - regime.bear_strategy
+          - ml_signals.short_window
+          - ml_signals.long_window
+          - ml_signals.momentum_windows
+          - ml_signals.min_train_rows
+          - ml_signals.condition_on_regime
+          - ml_signals.random_forest
+          - ml_signals.xgboost
+          - phase4c.turnover_penalty
+          - phase4c.shrinkage_weight

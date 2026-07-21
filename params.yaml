@@ -88,5 +88,24 @@ ml_signals:
   # segfaulted when loaded together in the same process on this machine.
   # Deferred, not abandoned — see CLAUDE.md's Phase 4B notes.
 
+# ── Phase 4C — cost-aware optimization + mu regularization ──────────────────
+# Phase 4B's negative result was diagnosable, not mysterious: on full_2021
+# rf_signal had the BEST gross Sharpe of the whole comparison (1.240, above
+# regime_conditional's 1.204) and lost 0.178 of it to 0.885 turnover. These
+# knobs attack that: price the trade, and stop trusting the predicted mu's
+# magnitudes (Chopra & Ziemba 1993).
+#
+# NONE of these are tuned — they are judgement calls, and Phase 5's purged
+# K-Fold CV is the honest place to select them. Report them as chosen, not
+# as optimized.
+phase4c:
+  results_path: "data/gold/phase4c_results.json"
+  # λ in "annualized Sharpe sacrificed per unit of turnover". 1.0 means the
+  # optimizer will give up 1.0 Sharpe to avoid fully replacing the portfolio.
+  turnover_penalty: 1.0
+  # Weight on the model's prediction when mu_transform: "shrink";
+  # 0.0 == the naive sample mean, 1.0 == the raw prediction.
+  shrinkage_weight: 0.5
+
 phase4b:
   results_path: "data/gold/phase4b_results.json"
