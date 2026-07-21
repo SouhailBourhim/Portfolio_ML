@@ -109,3 +109,35 @@ phase4c:
 
 phase4b:
   results_path: "data/gold/phase4b_results.json"
+
+# ── Phase 5 — Out-of-Sample Evaluation ─────────────────────────────────────
+# Resolves the Phase 4C cliffhanger HONESTLY: rf_signal_shrunk reached 1.117
+# vs the 1.1215 hurdle with shrinkage_weight/turnover_penalty CHOSEN, not
+# tuned. Phase 5 selects them leak-free (purged K-Fold for the ML model,
+# validation-segment net Sharpe for the portfolio levers), freezes them, and
+# reports the verdict on a held-out test segment the selection never saw.
+purged_cv:
+  n_splits: 5
+  embargo_frac: 0.02          # fraction of unique dates embargoed after each fold
+
+phase5:
+  results_path: "data/gold/phase5_results.json"
+  ledger_path: "data/gold/dsr_trial_ledger.json"
+  test_frac: 0.35             # final 35% of each universe's OOS window = frozen test set
+  # ML hyperparameter grids searched by purged K-Fold (scored by information coefficient)
+  rf_grid:
+    max_depth: [3, 4, 6]
+    min_samples_leaf: [10, 20]
+    n_estimators: [200]
+  xgb_grid:
+    max_depth: [2, 3, 4]
+    learning_rate: [0.03, 0.05, 0.10]
+    n_estimators: [200]
+  # Portfolio-lever grids selected by validation-segment net Sharpe (per model)
+  shrink_grid: [0.25, 0.5, 0.75, 1.0]
+  penalty_grid: [0.0, 0.5, 1.0, 2.0]
+  bootstrap:
+    block_len: 21             # ~one trading month; preserves return autocorrelation
+    n_boot: 2000
+    alpha: 0.10               # 90% confidence interval
+    seed: 0
