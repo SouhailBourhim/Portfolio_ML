@@ -59,10 +59,52 @@ class Strategy(ABC):
         """Return target weights (index == train_returns.columns, sum 1, ≥ 0)."""
 
     @staticmethod
-    def _as_weight_series(values: np.ndarray, assets: pd.Index) -> pd.Series:
-        """Clip optimizer dust (−1e-12) to 0 and renormalize to sum exactly 1."""
-        w = pd.Series(np.clip(values, 0.0, None), index=assets)
-        return w / w.sum()
+    def _as_weight_series(
+        values: np.ndarray, assets: pd.Index, max_weight: float | None = None
+    ) -> pd.Series:
+        """
+        Clip optimizer dust (−1e-12) to 0 and renormalize to sum exactly 1,
+        without letting that renormalization break the per-asset cap.
+
+        The cap argument is not decoration. SLSQP satisfies its equality
+        constraint only to solver tolerance, so it can return Σw = 0.9999998;
+        dividing by that sum to force Σw = 1 INFLATES every weight, which can
+        lift an asset sitting exactly on the (0, max_weight) bound to
+        max_weight + 5e-10 — above the engine's own 1e-9 validation tolerance.
+        The optimizer never violated its bounds; the renormalization did.
+
+        Phase 4C surfaced this on real data (`xgb_signal_cost`, GLD at the
+        0.25 cap): a turnover penalty rewards NOT trading, which pushes
+        solutions hard onto the cap boundary and makes the boundary case
+        routine rather than rare.
+
+        Fixed by redistributing any above-cap mass into the assets that still
+        have headroom (standard water-filling) instead of by loosening the
+        engine's check — the engine validating strategy output is the trust
+        boundary this whole project rests on, and a producer bug must be
+        fixed in the producer.
+        """
+        w = np.clip(np.asarray(values, dtype=float), 0.0, None)
+        total = w.sum()
+        if total <= 0.0:
+            return pd.Series(1.0 / len(assets), index=assets)
+        w = w / total
+
+        if max_weight is not None:
+            # Terminates in at most one pass per asset; the guard is a
+            # belt-and-braces bound, not an expected iteration count.
+            for _ in range(len(w) + 1):
+                excess = float(np.maximum(w - max_weight, 0.0).sum())
+                if excess <= 1e-15:
+                    break
+                w = np.minimum(w, max_weight)
+                headroom = max_weight - w
+                room = float(headroom.sum())
+                if room <= 1e-15:      # every asset already at the cap
+                    break
+                w = w + excess * headroom / room
+
+        return pd.Series(w, index=assets)
 
 
 class EqualWeight(Strategy):
@@ -179,7 +221,7 @@ def _optimize_weights(
         start = start / start.sum()
         result = minimize(objective, start, method="SLSQP", bounds=bounds, constraints=constraints)
         if result.success:
-            return Strategy._as_weight_series(result.x, assets)
+            return Strategy._as_weight_series(result.x, assets, max_weight)
         log.debug("%s: SLSQP attempt %d failed: %s", strategy_name, attempt + 1, result.message)
 
     log.warning(
