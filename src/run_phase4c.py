@@ -131,11 +131,16 @@ def build_strategies(params: dict) -> list[Strategy]:
             mu_transform="rank", **shared,
         ),
         # 4. Best mu + best covariance, deliberately combined (not an
-        #    isolation test — the "does stacking help" question).
+        #    isolation test — the "does stacking help" question). ALL DCC
+        #    hyperparameters are forwarded from params.yaml, not just p/q, so
+        #    this rung's covariance is identical to the standalone dcc_garch
+        #    strategy's and cannot silently diverge from it.
         RandomForestSignalStrategy(
             name="rf_signal_cost_dcc", model_params=signal_params["random_forest"],
             turnover_penalty=penalty, cov_estimator="dcc_garch",
             garch_p=dcc_params["garch_p"], garch_q=dcc_params["garch_q"],
+            dcc_a_init=dcc_params["dcc_a_init"], dcc_b_init=dcc_params["dcc_b_init"],
+            rescale_factor=dcc_params["rescale_factor"],
             **shared,
         ),
         # 5. The same penalty on Phase 4B's WORST offender (xgb_signal ran
@@ -222,6 +227,13 @@ def run_phase4c() -> dict[str, list[BacktestResult]]:
             ]
             all_results[universe_name] = results
 
+            # DSR inputs are per-period (daily, NON-annualized) Sharpes by
+            # construction — the Deflated Sharpe Ratio's skew/kurtosis
+            # correction is defined on the raw return series, so annualizing
+            # here (×√252) would be wrong, not just inconsistent. This
+            # deliberately matches run_phase4/run_phase4b's identical trial-
+            # pool computation; the annualized_sharpe used elsewhere is for
+            # human-facing reporting, a separate concern.
             trial_sharpes = [
                 float(r.net_returns.mean() / r.net_returns.std())
                 if r.net_returns.std() > 0 else 0.0

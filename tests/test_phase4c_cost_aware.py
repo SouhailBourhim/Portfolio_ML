@@ -347,6 +347,34 @@ class TestMuTransforms:
         with pytest.raises(ValueError, match="mu_transform"):
             apply_mu_transform(predicted, naive, "definitely_not_a_transform")
 
+    @pytest.mark.parametrize("bad_weight", [-0.1, 1.1, 1.5, -1.0])
+    def test_shrinkage_weight_outside_unit_interval_raises(self, mu_pair, bad_weight):
+        """Outside [0, 1] the blend stops being convex and becomes
+        extrapolation, amplifying the noise shrink exists to damp. A
+        misconfiguration must fail loudly, not silently extrapolate."""
+        predicted, naive = mu_pair
+        with pytest.raises(ValueError, match="shrinkage_weight"):
+            apply_mu_transform(predicted, naive, "shrink", bad_weight)
+
+    @pytest.mark.parametrize("ok_weight", [0.0, 0.5, 1.0])
+    def test_shrinkage_weight_at_the_boundaries_is_accepted(self, mu_pair, ok_weight):
+        predicted, naive = mu_pair
+        result = apply_mu_transform(predicted, naive, "shrink", ok_weight)
+        assert not result.isna().any()
+
+    def test_out_of_range_shrinkage_fails_fast_before_model_fit(self, small_returns):
+        """The fail-fast guard in fit_predict_expected_returns uses the SAME
+        validator, so a bad config surfaces before an expensive fit rather
+        than only at the final transform."""
+        from ml_signals import fit_predict_expected_returns
+
+        with pytest.raises(ValueError, match="shrinkage_weight"):
+            fit_predict_expected_returns(
+                small_returns.iloc[:300], extras=None,
+                mu_transform="shrink", shrinkage_weight=2.0,
+                min_train_rows=50, condition_on_regime=False,
+            )
+
 
 class TestMuTransformReachesTheStrategy:
     def test_transform_choice_changes_the_resulting_weights(self, small_returns):
