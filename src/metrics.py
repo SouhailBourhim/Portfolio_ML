@@ -124,10 +124,15 @@ def deflated_sharpe_ratio(returns: pd.Series, trial_sharpes: Sequence[float]) ->
     Addresses: P4 — this is the project's primary defense against
     "we tried many things and reported the best one."
 
-    Honest limitation: N counts the strategies compared in THIS run
-    (len(trial_sharpes)); it does not yet accumulate across historical
-    experiment sessions. Accumulation policy is a Phase 5 decision —
-    until then, treat DSR as directional, not exact.
+    N-accumulation policy (Phase 5, §17.1 gap now closed): the honest N is
+    "the number of distinct configurations evaluated in the selection search
+    that produced the reported strategy", NOT "all experiments ever" (which
+    is ill-defined). `DSRTrialLedger` (below) persists every trial's
+    per-period Sharpe across a search; feed `deflated_sharpe_ratio` the
+    accumulated pool and N reflects the true breadth of the search (grid size
+    × CV folds), deflating the winner correctly. Callers that pass only a
+    single run's `trial_sharpes` still get the earlier within-run behavior —
+    it is a lower bound on the honest deflation, not a different formula.
 
     Args:
         returns: Simple daily returns of the candidate strategy (OOS).
@@ -207,3 +212,123 @@ def summarize(
         out["dsr_net"] = deflated_sharpe_ratio(net_returns, trial_sharpes)
         out["n_trials"] = float(len(trial_sharpes))
     return out
+
+
+def block_bootstrap_sharpe_ci(
+    returns: pd.Series,
+    block_len: int = 21,
+    n_boot: int = 1000,
+    alpha: float = 0.10,
+    risk_free_annual: float = 0.0,
+    seed: int = 0,
+) -> tuple[float, float, float]:
+    """
+    Circular block-bootstrap confidence interval for the annualized Sharpe.
+
+    Addresses: P4 — a point Sharpe hides its own sampling uncertainty; two
+    strategies 0.15 apart may be statistically indistinguishable over a
+    ~4-year window. This turns "1.12 vs 0.97" into "1.12 (90% CI …) vs
+    0.97 (90% CI …)", the form an honest supervisor conversation needs.
+
+    A CIRCULAR BLOCK bootstrap (not IID resampling) because daily returns are
+    serially correlated (volatility clusters): resampling contiguous blocks
+    of length `block_len` (≈ one trading month) preserves that dependence,
+    where IID resampling would destroy it and understate the interval. The
+    series is treated as a circle so every observation can start a block,
+    avoiding end-effects.
+
+    Deterministic under `seed` (repo convention — every stochastic estimator
+    is seeded), so the reported interval is reproducible.
+
+    Args:
+        returns: Simple periodic (daily) OOS returns.
+        block_len: Block length in periods (21 ≈ one month).
+        n_boot: Number of bootstrap resamples.
+        alpha: Two-sided miss rate; 0.10 → a 90% CI (5th/95th percentiles).
+        risk_free_annual: Passed through to `annualized_sharpe`.
+        seed: RNG seed.
+
+    Returns:
+        (point_sharpe, lo, hi) — the sample annualized Sharpe and the
+        (alpha/2, 1-alpha/2) percentile bounds. NaN triple if too short.
+    """
+    r = returns.dropna().to_numpy()
+    t = len(r)
+    if t < max(block_len, 3):
+        return (float("nan"), float("nan"), float("nan"))
+
+    point = annualized_sharpe(pd.Series(r), risk_free_annual)
+    rng = np.random.default_rng(seed)
+    n_blocks = int(np.ceil(t / block_len))
+    boot_sharpes = np.empty(n_boot)
+
+    for b in range(n_boot):
+        starts = rng.integers(0, t, size=n_blocks)
+        # Circular blocks: wrap indices modulo t so no end-effect bias.
+        idx = (starts[:, None] + np.arange(block_len)[None, :]).ravel() % t
+        sample = r[idx[:t]]
+        sd = sample.std()
+        boot_sharpes[b] = (
+            sample.mean() / sd * np.sqrt(TRADING_DAYS_PER_YEAR) if sd > 1e-12 else 0.0
+        )
+
+    lo = float(np.percentile(boot_sharpes, 100 * alpha / 2))
+    hi = float(np.percentile(boot_sharpes, 100 * (1 - alpha / 2)))
+    return (point, lo, hi)
+
+
+class DSRTrialLedger:
+    """
+    Persistent pool of per-period trial Sharpes, per universe, for honest DSR.
+
+    Addresses: P4 — the N-accumulation policy (see `deflated_sharpe_ratio`'s
+    docstring). The Deflated Sharpe Ratio only deflates correctly if N counts
+    EVERY configuration the search evaluated, not just the handful compared in
+    the final table. A hyperparameter sweep that quietly tried 200 configs and
+    reported the best one is exactly the overfitting DSR exists to penalize;
+    this ledger makes that count auditable and durable across a run.
+
+    Not a database — a small JSON file (`data/gold/dsr_trial_ledger.json`)
+    keyed by universe, holding the per-period (daily, NON-annualized) Sharpe of
+    every trial. `record()` appends; `pool()` returns a universe's full list to
+    hand to `deflated_sharpe_ratio`. Deliberately simple and inspectable, same
+    spirit as the other Gold JSON artifacts.
+    """
+
+    def __init__(self, path=None) -> None:
+        from pathlib import Path
+
+        self.path = Path(path) if path is not None else None
+        self._trials: dict[str, list[float]] = {}
+        if self.path is not None and self.path.exists():
+            import json
+
+            self._trials = {k: list(v) for k, v in json.loads(self.path.read_text()).items()}
+
+    @staticmethod
+    def per_period_sharpe(returns: pd.Series) -> float:
+        """Daily, non-annualized Sharpe — the unit `deflated_sharpe_ratio` expects."""
+        r = returns.dropna()
+        if len(r) < 2 or float(r.std()) < 1e-12:
+            return 0.0
+        return float(r.mean() / r.std())
+
+    def record(self, universe: str, returns: pd.Series) -> None:
+        """Append one trial's per-period Sharpe to `universe`'s pool."""
+        self._trials.setdefault(universe, []).append(self.per_period_sharpe(returns))
+
+    def pool(self, universe: str) -> list[float]:
+        """Every trial Sharpe recorded for `universe` (empty list if none)."""
+        return list(self._trials.get(universe, []))
+
+    def n_trials(self, universe: str) -> int:
+        return len(self._trials.get(universe, []))
+
+    def save(self) -> None:
+        """Persist to `self.path` (no-op if constructed without a path)."""
+        if self.path is None:
+            return
+        import json
+
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(json.dumps(self._trials, indent=2))
