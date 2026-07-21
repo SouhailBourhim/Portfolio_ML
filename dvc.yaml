@@ -144,3 +144,54 @@ stages:
           - regime.min_regime_train_days
           - regime.bull_strategy
           - regime.bear_strategy
+
+  # ── Stage 7: Phase 4B — adaptive ML signal models (F7) vs. the hurdle ──────
+  # RF + XGBoost only — LSTM was built and tested standalone but dropped
+  # from this comparison after a torch+xgboost segfault; see CLAUDE.md.
+  # `dvc repro` only reruns this when its deps actually change.
+  phase4b_compare:
+    cmd: python src/run_phase4b.py
+    deps:
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/regime.py
+      - src/dcc_garch.py
+      - src/ml_signals.py
+      - src/run_phase4.py
+      - src/run_phase4b.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/ml_features_full.parquet
+      - data/gold/phase4_results.json
+    outs:
+      - data/gold/phase4b_results.json
+    params:
+      - params.yaml:
+          - backtest.rebalance_freq
+          - backtest.min_train_days
+          - backtest.max_weight
+          - backtest.risk_free_annual
+          - backtest.costs_bps
+          - covariance_ewma.halflife_days
+          - covariance_dcc_garch.garch_p
+          - covariance_dcc_garch.garch_q
+          - covariance_dcc_garch.dcc_a_init
+          - covariance_dcc_garch.dcc_b_init
+          - covariance_dcc_garch.rescale_factor
+          - regime.n_states
+          - regime.features
+          - regime.covariance_type
+          - regime.n_restarts
+          - regime.random_state_base
+          - regime.min_regime_train_days
+          - regime.bull_strategy
+          - regime.bear_strategy
+          - ml_signals.short_window
+          - ml_signals.long_window
+          - ml_signals.momentum_windows
+          - ml_signals.min_train_rows
+          - ml_signals.condition_on_regime
+          - ml_signals.random_forest
+          - ml_signals.xgboost

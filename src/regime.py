@@ -165,6 +165,37 @@ def fit_hmm(
     return HMMFit(model, scaler, True, float(ll), seed, label_map)
 
 
+def predict_regime_posterior_series(
+    hmm_fit: HMMFit, feature_window: pd.DataFrame, features: list[str] = REGIME_FEATURES
+) -> pd.DataFrame:
+    """
+    Return the FULL per-row regime posterior — one row per date in
+    `feature_window` (after dropping NaN rows), columns `"bull"`/`"bear"`.
+
+    Addresses: P2, P3 — the building block both `predict_regime_posterior`
+    (single latest-row posterior, for `RegimeConditionalStrategy`'s
+    bull/bear dispatch) and `ml_signals.attach_regime_feature` (every
+    historical date, to train a supervised model) need — factored out here
+    so the transform/`predict_proba` logic isn't duplicated across modules.
+
+    Returns an EMPTY DataFrame (columns `"bull"`/`"bear"`, no rows) if
+    `hmm_fit` did not converge or `feature_window` has no usable rows —
+    callers needing a scalar fallback should check `.empty` and use the
+    neutral 0.5, exactly like `predict_regime_posterior` does below.
+    """
+    if not hmm_fit.converged or hmm_fit.model is None:
+        return pd.DataFrame(columns=["bull", "bear"])
+
+    clean = feature_window[features].dropna()
+    if clean.empty:
+        return pd.DataFrame(columns=["bull", "bear"])
+
+    X = hmm_fit.scaler.transform(clean.to_numpy())
+    proba = hmm_fit.model.predict_proba(X)
+    columns = [hmm_fit.label_map[i] for i in range(proba.shape[1])]
+    return pd.DataFrame(proba, index=clean.index, columns=columns)
+
+
 def predict_regime_posterior(
     hmm_fit: HMMFit, feature_window: pd.DataFrame, features: list[str] = REGIME_FEATURES
 ) -> dict[str, float]:
@@ -182,13 +213,7 @@ def predict_regime_posterior(
     usable (non-NaN) rows to predict on — the caller can treat this exactly
     like any other posterior, no special-casing required.
     """
-    if not hmm_fit.converged or hmm_fit.model is None:
+    series = predict_regime_posterior_series(hmm_fit, feature_window, features)
+    if series.empty:
         return {"bull": 0.5, "bear": 0.5}
-
-    clean = feature_window[features].dropna()
-    if clean.empty:
-        return {"bull": 0.5, "bear": 0.5}
-
-    X = hmm_fit.scaler.transform(clean.to_numpy())
-    proba_last = hmm_fit.model.predict_proba(X)[-1]
-    return {hmm_fit.label_map[i]: float(p) for i, p in enumerate(proba_last)}
+    return {label: float(value) for label, value in series.iloc[-1].items()}
