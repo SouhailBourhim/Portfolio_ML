@@ -48,13 +48,15 @@ conception justifiés, résultats réels, tests, limitations et traçabilité P1
 - [`docs/Livrable_Phase3_Feature_Engineering_ML.docx`](docs/Livrable_Phase3_Feature_Engineering_ML.docx)
 - [`docs/Livrable_Phase4_Regime_Covariance.docx`](docs/Livrable_Phase4_Regime_Covariance.docx)
 - [`docs/Livrable_Phase4B_Adaptive_ML_Signals.docx`](docs/Livrable_Phase4B_Adaptive_ML_Signals.docx)
+- [`docs/Livrable_Phase5_Evaluation_OOS.docx`](docs/Livrable_Phase5_Evaluation_OOS.docx)
 
 Notebooks de validation, exécutés et lisibles avec leurs résultats :
 [`phase1_eda.ipynb`](notebooks/phase1_eda.ipynb) ·
 [`phase2_backtest.ipynb`](notebooks/phase2_backtest.ipynb) ·
 [`phase3_features.ipynb`](notebooks/phase3_features.ipynb) ·
 [`phase4_regime_covariance.ipynb`](notebooks/phase4_regime_covariance.ipynb) ·
-[`phase4b_adaptive_ml_signals.ipynb`](notebooks/phase4b_adaptive_ml_signals.ipynb).
+[`phase4b_adaptive_ml_signals.ipynb`](notebooks/phase4b_adaptive_ml_signals.ipynb) ·
+[`phase5_oos_evaluation.ipynb`](notebooks/phase5_oos_evaluation.ipynb).
 
 ## État du projet
 
@@ -65,7 +67,7 @@ Notebooks de validation, exécutés et lisibles avec leurs résultats :
 | Phase 3 | Feature engineering ML | ✅ Terminée |
 | Phase 4 | Modèles ML (HMM + covariance dynamique) | ✅ Terminée |
 | Phase 4B | Modèles de signal ML adaptatifs (F7 : RandomForest + XGBoost) | ✅ Terminée |
-| Phase 5 | Évaluation out-of-sample | ⏳ À venir |
+| Phase 5 | Évaluation out-of-sample (K-Fold purgé, sélection honnête, IC bootstrap) | ✅ Terminée |
 | Phase 6 | Production (API + dashboard) | ⏳ À venir |
 
 ## Structure du dépôt
@@ -78,7 +80,7 @@ Notebooks de validation, exécutés et lisibles avec leurs résultats :
 │   ├── ml_signals.py     # Panel de features par actif + prédiction de rendement (Phase 4B / F7)
 │   ├── run_phase4b.py    # Comparaison Phase 4B vs. haie Phase 4 (MLflow)
 │   └── orchestration/    # Assets Dagster (planification quotidienne du pipeline)
-├── docs/                 # Walkthrough Phase 1 + livrables encadrant (Phases 1-4B)
+├── docs/                 # Walkthrough Phase 1 + livrables encadrant (Phases 1-5)
 ├── notebooks/            # Notebooks de validation évidentielle (P1-P4, par phase)
 ├── tests/                # Tests unitaires + test d'intégration (fixtures synthétiques, hors ligne)
 ├── scripts/              # setup_launchd.sh — planification autonome sous macOS
@@ -102,7 +104,7 @@ pip install -r requirements.txt
 ```
 
 > **Vérification rapide sans configuration :** `pytest` fonctionne immédiatement après
-> l'installation — les 213 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
+> l'installation — les 297 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
 > et les notebooks se consultent avec leurs résultats déjà exécutés. En revanche,
 > `python src/pipeline.py` nécessite la clé FRED ci-dessous et un accès internet :
 > le dossier `data/` n'est pas versionné dans git et se génère à la première exécution.
@@ -165,12 +167,13 @@ python src/ml_features.py   # Gold   : features ML causales (Phase 3, les 2 univ
 python src/run_backtest.py  # Backtest walk-forward + haie Phase 4 (Phase 2)
 python src/run_phase4.py    # HMM régime + covariance dynamique vs. haie (Phase 4)
 python src/run_phase4b.py   # Signaux ML adaptatifs (RF/XGBoost) vs. haie Phase 4 (Phase 4B)
+python src/run_phase5.py    # Évaluation OOS : K-Fold purgé + sélection honnête + IC bootstrap (Phase 5)
 ```
 
 ### Tests
 
 ```bash
-pytest                      # suite complète (213 tests, ~55 s, aucun accès réseau)
+pytest                      # suite complète (297 tests, ~1 min, aucun accès réseau)
 pytest -q                   # sortie compacte
 pytest tests/test_clean.py  # un seul module
 pytest -k "forward_fill"    # tests dont le nom correspond au motif
@@ -241,6 +244,7 @@ jupyter notebook notebooks/phase2_backtest.ipynb            # baselines + backte
 jupyter notebook notebooks/phase3_features.ipynb            # validation des features ML
 jupyter notebook notebooks/phase4_regime_covariance.ipynb   # régime HMM + covariance dynamique
 jupyter notebook notebooks/phase4b_adaptive_ml_signals.ipynb # signaux ML adaptatifs (RF/XGBoost, F7)
+jupyter notebook notebooks/phase5_oos_evaluation.ipynb       # évaluation OOS : K-Fold purgé + IC bootstrap
 ```
 
 ## Références principales
