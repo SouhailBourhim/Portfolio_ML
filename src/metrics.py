@@ -245,19 +245,28 @@ def block_bootstrap_sharpe_ci(
         block_len: Block length in periods (21 ≈ one month).
         n_boot: Number of bootstrap resamples.
         alpha: Two-sided miss rate; 0.10 → a 90% CI (5th/95th percentiles).
-        risk_free_annual: Passed through to `annualized_sharpe`.
+        risk_free_annual: Excess-return adjustment, applied IDENTICALLY to the
+            point and every bootstrap sample so the CI and the point use the
+            same (excess, ddof=1) Sharpe convention `annualized_sharpe` uses.
         seed: RNG seed.
 
     Returns:
         (point_sharpe, lo, hi) — the sample annualized Sharpe and the
-        (alpha/2, 1-alpha/2) percentile bounds. NaN triple if too short.
+        (alpha/2, 1-alpha/2) percentile bounds. NaN triple if the series is
+        too short OR has (near-)zero variance (Sharpe undefined), consistent
+        with `annualized_sharpe`'s own degenerate-case return.
     """
     r = returns.dropna().to_numpy()
     t = len(r)
-    if t < max(block_len, 3):
+    # Zero-variance → Sharpe undefined; return NaN like annualized_sharpe does,
+    # rather than a spurious 0.0 CI around an undefined point.
+    if t < max(block_len, 3) or float(np.std(r, ddof=1)) < 1e-12:
         return (float("nan"), float("nan"), float("nan"))
 
     point = annualized_sharpe(pd.Series(r), risk_free_annual)
+    # Same per-period excess and ddof=1 as annualized_sharpe, so the bootstrap
+    # distribution is in the same units the point estimate lives in.
+    rf_periodic = (1 + risk_free_annual) ** (1 / TRADING_DAYS_PER_YEAR) - 1
     rng = np.random.default_rng(seed)
     n_blocks = int(np.ceil(t / block_len))
     boot_sharpes = np.empty(n_boot)
@@ -266,10 +275,10 @@ def block_bootstrap_sharpe_ci(
         starts = rng.integers(0, t, size=n_blocks)
         # Circular blocks: wrap indices modulo t so no end-effect bias.
         idx = (starts[:, None] + np.arange(block_len)[None, :]).ravel() % t
-        sample = r[idx[:t]]
-        sd = sample.std()
+        excess = r[idx[:t]] - rf_periodic
+        sd = float(np.std(excess, ddof=1))
         boot_sharpes[b] = (
-            sample.mean() / sd * np.sqrt(TRADING_DAYS_PER_YEAR) if sd > 1e-12 else 0.0
+            excess.mean() / sd * np.sqrt(TRADING_DAYS_PER_YEAR) if sd > 1e-12 else 0.0
         )
 
     lo = float(np.percentile(boot_sharpes, 100 * alpha / 2))

@@ -156,6 +156,25 @@ class TestBlockBootstrapSharpeCI:
         point, lo, hi = block_bootstrap_sharpe_ci(pd.Series([0.01, 0.02]), block_len=21)
         assert np.isnan(point) and np.isnan(lo) and np.isnan(hi)
 
+    def test_constant_returns_yield_nan_not_a_spurious_zero_ci(self):
+        """Flat PnL has an UNDEFINED Sharpe (zero variance) — the function must
+        return NaN, matching annualized_sharpe, not a spurious 0.0 CI around an
+        undefined point. Locks in consistent degenerate-case behavior."""
+        const = pd.Series(np.full(252, 0.01))
+        point, lo, hi = block_bootstrap_sharpe_ci(const, n_boot=200, seed=0)
+        assert np.isnan(point) and np.isnan(lo) and np.isnan(hi)
+
+    def test_point_sits_inside_the_ci_with_a_nonzero_risk_free_rate(self):
+        """The rf adjustment is applied to BOTH the point and every bootstrap
+        sample, so the point stays bracketed even when rf != 0 (the bug: rf on
+        the point but not the resamples would shift the CI off the point)."""
+        rng = np.random.default_rng(4)
+        r = pd.Series(rng.normal(0.0006, 0.01, 800))
+        point, lo, hi = block_bootstrap_sharpe_ci(
+            r, n_boot=500, risk_free_annual=0.05, seed=0
+        )
+        assert lo <= point <= hi
+
     def test_wider_interval_for_lower_confidence_alpha(self, iid_returns):
         _, lo90, hi90 = block_bootstrap_sharpe_ci(iid_returns, n_boot=500, alpha=0.10, seed=0)
         _, lo50, hi50 = block_bootstrap_sharpe_ci(iid_returns, n_boot=500, alpha=0.50, seed=0)

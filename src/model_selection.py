@@ -251,6 +251,10 @@ def select_portfolio_levers(
             universe_name=bt.get("universe_name", ""),
             max_weight=bt["max_weight"],
         )
+        # `result.net_returns` is ALREADY the out-of-sample series — the engine
+        # emits returns only from τ+1 of the first rebalance after min_train_days,
+        # never the warm-up/training window. So scoring all of it IS scoring the
+        # validation tail; there is no in-sample portion to exclude here.
         val_sharpe = annualized_sharpe(result.net_returns, bt.get("risk_free_annual", 0.0))
         rows.append({
             "shrinkage_weight": float(shrink),

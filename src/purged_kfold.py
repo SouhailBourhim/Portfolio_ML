@@ -35,11 +35,14 @@ and partly in test.
 
 from __future__ import annotations
 
+import logging
 import math
 
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import BaseCrossValidator
+
+log = logging.getLogger("purged_kfold")
 
 
 def _sample_dates(X) -> pd.DatetimeIndex:
@@ -127,5 +130,15 @@ class PurgedKFold(BaseCrossValidator):
             test_idx = all_positions[test_mask]
             train_idx = all_positions[train_mask]
             if len(test_idx) == 0 or len(train_idx) == 0:
+                # A fold whose train or test is emptied by the purge/embargo is
+                # dropped, so the effective fold count can fall below n_splits.
+                # Log it (never silent — CLAUDE.md §13.13) so a caller relying
+                # on get_n_splits() is warned that this run yielded fewer.
+                log.warning(
+                    "PurgedKFold: fold [%s..%s] dropped (train=%d, test=%d) — "
+                    "purge/embargo left it empty; effective folds < n_splits. "
+                    "Reduce embargo_frac or n_splits, or add history.",
+                    test_start.date(), test_end.date(), len(train_idx), len(test_idx),
+                )
                 continue
             yield train_idx, test_idx
