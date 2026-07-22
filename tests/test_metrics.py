@@ -10,8 +10,10 @@ import pandas as pd
 import pytest
 
 from metrics import (
+    DSRTrialLedger,
     annualized_return,
     annualized_sharpe,
+    block_bootstrap_sharpe_ci,
     calmar_ratio,
     deflated_sharpe_ratio,
     information_ratio,
@@ -130,3 +132,97 @@ class TestSummarize:
         assert out["total_cost_drag"] > 0
         assert out["n_trials"] == 2
         assert "dsr_net" in out
+
+
+class TestBlockBootstrapSharpeCI:
+    def test_ci_brackets_the_point_sharpe(self, iid_returns):
+        point, lo, hi = block_bootstrap_sharpe_ci(iid_returns, n_boot=500, seed=0)
+        assert lo <= point <= hi
+
+    def test_ci_is_deterministic_under_a_fixed_seed(self, iid_returns):
+        a = block_bootstrap_sharpe_ci(iid_returns, n_boot=300, seed=7)
+        b = block_bootstrap_sharpe_ci(iid_returns, n_boot=300, seed=7)
+        assert a == b
+
+    def test_ci_narrows_with_more_data(self):
+        rng = np.random.default_rng(3)
+        short = pd.Series(rng.normal(0.0005, 0.01, 250))
+        long = pd.Series(rng.normal(0.0005, 0.01, 3000))
+        _, lo_s, hi_s = block_bootstrap_sharpe_ci(short, n_boot=500, seed=0)
+        _, lo_l, hi_l = block_bootstrap_sharpe_ci(long, n_boot=500, seed=0)
+        assert (hi_l - lo_l) < (hi_s - lo_s)
+
+    def test_too_short_series_returns_nan_triple(self):
+        point, lo, hi = block_bootstrap_sharpe_ci(pd.Series([0.01, 0.02]), block_len=21)
+        assert np.isnan(point) and np.isnan(lo) and np.isnan(hi)
+
+    def test_constant_returns_yield_nan_not_a_spurious_zero_ci(self):
+        """Flat PnL has an UNDEFINED Sharpe (zero variance) — the function must
+        return NaN, matching annualized_sharpe, not a spurious 0.0 CI around an
+        undefined point. Locks in consistent degenerate-case behavior."""
+        const = pd.Series(np.full(252, 0.01))
+        point, lo, hi = block_bootstrap_sharpe_ci(const, n_boot=200, seed=0)
+        assert np.isnan(point) and np.isnan(lo) and np.isnan(hi)
+
+    def test_point_sits_inside_the_ci_with_a_nonzero_risk_free_rate(self):
+        """The rf adjustment is applied to BOTH the point and every bootstrap
+        sample, so the point stays bracketed even when rf != 0 (the bug: rf on
+        the point but not the resamples would shift the CI off the point)."""
+        rng = np.random.default_rng(4)
+        r = pd.Series(rng.normal(0.0006, 0.01, 800))
+        point, lo, hi = block_bootstrap_sharpe_ci(
+            r, n_boot=500, risk_free_annual=0.05, seed=0
+        )
+        assert lo <= point <= hi
+
+    def test_wider_interval_for_lower_confidence_alpha(self, iid_returns):
+        _, lo90, hi90 = block_bootstrap_sharpe_ci(iid_returns, n_boot=500, alpha=0.10, seed=0)
+        _, lo50, hi50 = block_bootstrap_sharpe_ci(iid_returns, n_boot=500, alpha=0.50, seed=0)
+        assert (hi90 - lo90) > (hi50 - lo50)   # 90% CI wider than 50% CI
+
+
+class TestDSRTrialLedger:
+    def _returns(self, mean, n=300, seed=0):
+        rng = np.random.default_rng(seed)
+        return pd.Series(rng.normal(mean, 0.01, n))
+
+    def test_records_and_pools_per_universe(self):
+        ledger = DSRTrialLedger()
+        ledger.record("full_2021", self._returns(0.0005, seed=1))
+        ledger.record("full_2021", self._returns(0.0003, seed=2))
+        ledger.record("etf_2017", self._returns(0.0004, seed=3))
+        assert ledger.n_trials("full_2021") == 2
+        assert ledger.n_trials("etf_2017") == 1
+        assert ledger.n_trials("unseen") == 0
+        assert len(ledger.pool("full_2021")) == 2
+
+    def test_per_period_sharpe_is_non_annualized(self):
+        r = self._returns(0.001, n=1000, seed=5)
+        expected = float(r.mean() / r.std())
+        assert DSRTrialLedger.per_period_sharpe(r) == pytest.approx(expected)
+
+    def test_accumulated_pool_deflates_at_least_as_much_as_within_run(self):
+        """The honesty direction: a larger accumulated trial pool must not
+        INFLATE the DSR relative to a small within-run pool — more configs
+        tried ⇒ stronger selection correction (weakly lower DSR)."""
+        candidate = self._returns(0.0009, n=400, seed=0)
+        small_pool = [DSRTrialLedger.per_period_sharpe(candidate),
+                      DSRTrialLedger.per_period_sharpe(self._returns(0.0002, seed=10))]
+        ledger = DSRTrialLedger()
+        ledger.record("u", candidate)
+        for s in range(1, 40):
+            ledger.record("u", self._returns(0.0002 + s * 1e-5, seed=s))
+        big_pool = ledger.pool("u")
+        dsr_small = deflated_sharpe_ratio(candidate, small_pool)
+        dsr_big = deflated_sharpe_ratio(candidate, big_pool)
+        assert dsr_big <= dsr_small + 1e-9
+
+    def test_save_and_reload_round_trips(self, tmp_path):
+        path = tmp_path / "ledger.json"
+        led = DSRTrialLedger(path=path)
+        led.record("full_2021", self._returns(0.0006, seed=2))
+        led.save()
+        assert path.exists()
+        reloaded = DSRTrialLedger(path=path)
+        assert reloaded.n_trials("full_2021") == 1
+        assert reloaded.pool("full_2021") == led.pool("full_2021")

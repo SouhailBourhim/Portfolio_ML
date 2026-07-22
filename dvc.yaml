@@ -252,3 +252,57 @@ stages:
           - ml_signals.xgboost
           - phase4c.turnover_penalty
           - phase4c.shrinkage_weight
+
+  # ── Stage 9: Phase 5 — out-of-sample evaluation (purged CV, honest tuning) ─
+  # Selects the F7 knobs leak-free (purged K-Fold for the model, validation-
+  # segment net Sharpe for the levers), freezes them, and reports the verdict
+  # on a held-out test segment with block-bootstrap CIs. Slowest stage: fits
+  # RF/XGB per CV fold per grid point, then backtests the lever grid.
+  phase5_compare:
+    cmd: python src/run_phase5.py
+    deps:
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/regime.py
+      - src/ml_signals.py
+      - src/purged_kfold.py
+      - src/model_selection.py
+      - src/run_phase4.py
+      - src/run_phase5.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/ml_features_full.parquet
+      - data/gold/phase4_results.json
+    outs:
+      - data/gold/phase5_results.json
+      - data/gold/dsr_trial_ledger.json
+    params:
+      - params.yaml:
+          - backtest.rebalance_freq
+          - backtest.min_train_days
+          - backtest.max_weight
+          - backtest.risk_free_annual
+          - backtest.costs_bps
+          - regime.n_states
+          - regime.features
+          - regime.covariance_type
+          - regime.n_restarts
+          - regime.random_state_base
+          - regime.min_regime_train_days
+          - regime.bull_strategy
+          - regime.bear_strategy
+          - ml_signals.short_window
+          - ml_signals.long_window
+          - ml_signals.momentum_windows
+          - ml_signals.min_train_rows
+          - ml_signals.condition_on_regime
+          - purged_cv.n_splits
+          - purged_cv.embargo_frac
+          - phase5.test_frac
+          - phase5.rf_grid
+          - phase5.xgb_grid
+          - phase5.shrink_grid
+          - phase5.penalty_grid
+          - phase5.bootstrap
