@@ -48,6 +48,7 @@ conception justifiés, résultats réels, tests, limitations et traçabilité P1
 - [`docs/Livrable_Phase3_Feature_Engineering_ML.docx`](docs/Livrable_Phase3_Feature_Engineering_ML.docx)
 - [`docs/Livrable_Phase4_Regime_Covariance.docx`](docs/Livrable_Phase4_Regime_Covariance.docx)
 - [`docs/Livrable_Phase4B_Adaptive_ML_Signals.docx`](docs/Livrable_Phase4B_Adaptive_ML_Signals.docx)
+- [`docs/Livrable_Phase4C_Optimisation_Sensible_aux_Couts.docx`](docs/Livrable_Phase4C_Optimisation_Sensible_aux_Couts.docx)
 - [`docs/Livrable_Phase5_Evaluation_OOS.docx`](docs/Livrable_Phase5_Evaluation_OOS.docx)
 
 Notebooks de validation, exécutés et lisibles avec leurs résultats :
@@ -56,6 +57,7 @@ Notebooks de validation, exécutés et lisibles avec leurs résultats :
 [`phase3_features.ipynb`](notebooks/phase3_features.ipynb) ·
 [`phase4_regime_covariance.ipynb`](notebooks/phase4_regime_covariance.ipynb) ·
 [`phase4b_adaptive_ml_signals.ipynb`](notebooks/phase4b_adaptive_ml_signals.ipynb) ·
+[`phase4c_cost_aware.ipynb`](notebooks/phase4c_cost_aware.ipynb) ·
 [`phase5_oos_evaluation.ipynb`](notebooks/phase5_oos_evaluation.ipynb).
 
 ### Note de recherche — expansion des données (2026-07)
@@ -78,6 +80,7 @@ quantité. Détails : [`docs/DEEP_MOROCCO_EXPERIMENT.md`](docs/DEEP_MOROCCO_EXPE
 | Phase 3 | Feature engineering ML | ✅ Terminée |
 | Phase 4 | Modèles ML (HMM + covariance dynamique) | ✅ Terminée |
 | Phase 4B | Modèles de signal ML adaptatifs (F7 : RandomForest + XGBoost) | ✅ Terminée |
+| Phase 4C | Optimisation sensible aux coûts + régularisation de μ | ✅ Terminée |
 | Phase 5 | Évaluation out-of-sample (K-Fold purgé, sélection honnête, IC bootstrap) | ✅ Terminée |
 | Phase 6 | Production (API + dashboard) | ⏳ À venir |
 
@@ -90,6 +93,7 @@ quantité. Détails : [`docs/DEEP_MOROCCO_EXPERIMENT.md`](docs/DEEP_MOROCCO_EXPE
 │   ├── run_phase4.py     # Comparaison Phase 4 vs. haie Phase 2 (MLflow)
 │   ├── ml_signals.py     # Panel de features par actif + prédiction de rendement (Phase 4B / F7)
 │   ├── run_phase4b.py    # Comparaison Phase 4B vs. haie Phase 4 (MLflow)
+│   ├── run_phase4c.py    # Optimisation sensible aux coûts + régularisation μ (Phase 4C)
 │   └── orchestration/    # Assets Dagster (planification quotidienne du pipeline)
 ├── docs/                 # Walkthrough Phase 1 + livrables encadrant (Phases 1-5)
 ├── notebooks/            # Notebooks de validation évidentielle (P1-P4, par phase)
@@ -178,13 +182,14 @@ python src/ml_features.py   # Gold   : features ML causales (Phase 3, les 2 univ
 python src/run_backtest.py  # Backtest walk-forward + haie Phase 4 (Phase 2)
 python src/run_phase4.py    # HMM régime + covariance dynamique vs. haie (Phase 4)
 python src/run_phase4b.py   # Signaux ML adaptatifs (RF/XGBoost) vs. haie Phase 4 (Phase 4B)
+python src/run_phase4c.py   # Optimisation sensible aux coûts + régularisation μ (Phase 4C)
 python src/run_phase5.py    # Évaluation OOS : K-Fold purgé + sélection honnête + IC bootstrap (Phase 5)
 ```
 
 ### Tests
 
 ```bash
-pytest                      # suite complète (297 tests, ~1 min, aucun accès réseau)
+pytest                      # suite complète (297 tests, ~2 min, aucun accès réseau)
 pytest -q                   # sortie compacte
 pytest tests/test_clean.py  # un seul module
 pytest -k "forward_fill"    # tests dont le nom correspond au motif
@@ -255,6 +260,7 @@ jupyter notebook notebooks/phase2_backtest.ipynb            # baselines + backte
 jupyter notebook notebooks/phase3_features.ipynb            # validation des features ML
 jupyter notebook notebooks/phase4_regime_covariance.ipynb   # régime HMM + covariance dynamique
 jupyter notebook notebooks/phase4b_adaptive_ml_signals.ipynb # signaux ML adaptatifs (RF/XGBoost, F7)
+jupyter notebook notebooks/phase4c_cost_aware.ipynb          # optimisation sensible aux coûts + régularisation μ
 jupyter notebook notebooks/phase5_oos_evaluation.ipynb       # évaluation OOS : K-Fold purgé + IC bootstrap
 ```
 
