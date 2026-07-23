@@ -58,6 +58,17 @@ Notebooks de validation, exécutés et lisibles avec leurs résultats :
 [`phase4b_adaptive_ml_signals.ipynb`](notebooks/phase4b_adaptive_ml_signals.ipynb) ·
 [`phase5_oos_evaluation.ipynb`](notebooks/phase5_oos_evaluation.ipynb).
 
+### Note de recherche — expansion des données (2026-07)
+
+Le signal ML était-il *sous-alimenté* en données ? Test sur un univers marocain **profond de 12
+actions sur ~20 ans (2005–2024, 56 000 lignes de panel ≈ 5× l'univers actuel)**, assemblé à partir
+d'historiques investing.com. Résultat honnête : plus de données ont rendu le **modèle plus
+intelligent** (coefficient d'information ×2–4, ~0,07) mais **pas** d'avantage de portefeuille
+statistiquement significatif — le plafond est la **qualité** des données (fondamentaux), pas la
+quantité. Détails : [`docs/DEEP_MOROCCO_EXPERIMENT.md`](docs/DEEP_MOROCCO_EXPERIMENT.md) ·
+[`notebooks/deep_morocco_data_expansion.ipynb`](notebooks/deep_morocco_data_expansion.ipynb) ·
+`experiments/deep_morocco_starvation.py`.
+
 ## État du projet
 
 | Phase | Description | Statut |
