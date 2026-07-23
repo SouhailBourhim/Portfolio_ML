@@ -120,6 +120,38 @@ purged_cv:
   n_splits: 5
   embargo_frac: 0.02          # fraction of unique dates embargoed after each fold
 
+# ── Fundamentals experiment — F7 features beyond price history ──────────────
+# Phase 5 established that the F7 signal, tuned honestly on prices alone, is
+# statistically INDISTINGUISHABLE from regime_conditional out-of-sample. The
+# deep-Morocco experiment (2005-2024, 12 stocks, 56k pooled rows) then ruled
+# out "more price history" as the missing ingredient: purged-CV IC improved
+# ~2-4x, portfolio edge did not. That result explicitly redirects the alpha
+# search to a different data class: fundamentals.
+#
+# Source: stockanalysis.com (S&P Global-sourced, ~5 yr annual + ~10 semi-annual
+# periods, free, robots-allowed for '*'). Period-end dates only — publication
+# date is not exposed, so a conservative fixed lag is applied on every row
+# (§15.8 causal-discipline convention, enforced by unit test).
+fundamentals:
+  # BVC tickers where fundamentals meaningfully move the signal. ETFs are
+  # deliberately excluded — an ETF's "fundamentals" are a holdings weighting,
+  # a different modelling problem out of scope for this pass.
+  tickers: ["IAM", "ATW", "CIH", "BCP"]
+  # Fields to keep on the SEMI-ANNUAL ratios page. Verified 2026-07-23 on all
+  # four tickers: only these four have multi-period coverage. ROE and margin
+  # ratios (grossMargin/operatingMargin/profitMargin) are annual-only for
+  # Moroccan issuers — S&P doesn't publish half-year profitability ratios
+  # here. Requesting a field not on the page produces no column (never a
+  # silent NaN column), so we list only what actually comes through.
+  ratio_fields: ["pe", "pb", "ps", "debtequity"]
+  # Semi-annual publication delay in Morocco is typically 60-90 days after
+  # period-end (AMMC deadline). 90d is the conservative bound; any real
+  # publication faster than that is a bonus, not a leak.
+  publication_lag_days: 90
+  cache_dir: "data/bronze/fundamentals"
+  output_path: "data/gold/fundamentals_features.parquet"
+  manifest_path: "data/gold/fundamentals_manifest.json"
+
 phase5:
   results_path: "data/gold/phase5_results.json"
   ledger_path: "data/gold/dsr_trial_ledger.json"

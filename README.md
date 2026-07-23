@@ -71,6 +71,25 @@ quantité. Détails : [`docs/DEEP_MOROCCO_EXPERIMENT.md`](docs/DEEP_MOROCCO_EXPE
 [`notebooks/deep_morocco_data_expansion.ipynb`](notebooks/deep_morocco_data_expansion.ipynb) ·
 `experiments/deep_morocco_starvation.py`.
 
+### Note de recherche — fondamentaux (2026-07)
+
+Suite directe de la note précédente : puisque le plafond serait la **qualité** des données, on
+ajoute des **fondamentaux point-in-time** (P/E, P/B, P/S, D/E scrapés depuis stockanalysis.com,
+décalés de 90 jours ouvrés pour respecter le délai de publication AMMC) aux 4 actions BVC de
+l'univers `full_2021`. Résultat honnête, **troisième** confirmation du plafond « précision de
+prédiction ≠ performance du portefeuille » :
+- **Le modèle apprend davantage** : IC ×2 en validation croisée purgée (0,028 → 0,058 pour RF),
+  `FUND_pb` devient la 2ᵉ feature la plus importante (15,8 % de l'importance totale).
+- **Le portefeuille n'en profite pas** : Sharpe net *baisse* de 1,21 à 0,88 sur la fenêtre test
+  gelée (IC de confiance à 90 % chevauchant, donc non-significatif — mais toutes les estimations
+  ponctuelles vont dans le mauvais sens).
+Trois tests indépendants (Phase 5 sur prix, Deep-Morocco sur 20 ans de prix, fondamentaux) convergent
+vers la même conclusion : à l'échelle de cet univers, le signal F7 de prédiction de rendement
+n'améliore pas significativement la ligne de base régime + covariance dynamique. Détails :
+[`docs/FUNDAMENTALS_EXPERIMENT.md`](docs/FUNDAMENTALS_EXPERIMENT.md) ·
+`experiments/fundamentals_ic_lift.py` · `experiments/fundamentals_portfolio.py` ·
+`src/fundamentals.py`.
+
 ## État du projet
 
 | Phase | Description | Statut |

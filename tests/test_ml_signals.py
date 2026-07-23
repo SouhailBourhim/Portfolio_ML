@@ -12,6 +12,7 @@ import pandas as pd
 import pytest
 
 from ml_signals import (
+    attach_fundamentals_features,
     attach_regime_feature,
     build_asset_features,
     build_supervised_dataset,
@@ -379,3 +380,58 @@ class TestRunMlSignalFeatures:
         manifest = json.loads((gold / "ml_signal_features_manifest.json").read_text())
         assert set(manifest["universes"]) == {"etf_2017", "full_2021"}
         assert manifest["universes"]["etf_2017"]["columns"] == results["etf_2017"].shape[1]
+
+
+class TestAttachFundamentalsFeatures:
+    """The fundamentals-experiment seam. Same shape-of-guarantee as
+    TestAttachRegimeFeature: no-op when input is absent, correct broadcast,
+    and — the load-bearing one — the ETF median-fill respects the
+    per-asset BVC values so a BVC row never gets a median instead of its
+    own value."""
+
+    def _panel_and_fund(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        # 3 dates × 3 assets: two "BVC-like" (A, B) with fundamentals, one
+        # ETF-like (E) without. Fund panel has A__FUND_pe and B__FUND_pe.
+        dates = pd.bdate_range("2023-01-02", periods=3, name="Date")
+        assets = ["A", "B", "E"]
+        idx = pd.MultiIndex.from_product([dates, assets], names=["Date", "ASSET"])
+        panel = pd.DataFrame({"RET_5D": np.arange(len(idx), dtype=float)}, index=idx)
+
+        fund = pd.DataFrame({
+            "A__FUND_pe": [10.0, 11.0, 12.0],
+            "B__FUND_pe": [20.0, 22.0, 24.0],
+        }, index=dates)
+        return panel, fund
+
+    def test_no_fundamentals_panel_returns_input_untouched(self):
+        panel, _ = self._panel_and_fund()
+        result = attach_fundamentals_features(panel, fundamentals_panel=None)
+        pd.testing.assert_frame_equal(result, panel)
+
+    def test_bvc_asset_gets_its_own_fundamental_not_the_median(self):
+        panel, fund = self._panel_and_fund()
+        result = attach_fundamentals_features(panel, fund, fund_assets=["A", "B"])
+        # On date[0], A's PE must be 10.0 (its own), NOT 15.0 (the median).
+        d0 = fund.index[0]
+        assert result.loc[(d0, "A"), "FUND_pe"] == pytest.approx(10.0)
+        assert result.loc[(d0, "B"), "FUND_pe"] == pytest.approx(20.0)
+
+    def test_etf_asset_gets_cross_sectional_median_of_bvc(self):
+        panel, fund = self._panel_and_fund()
+        result = attach_fundamentals_features(panel, fund, fund_assets=["A", "B"])
+        d1 = fund.index[1]
+        # median of A=11.0, B=22.0 is 16.5
+        assert result.loc[(d1, "E"), "FUND_pe"] == pytest.approx(16.5)
+
+    def test_has_fund_indicator_marks_bvc_and_etf_correctly(self):
+        panel, fund = self._panel_and_fund()
+        result = attach_fundamentals_features(panel, fund, fund_assets=["A", "B"])
+        assert result.loc[(fund.index[0], "A"), "HAS_FUND"] == 1
+        assert result.loc[(fund.index[0], "B"), "HAS_FUND"] == 1
+        assert result.loc[(fund.index[0], "E"), "HAS_FUND"] == 0
+
+    def test_infer_fund_assets_when_omitted(self):
+        panel, fund = self._panel_and_fund()
+        result = attach_fundamentals_features(panel, fund)
+        # Inferred fund_assets = ["A", "B"] from column names → E still ETF.
+        assert result.loc[(fund.index[0], "E"), "HAS_FUND"] == 0

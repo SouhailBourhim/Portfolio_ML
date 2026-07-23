@@ -288,6 +288,106 @@ def attach_regime_feature(
     return result
 
 
+def attach_fundamentals_features(
+    panel: pd.DataFrame,
+    fundamentals_panel: pd.DataFrame | None,
+    fund_assets: list[str] | None = None,
+) -> pd.DataFrame:
+    """Merge per-asset fundamentals (F7 fundamentals experiment) onto the panel.
+
+    Addresses: P4 (fundamentals experiment) — the deep-Morocco experiment
+    showed that price-only ML tops out at the "prediction accuracy ≠
+    portfolio performance" ceiling. This function is the seam through which
+    a genuinely new data class (fundamentals, from `src/fundamentals.py`)
+    reaches the F7 model.
+
+    The fundamentals Gold panel is `(Date × TICKER__FUND_metric)` and covers
+    only a subset of the universe's tickers (BVC equities have published
+    fundamentals; ETFs do not — an ETF's "fundamentals" would be a holdings-
+    weighted aggregate, a modelling problem out of scope). Two facts about
+    that panel drive this function's design:
+
+    1. For each `(date, asset)` row on the F7 panel, if `asset` has its own
+       fundamentals column, we read it directly. This is genuine, causal,
+       point-in-time information (§15.14 / §15.8-style: `fundamentals.py`'s
+       `apply_publication_lag` already enforced the causal boundary
+       upstream).
+    2. For assets WITHOUT fundamentals (ETFs), we fill each fundamental with
+       the CROSS-SECTIONAL MEDIAN of the tickers that DO have that
+       fundamental on that date. A binary `HAS_FUND` column tells the tree
+       model which rows carry a real signal. This preserves the training row
+       — critical for a pooled cross-sectional model where dropping the ETFs
+       would lose 5/9 of `full_2021`'s assets — while letting the tree
+       discover the asset-type distinction itself, rather than us hard-
+       coding it. The `HAS_FUND=0` rows do not contaminate the fit because
+       the median-fill values are, by construction, the same for every ETF
+       on a given date (a constant across the ETF subset per date), so any
+       split on a `FUND_*` column stratifies mainly by `HAS_FUND`.
+
+    Args:
+        panel: Output of `melt_to_panel` (typically after
+            `attach_regime_feature`) — `(Date, ASSET)` MultiIndex.
+        fundamentals_panel: Gold-layer fundamentals panel (columns like
+            `IAM__FUND_pe`); pass `None` to no-op, useful for the ablation
+            control (F7 without fundamentals vs. F7 with fundamentals).
+        fund_assets: Which assets in `panel` have fundamentals (typically
+            the BVC subset). Inferred from column names if omitted.
+
+    Returns:
+        `panel` with one `FUND_{metric}` column per metric and a
+        `HAS_FUND` indicator (0/1) — same idiom `attach_regime_feature`
+        uses to add `REGIME_BULL_PROB`.
+    """
+    if fundamentals_panel is None or fundamentals_panel.empty:
+        return panel
+
+    # Infer per-asset fund columns: those matching TICKER__FUND_metric
+    fund_cols = list(fundamentals_panel.columns)
+    parsed = [c.split("__FUND_") for c in fund_cols]
+    parsed = [p for p in parsed if len(p) == 2]
+    if not parsed:
+        return panel
+
+    all_fund_assets = sorted({t for t, _ in parsed})
+    metrics = sorted({m for _, m in parsed})
+    if fund_assets is None:
+        fund_assets = all_fund_assets
+
+    # For each (date, asset), look up asset's fund columns if it has them,
+    # else fill with the cross-sectional median of the fund_assets at that date.
+    dates = panel.index.get_level_values("Date").unique()
+    fund_view = fundamentals_panel.reindex(dates)  # forward-fill already applied upstream
+
+    result = panel.copy()
+    for m in metrics:
+        cols = [f"{t}__FUND_{m}" for t in fund_assets if f"{t}__FUND_{m}" in fund_view.columns]
+        if not cols:
+            continue
+        median_by_date = fund_view[cols].median(axis=1, skipna=True)
+
+        panel_dates = result.index.get_level_values("Date")
+        panel_assets = result.index.get_level_values("ASSET")
+
+        # First, initialise everyone with the date's median (the ETF fill).
+        vals = median_by_date.reindex(panel_dates).to_numpy()
+
+        # Then overwrite with each asset's own value where present.
+        for t in fund_assets:
+            col_name = f"{t}__FUND_{m}"
+            if col_name not in fund_view.columns:
+                continue
+            asset_series = fund_view[col_name].reindex(panel_dates).to_numpy()
+            mask = (panel_assets == t)
+            vals = np.where(mask, asset_series, vals)
+
+        result[f"FUND_{m}"] = vals
+
+    # HAS_FUND: 1 for assets with their own fundamentals column, 0 otherwise.
+    panel_assets = result.index.get_level_values("ASSET")
+    result["HAS_FUND"] = panel_assets.isin(fund_assets).astype(int)
+    return result
+
+
 def build_supervised_dataset(
     panel: pd.DataFrame, log_returns: pd.DataFrame
 ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
@@ -511,6 +611,14 @@ def fit_predict_expected_returns(
             covariance_type=covariance_type,
             min_regime_train_days=min_regime_train_days,
         )
+
+    # Fundamentals experiment (opt-in via extras["fundamentals"]): if the
+    # caller supplied a point-in-time fundamentals panel (already `:τ`-sliced
+    # by the engine like any other extras frame), attach it as additional
+    # per-asset feature columns. Absent key = classical F7, unchanged.
+    fundamentals_panel = (extras or {}).get("fundamentals")
+    if fundamentals_panel is not None and not fundamentals_panel.empty:
+        panel = attach_fundamentals_features(panel, fundamentals_panel)
 
     X, y, X_predict = build_supervised_dataset(panel, train_returns)
 
