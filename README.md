@@ -25,6 +25,26 @@ de Markowitz :
 - **ETF internationaux :** SPY, QQQ, EEM, GLD, TLT
 - **Indicateurs macro :** FRED (VIX, US10Y, DXY, CREDIT_SPREAD) + Bank Al-Maghrib (EUR/MAD, USD/MAD, taux directeur)
 
+Deux univers de backtest :
+
+| Univers | Composition | Fenêtre | Crises couvertes |
+|---|---|---|---|
+| `etf_2017` | 5 ETF | **2004-11 → aujourd'hui** (~5 650 jours) | 2008, COVID 2020, choc de taux 2022 |
+| `full_2021` | 9 actifs (BVC + ETF) | 2021-07 → aujourd'hui (~1 320 jours) | choc de taux 2022 |
+
+La fenêtre ETF a été étendue de 2017 à 2004 le 2026-07-25 : l'ancien départ était une décision de
+projet, pas une limite de données. Les ~12 années supplémentaires réduisent la largeur des
+intervalles de confiance bootstrap de **38 %** et intègrent la crise de 2008
+([note](docs/ETF_DEEP_HISTORY_EXPERIMENT.md)). L'univers à 9 actifs reste tronqué à 2021-07 par la
+disponibilité des données BVC.
+
+**Rendements totaux, pas seulement les prix.** Les ETF arrivent ajustés des dividendes
+(`yfinance auto_adjust`) et, depuis le 2026-07-25, les actions BVC le sont également via
+[`src/dividends.py`](src/dividends.py) (montants et dates de détachement récupérés auprès de la
+Bourse de Casablanca). Avant cette correction, les actifs marocains étaient sous-estimés de
+3,0–4,3 %/an, ce qui **gonflait** l'avantage mesuré des optimiseurs — détail et impact chiffré dans
+[`docs/DIVIDEND_BIAS.md`](docs/DIVIDEND_BIAS.md).
+
 ## Architecture des données
 
 Le pipeline suit une architecture en médaillon à trois couches :

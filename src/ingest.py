@@ -19,6 +19,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import yfinance as yf
+from dotenv import load_dotenv
 from fredapi import Fred
 
 logging.basicConfig(
@@ -28,6 +29,13 @@ logging.basicConfig(
 log = logging.getLogger("ingest")
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# `pipeline.py` already loads .env, but this module is also a documented
+# standalone entry point (`python src/ingest.py`), where FRED_API_KEY would
+# otherwise be missing and the macro step would fail with a confusing
+# EnvironmentError despite the key sitting in .env. Idempotent, and does not
+# override a variable already exported in the environment.
+load_dotenv(ROOT / ".env")
 BRONZE_DIR = ROOT / "data" / "bronze"
 
 # ── Asset universe ───────────────────────────────────────────────────────────
@@ -65,7 +73,22 @@ FRED_SERIES = {
     "CREDIT_SPREAD": "BAA10Y",
 }
 
-START_DATE = "2017-01-01"
+# Extended from 2017-01-01 on 2026-07-25. The old start was a Phase 1
+# judgement call, not a data limit: yfinance serves all five ETFs back to
+# 2004-11-18 (GLD's inception is the binding constraint; SPY reaches 1993).
+#
+# Taking those twelve extra years cut block-bootstrap confidence-interval
+# width by 38% (mean 1.137 -> 0.705 across the four headline strategies) and
+# brings the 2008 crisis into the sample for the first time — see
+# docs/ETF_DEEP_HISTORY_EXPERIMENT.md. Statistical power, not model quality,
+# was what blocked every verdict in Phase 5, deep-Morocco and fundamentals.
+#
+# Only `etf_2017` is affected in practice: the 9-asset universe is truncated
+# to 2021-07 by the BVC data anyway (BVC_START below), so its window is
+# unchanged. The universe KEY stays "etf_2017" — renaming it would break the
+# params/DVC/dashboard contracts for no analytical gain; the actual window is
+# recorded in the validation report and shown in the dashboard.
+START_DATE = "2004-11-18"
 
 
 # ── Price ingestion ──────────────────────────────────────────────────────────

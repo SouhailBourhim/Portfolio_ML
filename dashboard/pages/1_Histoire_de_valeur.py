@@ -212,6 +212,12 @@ st.markdown(
       face au Markowitz classique — c'est-à-dire qu'il **perd**. Le ML apporte de la
       valeur là où la diversification naïve est faible et les régimes marqués, pas
       partout.
+    - **Ce cas défavorable est en partie un artefact de contrainte, pas seulement
+      un verdict sur le ML.** Avec 5 actifs et un plafond de 25 %, tout portefeuille
+      admissible doit placer au moins 4 actifs *au plafond* (5 × 0,25 = 1,25) : la
+      contrainte, et non le modèle, détermine l'essentiel de l'allocation. À 25 % la
+      variance minimale ne produit qu'**une seule** allocation sur 248 rééquilibrages ;
+      à 30 %, elle en produit 169. L'univers à 9 actifs n'est pas concerné.
     - **La significativité statistique n'est pas établie.** Les intervalles de
       confiance se chevauchent ; la fenêtre de test hors échantillon est courte.
     - **La couche de prédiction de rendement (F7) n'apporte rien.** Trois expériences
@@ -221,7 +227,8 @@ st.markdown(
     - **Exposition de change non couverte.** Les actifs BVC sont en MAD, les ETF en
       USD ; les résultats intègrent une exposition USD/MAD non couverte.
     - **Historique BVC limité.** Les données gratuites de la Bourse de Casablanca ne
-      remontent qu'à mi-2021, ce qui exclut le krach COVID de cet univers.
+      remontent qu'à mi-2021, ce qui exclut le krach COVID de cet univers. L'univers
+      ETF, lui, remonte désormais à 2004 et intègre la crise de 2008.
     """
 )
 

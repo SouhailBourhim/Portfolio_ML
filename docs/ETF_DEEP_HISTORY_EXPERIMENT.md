@@ -128,10 +128,45 @@ Recorded here rather than quietly dropped.
 3. **`full_2021` is unaffected** — 9 assets give the optimizer genuine freedom, so the headline
    +14.3% result stands.
 
+## ADOPTED — 2026-07-25, same day
+
+`ingest.start_date` is now **`2004-11-18`** in production. Re-ingested, re-cleaned, re-baselined.
+
+| | Before | After |
+|---|---:|---:|
+| `etf_2017` rows (Silver) | 2,493 | **5,656** |
+| OOS rebalances | 103 | **248** |
+| OOS window | 8.5 yr | **20.7 yr** |
+| `equal_weight` max drawdown | COVID-era | **−36.2%** (2008 now in sample) |
+| `etf_2017` hurdle | `max_sharpe` 0.928 | **`min_variance_lw` 0.953** |
+
+The hurdle numbers reproduce the experiment's predictions exactly (min-var 0.953), which is the
+check that the production path and the experiment agree.
+
+`full_2021` is deliberately unchanged (1,321 rows): it is truncated to 2021-07 by BVC availability
+regardless of the requested start, and the pipeline says so loudly rather than silently — *"Calendar
+alignment is dropping 6069 days … because ['IAM.CS', 'ATW.CS', 'CIH.CS', 'BCP.CS'] have no data
+before that point."*
+
+**Two things checked rather than assumed:**
+
+- **The universe key stays `etf_2017`.** Renaming it would break the params / DVC / dashboard
+  contracts for no analytical gain. The true window lives in the validation report and is displayed
+  in the dashboard.
+- **Macro coverage does not silently degrade the models.** Extending to 2005 leaves three macro
+  columns partly NaN (`DXY` starts 2006, `EURMAD` similar, and `TAUX_DIR` only reaches 2017 because
+  it is a hand-maintained BAM decision list — §17.2). Verified that the HMM's three inputs
+  (`MARKET_RETURN`, `MARKET_VOL_SHORT`, `AVG_PAIRWISE_CORR`) are **NaN-free across the whole
+  2005–2026 span**, and that neither the regime model nor F7 reads the affected macro columns. The
+  gap is real, pre-existing, and now merely visible; it affects macro EDA only.
+
+Also fixed in passing: `src/ingest.py` never called `load_dotenv`, so running it standalone (a
+documented entry point) failed on the macro step with a confusing `EnvironmentError` while
+`FRED_API_KEY` sat in `.env`. `pipeline.py` had been masking it.
+
 ## Recommended follow-ups
 
-- **Adopt the deep ETF window** (`ingest.start_date` → `2004-11-18`), re-baselining `phase2_hurdle`
-  and downstream comparisons. Cheap; large gain in statistical power.
+- ~~Adopt the deep ETF window~~ — **done, above.**
 - **Re-run the `etf_2017` conclusions at a non-binding cap** (0.35–0.40), or state the confound
   explicitly wherever the "no ML benefit on `etf_2017`" claim appears.
 - **Reconsider the cap as a modelling choice, not just a constraint.** At 25% on 5 assets it is the

@@ -1,7 +1,13 @@
 # Pipeline parameters — edit here and run `dvc repro` to re-execute only affected stages.
 
 ingest:
-  start_date: "2017-01-01"   # covers COVID crash (2020) and 2022 rate shock
+  # 2004-11-18 = GLD's inception, the earliest date all five ETFs exist.
+  # Extended from 2017-01-01 on 2026-07-25: the old start was a project
+  # decision, not a data limit, and the extra ~12 years cut bootstrap CI
+  # width by 38% while adding the 2008 crisis. Only affects etf_2017 —
+  # the 9-asset universe is BVC-truncated to 2021-07 regardless.
+  # See docs/ETF_DEEP_HISTORY_EXPERIMENT.md.
+  start_date: "2004-11-18"   # + COVID 2020, 2022 rate shock, 2008 GFC
 
 clean:
   ffill_limit: 5             # max consecutive business days to forward-fill
