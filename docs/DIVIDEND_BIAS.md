@@ -93,6 +93,55 @@ correction was swept across the plausible range:
 only the three independently-published yields are corrected. The finding is robust to the one
 judgement call it contains.
 
+## RESOLVED — the fix, and the final numbers
+
+*Updated 2026-07-25, same day.* The correction is implemented and the whole pipeline
+re-baselined. The approximation above has been replaced by the real thing.
+
+**Dividend source.** `BVCscrap.getDividend` exists but is **broken** — it targets the legacy
+`casablanca-bourse.com/bourseweb/Societe-Cote.aspx` endpoint, which now 307-redirects to a
+redesigned site. `src/dividends.py` reads the modern per-issuer page instead, whose dividend table
+is server-rendered into the HTML: per-share amount, type (Ordinaire / Exceptionnel), and — the part
+that matters — the **ex-dividend date**. History reaches back to 2011–2013 per issuer.
+
+**Cross-validation against the independent stockanalysis.com yields:**
+
+| Ticker | Scraped, realised over 2021–2026 | Published (stockanalysis.com) |
+|---|---:|---:|
+| `ATW.CS` | 3.64% | 3.8% |
+| `BCP.CS` | 4.17% | 4.1% |
+| `CIH.CS` | 4.25% | 4.5% |
+| `IAM.CS` | **3.03%** | not published (I had estimated 5.5%) |
+
+The IAM estimate was **too high** — it has cut its dividend hard (9.26 in 2012 → 1.43 in 2025).
+This is exactly why the sensitivity sweep was run rather than trusting one guess.
+
+**Implementation.** `clean.compute_log_returns(prices, dividends=...)` computes
+`r_t = ln((P_t + D_t) / P_{t-1})`, applying each payment on its ex-date — the same convention
+`auto_adjust=True` already applies to the ETFs. `silver_pipeline(adjust_dividends=True)` is the
+default; `False` reproduces the old numbers exactly for A/B. 61 dividends applied, 1 correctly
+skipped as falling beyond the price window. 15 new tests in `tests/test_dividends.py`.
+
+**Final corrected results (`full_2021`, net of costs, out-of-sample):**
+
+| | Best classical | `regime_conditional` | Lift |
+|---|---|---:|---:|
+| As published | `equal_weight` 0.981 | 1.121 | **+14.3%** |
+| **Corrected** | `max_sharpe` **1.163** | **1.238** | **+6.5%** |
+
+Landing at +6.5% against the +7.0% the constant-yield approximation predicted, inside the
++6.3–8.2% sensitivity band. The approximation was sound; the exact treatment is now in the pipeline.
+
+**A second finding fell out of the correction.** Once dividends are counted, **`max_sharpe`
+(1.163) overtakes `equal_weight` (1.152)** on `full_2021`. The project has cited the DeMiguel et al.
+(2009) "1/N beats the optimizers" result as reproduced on our own data since Phase 2 — **that
+reproduction was an artefact of the missing dividends.** It does not survive the correction, and
+every place it is claimed needs the same restatement.
+
+**Propagation was automatic.** The dashboard and API picked up +6.47% with no code change, because
+they derive from Gold artifacts and `tests/test_run_dashboard_data.py` forbids hardcoded figures.
+Only English/French prose needed a manual edit.
+
 ## What this does and does not change
 
 **The core conclusion survives.** The regime + dynamic-covariance system still beats classical

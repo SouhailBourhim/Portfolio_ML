@@ -122,9 +122,9 @@ uvicorn api.main:app --app-dir src
 ```
 
 - **📊 Histoire de valeur** — page destinée aux décideurs : ce que le système ML apporte face au
-  Markowitz classique (**+14,3 % de Sharpe net sur `full_2021`**), la validation hors échantillon
+  Markowitz classique (**+6,5 % de Sharpe net sur `full_2021`**), la validation hors échantillon
   avec intervalles de confiance, la chronologie des régimes détectés, et les limites énoncées
-  explicitement (dont le cas `etf_2017` où le système **perd −4,0 %**).
+  explicitement (dont le cas `etf_2017` où le système **perd −4,2 %**).
 - **🛠️ Outil du gestionnaire** — page métier : comparaison de stratégies, métriques nettes de
   coûts, allocations cibles, historique des rééquilibrages, export CSV.
 - **API REST** (`src/api/`) — `/strategies`, `/metrics`, `/equity`, `/weights`, `/compare`. Sert
