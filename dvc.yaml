@@ -306,3 +306,40 @@ stages:
           - phase5.shrink_grid
           - phase5.penalty_grid
           - phase5.bootstrap
+
+  # ── Phase 6+7: dashboard data layer ───────────────────────────────────────
+  # Regenerates every number the Streamlit dashboard shows, from committed Gold
+  # inputs. Tracked as a stage (rather than run by hand) for the same reason
+  # phase2_hurdle got a stage: a stakeholder-facing surface must never quote a
+  # number that has silently drifted from its source.
+  dashboard_data:
+    cmd: python src/run_dashboard_data.py
+    deps:
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/regime.py
+      - src/run_phase4.py
+      - src/run_dashboard_data.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/ml_features_full.parquet
+      - data/gold/phase5_results.json
+    params:
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - backtest.max_weight
+      - backtest.risk_free_annual
+      - backtest.costs_bps
+      - regime.n_states
+      - regime.features
+      - regime.covariance_type
+      - regime.n_restarts
+      - regime.random_state_base
+      - regime.min_regime_train_days
+    outs:
+      - data/gold/dashboard_equity.parquet
+      - data/gold/dashboard_weights.parquet
+      - data/gold/dashboard_regime.parquet
+      - data/gold/dashboard_showcase.json

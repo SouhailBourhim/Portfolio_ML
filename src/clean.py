@@ -97,9 +97,11 @@ def align_calendars(prices: pd.DataFrame, ffill_limit: int = 5) -> pd.DataFrame:
 
 # ── Log-returns ──────────────────────────────────────────────────────────────
 
-def compute_log_returns(prices: pd.DataFrame) -> pd.DataFrame:
+def compute_log_returns(
+    prices: pd.DataFrame, dividends: pd.DataFrame | None = None
+) -> pd.DataFrame:
     """
-    Compute daily log-returns: r_t = ln(P_t / P_{t-1}).
+    Compute daily log-returns: r_t = ln((P_t + D_t) / P_{t-1}).
 
     Addresses: P2 — price levels have unit roots (non-stationary). Log-returns
     are stationary for most financial series, satisfying HMM and DCC-GARCH
@@ -110,14 +112,56 @@ def compute_log_returns(prices: pd.DataFrame) -> pd.DataFrame:
     - np.log(P/P.shift(1)) is equivalent for small moves but better-behaved
       numerically and produces a more symmetric distribution.
 
+    DIVIDENDS (added 2026-07-25, fixes a real bias — see docs/DIVIDEND_BIAS.md).
+    The ETF side arrives dividend-adjusted (`yfinance auto_adjust=True`), but
+    BVCscrap's `feature="Value"` is price-only, so the two halves of the
+    universe meant different things: ETFs were total return, BVC assets were
+    missing 3.6-4.3%/yr of dividends. That does not cancel in a portfolio
+    comparison — `equal_weight` is forced to hold the understated assets while
+    the optimizers can flee them, so it inflated every optimizer's measured
+    edge. Passing `dividends` reconstructs the total return a holder actually
+    earned, making both halves comparable.
+
+    Applying a dividend on its EX-DATE is not lookahead: the ex-date is
+    precisely when the price mechanically drops by the payment, so adding it
+    back that day restores the holder's true return. This is the same
+    convention `auto_adjust=True` already applies to the ETFs.
+
     Args:
-        prices: Aligned adjusted close prices, wide format.
+        prices: Aligned close prices, wide format.
+        dividends: Optional tidy frame from `dividends.load_bvc_dividends`
+            with columns (ex_date, ticker, amount). Assets absent from it pass
+            through unchanged — correct for ETFs, which are already total
+            return. `None` reproduces the old price-only behaviour exactly.
 
     Returns:
         Log-returns matrix, one fewer row than input (first row dropped).
     """
-    log_ret = np.log(prices / prices.shift(1)).dropna()
-    log.info("Log-returns computed: %d rows × %d columns", *log_ret.shape)
+    if dividends is None or dividends.empty:
+        log_ret = np.log(prices / prices.shift(1)).dropna()
+        log.info("Log-returns computed (price-only): %d rows × %d columns", *log_ret.shape)
+        return log_ret
+
+    payments = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
+    applied = skipped = 0
+    for ticker, group in dividends.groupby("ticker"):
+        if ticker not in prices.columns:
+            continue
+        column = payments.columns.get_loc(ticker)
+        for ex_date, amount in zip(group["ex_date"], group["amount"]):
+            position = prices.index.searchsorted(pd.Timestamp(ex_date))
+            if position >= len(prices.index):
+                skipped += 1          # ex-date beyond the price window
+                continue
+            payments.iloc[position, column] += float(amount)
+            applied += 1
+
+    log_ret = np.log((prices + payments) / prices.shift(1)).dropna()
+    log.info(
+        "Log-returns computed (TOTAL RETURN): %d rows × %d columns; "
+        "%d dividends applied, %d outside the price window",
+        *log_ret.shape, applied, skipped,
+    )
     return log_ret
 
 
@@ -188,6 +232,7 @@ def silver_pipeline(
     ffill_limit: int = 5,
     include_bvc: bool = True,
     output_stem: str = "log_returns",
+    adjust_dividends: bool = True,
 ) -> pd.DataFrame:
     """
     Full Bronze → Silver transformation.
@@ -206,6 +251,11 @@ def silver_pipeline(
         output_stem: Base filename for outputs. The default writes the
             canonical log_returns.parquet / validation_report.json; other
             stems write alongside without touching the canonical files.
+        adjust_dividends: Reconstruct BVC total returns from the scraped
+            dividend history (see `compute_log_returns` and
+            docs/DIVIDEND_BIAS.md). Only meaningful when `include_bvc` is
+            True — the ETFs are already dividend-adjusted at ingest. Set
+            False only to reproduce the pre-2026-07-25 price-only numbers.
 
     Returns:
         Validated log-returns DataFrame (wide, DatetimeIndex).
@@ -223,8 +273,25 @@ def silver_pipeline(
     else:
         log.info("ETF-only universe requested — skipping BVC merge.")
 
+    dividends = None
+    if include_bvc and adjust_dividends:
+        from dividends import load_bvc_dividends
+
+        try:
+            dividends = load_bvc_dividends()
+        except Exception as exc:  # noqa: BLE001 — network/scrape, must not be silent
+            # Degrading to price-only would silently reintroduce the exact bias
+            # this step exists to remove, so it is a WARNING a human must read
+            # (§15.13), not a debug line.
+            log.warning(
+                "BVC dividend history unavailable (%s) — falling back to "
+                "PRICE-ONLY returns. BVC assets will be understated by ~3.6-4.3%%/yr "
+                "relative to the dividend-adjusted ETFs. See docs/DIVIDEND_BIAS.md.",
+                exc,
+            )
+
     aligned = align_calendars(prices, ffill_limit=ffill_limit)
-    log_returns = compute_log_returns(aligned)
+    log_returns = compute_log_returns(aligned, dividends=dividends)
     flag_illiquid_assets(log_returns)
 
     validated = validate_log_returns(log_returns, expect_bvc=include_bvc)

@@ -25,6 +25,26 @@ de Markowitz :
 - **ETF internationaux :** SPY, QQQ, EEM, GLD, TLT
 - **Indicateurs macro :** FRED (VIX, US10Y, DXY, CREDIT_SPREAD) + Bank Al-Maghrib (EUR/MAD, USD/MAD, taux directeur)
 
+Deux univers de backtest :
+
+| Univers | Composition | Fenêtre | Crises couvertes |
+|---|---|---|---|
+| `etf_2017` | 5 ETF | **2004-11 → aujourd'hui** (~5 650 jours) | 2008, COVID 2020, choc de taux 2022 |
+| `full_2021` | 9 actifs (BVC + ETF) | 2021-07 → aujourd'hui (~1 320 jours) | choc de taux 2022 |
+
+La fenêtre ETF a été étendue de 2017 à 2004 le 2026-07-25 : l'ancien départ était une décision de
+projet, pas une limite de données. Les ~12 années supplémentaires réduisent la largeur des
+intervalles de confiance bootstrap de **38 %** et intègrent la crise de 2008
+([note](docs/ETF_DEEP_HISTORY_EXPERIMENT.md)). L'univers à 9 actifs reste tronqué à 2021-07 par la
+disponibilité des données BVC.
+
+**Rendements totaux, pas seulement les prix.** Les ETF arrivent ajustés des dividendes
+(`yfinance auto_adjust`) et, depuis le 2026-07-25, les actions BVC le sont également via
+[`src/dividends.py`](src/dividends.py) (montants et dates de détachement récupérés auprès de la
+Bourse de Casablanca). Avant cette correction, les actifs marocains étaient sous-estimés de
+3,0–4,3 %/an, ce qui **gonflait** l'avantage mesuré des optimiseurs — détail et impact chiffré dans
+[`docs/DIVIDEND_BIAS.md`](docs/DIVIDEND_BIAS.md).
+
 ## Architecture des données
 
 Le pipeline suit une architecture en médaillon à trois couches :
@@ -50,6 +70,7 @@ conception justifiés, résultats réels, tests, limitations et traçabilité P1
 - [`docs/Livrable_Phase4B_Adaptive_ML_Signals.docx`](docs/Livrable_Phase4B_Adaptive_ML_Signals.docx)
 - [`docs/Livrable_Phase4C_Optimisation_Sensible_aux_Couts.docx`](docs/Livrable_Phase4C_Optimisation_Sensible_aux_Couts.docx)
 - [`docs/Livrable_Phase5_Evaluation_OOS.docx`](docs/Livrable_Phase5_Evaluation_OOS.docx)
+- [`docs/Livrable_Phase6-7_Suite_Portfolio_ML.docx`](docs/Livrable_Phase6-7_Suite_Portfolio_ML.docx)
 
 Notebooks de validation, exécutés et lisibles avec leurs résultats :
 [`phase1_eda.ipynb`](notebooks/phase1_eda.ipynb) ·
@@ -101,7 +122,38 @@ n'améliore pas significativement la ligne de base régime + covariance dynamiqu
 | Phase 4B | Modèles de signal ML adaptatifs (F7 : RandomForest + XGBoost) | ✅ Terminée |
 | Phase 4C | Optimisation sensible aux coûts + régularisation de μ | ✅ Terminée |
 | Phase 5 | Évaluation out-of-sample (K-Fold purgé, sélection honnête, IC bootstrap) | ✅ Terminée |
-| Phase 6 | Production (API + dashboard) | ⏳ À venir |
+| Phase 6+7 | Suite Portfolio ML — dashboard Streamlit + API REST FastAPI | ✅ Terminée |
+
+## Suite Portfolio ML (dashboard + API)
+
+Les phases 6 (outil de production) et 7 (démonstration de valeur) sont livrées comme **une seule
+application Streamlit à deux pages**, partageant une couche de données unique — deux pages ne
+peuvent donc jamais afficher des chiffres divergents pour la même stratégie.
+
+```bash
+# 1. Générer les artefacts que le dashboard lit (ou : dvc repro dashboard_data)
+python src/run_dashboard_data.py
+
+# 2. Lancer le dashboard
+streamlit run dashboard/streamlit_app.py
+
+# 3. (Optionnel) Lancer l'API REST — documentation interactive sur /docs
+uvicorn api.main:app --app-dir src
+```
+
+- **📊 Histoire de valeur** — page destinée aux décideurs : ce que le système ML apporte face au
+  Markowitz classique (**+6,5 % de Sharpe net sur `full_2021`**), la validation hors échantillon
+  avec intervalles de confiance, la chronologie des régimes détectés, et les limites énoncées
+  explicitement (dont le cas `etf_2017` où le système **perd −4,2 %**).
+- **🛠️ Outil du gestionnaire** — page métier : comparaison de stratégies, métriques nettes de
+  coûts, allocations cibles, historique des rééquilibrages, export CSV.
+- **API REST** (`src/api/`) — `/strategies`, `/metrics`, `/equity`, `/weights`, `/compare`. Sert
+  les mêmes artefacts Gold versionnés ; `/compare` renvoie toujours l'intervalle de confiance et
+  la mise en garde avec l'écart de performance.
+
+**Garde-fou d'intégrité :** aucun chiffre n'est codé en dur. `tests/test_run_dashboard_data.py`
+vérifie que chaque chiffre affiché découle bien des artefacts Gold produits par le même passage
+(y compris par inspection du code source, pour interdire toute valeur saisie à la main).
 
 ## Structure du dépôt
 
@@ -113,7 +165,15 @@ n'améliore pas significativement la ligne de base régime + covariance dynamiqu
 │   ├── ml_signals.py     # Panel de features par actif + prédiction de rendement (Phase 4B / F7)
 │   ├── run_phase4b.py    # Comparaison Phase 4B vs. haie Phase 4 (MLflow)
 │   ├── run_phase4c.py    # Optimisation sensible aux coûts + régularisation μ (Phase 4C)
+│   ├── fundamentals.py   # Fondamentaux point-in-time BVC (expérience 2026-07)
+│   ├── run_dashboard_data.py  # Artefacts consommés par le dashboard (Phase 6+7)
+│   ├── api/              # Service REST FastAPI (Phase 6)
 │   └── orchestration/    # Assets Dagster (planification quotidienne du pipeline)
+├── dashboard/            # Application Streamlit à deux pages (Phase 6+7)
+│   ├── streamlit_app.py  # Point d'entrée
+│   ├── pages/            # 1_Histoire_de_valeur · 2_Outil_gestionnaire
+│   └── shared/           # Couche de données + bibliothèque de graphiques communes
+├── experiments/          # Notes de recherche (deep-Morocco, fondamentaux)
 ├── docs/                 # Walkthrough Phase 1 + livrables encadrant (Phases 1-5)
 ├── notebooks/            # Notebooks de validation évidentielle (P1-P4, par phase)
 ├── tests/                # Tests unitaires + test d'intégration (fixtures synthétiques, hors ligne)
