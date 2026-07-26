@@ -164,9 +164,69 @@ Also fixed in passing: `src/ingest.py` never called `load_dotenv`, so running it
 documented entry point) failed on the macro step with a confusing `EnvironmentError` while
 `FRED_API_KEY` sat in `.env`. `pipeline.py` had been masking it.
 
+## SETTLED — the `etf_2017` question, answered at a non-binding cap
+
+*2026-07-25. `experiments/etf_cap_verdict.py` → `data/gold/etf_cap_verdict.json`.*
+
+Effect C established that "regime/covariance ML adds no value on `etf_2017`" was **not falsifiable
+as stated** — the 25% cap left the optimizer nowhere to express a view. That is an objection to the
+*test*, not evidence for either answer. This run removes the objection by sweeping the cap and
+re-asking the question where the optimizer is genuinely free.
+
+**Three outcomes were pre-registered in the script's docstring before it ran**, so the result could
+not be rationalised after the fact: (A) ML wins once the cap loosens → the Phase 4 conclusion was a
+constraint artefact; (B) ML loses at every free cap → the conclusion survives a stronger test;
+(C) everything degrades as the cap loosens → the cap is the dominant driver.
+
+| Cap | Best classical | Classical | `regime_conditional` | Lift | Optimizer free? |
+|---:|---|---:|---:|---:|---|
+| **0.25** | `min_variance_lw` | **0.953** | 0.937 | −1.6% | **NO — capped** |
+| 0.30 | `min_variance_lw` | 0.939 | 0.931 | −0.9% | yes |
+| 0.35 | `min_variance_lw` | 0.932 | 0.897 | −3.8% | yes |
+| 0.40 | `max_sharpe` | 0.912 | 0.883 | −3.2% | yes |
+| 1.00 | `max_sharpe` | 0.865 | 0.832 | −3.8% | yes |
+
+*"Optimizer free" = `min_variance_lw` produced more than a handful of distinct allocations, i.e. the
+cap was not dictating the answer. The verdict logic ignores caps where it was.*
+
+### Outcome B — and the result is now stronger than before
+
+**Regime ML loses at every cap where the optimizer is free**, on 248 rebalances over 20.7 years
+including 2008. The Phase 4 `etf_2017` conclusion was correct; it was simply resting on an argument
+that could not have been wrong. It is now **defensible rather than merely unfalsifiable** — which is
+a better position than it was in this morning, even though the number did not move.
+
+Note the lift is *most* negative at the loosest caps (−3.8% at both 0.35 and 1.00) and least
+negative at the binding 0.25 (−1.6%). The cap was partly *masking* the gap by forcing every strategy
+toward the same corner. Giving the model freedom did not help it; it exposed more of the shortfall.
+
+### Outcome C also holds, and is the more interesting finding
+
+**The tightest cap is the best-performing configuration for every strategy.** Best classical Sharpe
+runs 0.953 at cap 0.25 monotonically down to 0.865 unconstrained — a **10% Sharpe swing driven
+purely by the constraint**, larger than any modelling difference measured anywhere in this project
+on this universe.
+
+This is Jagannathan & Ma (2003) reproduced on our own data: imposing a binding weight constraint on
+a mean-variance optimizer is mathematically equivalent to shrinking the covariance matrix, and on a
+5-asset universe with noisy estimates that shrinkage is worth more than any of the covariance
+models we built.
+
+**The uncomfortable implication, stated plainly:** on `etf_2017`, the 25% cap — chosen in Phase 2 as
+a *realistic management constraint*, not as a modelling device — is doing more estimation-error
+control than Ledoit-Wolf, EWMA, DCC-GARCH or the HMM regime switch. That is a real result about
+where the value lies, and it belongs in the deliverable rather than in a footnote.
+
+`full_2021` is unaffected throughout: 9 assets and a 25% cap leave the optimizer real freedom, which
+is consistent with `regime_conditional` genuinely differentiating there (+6.2%).
+
 ## Recommended follow-ups
 
 - ~~Adopt the deep ETF window~~ — **done, above.**
+- ~~Re-run the `etf_2017` conclusions at a non-binding cap~~ — **done, this section. Outcome B.**
+- **Consider reporting the cap as a modelling choice.** Its effect on this universe (10% Sharpe)
+  exceeds every model's. Worth stating in the Phase 2 constraint discussion rather than treating
+  25% as a fixed given.
 - **Re-run the `etf_2017` conclusions at a non-binding cap** (0.35–0.40), or state the confound
   explicitly wherever the "no ML benefit on `etf_2017`" claim appears.
 - **Reconsider the cap as a modelling choice, not just a constraint.** At 25% on 5 assets it is the
