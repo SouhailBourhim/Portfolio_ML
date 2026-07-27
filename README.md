@@ -142,9 +142,9 @@ uvicorn api.main:app --app-dir src
 ```
 
 - **📊 Histoire de valeur** — page destinée aux décideurs : ce que le système ML apporte face au
-  Markowitz classique (**+6,5 % de Sharpe net sur `full_2021`**), la validation hors échantillon
+  Markowitz classique (**+6,2 % de Sharpe net sur `full_2021`**), la validation hors échantillon
   avec intervalles de confiance, la chronologie des régimes détectés, et les limites énoncées
-  explicitement (dont le cas `etf_2017` où le système **perd −4,2 %**).
+  explicitement (dont le cas `etf_2017` où le système **perd −1,6 %**).
 - **🛠️ Outil du gestionnaire** — page métier : comparaison de stratégies, métriques nettes de
   coûts, allocations cibles, historique des rééquilibrages, export CSV.
 - **API REST** (`src/api/`) — `/strategies`, `/metrics`, `/equity`, `/weights`, `/compare`. Sert
@@ -198,7 +198,7 @@ pip install -r requirements.txt
 ```
 
 > **Vérification rapide sans configuration :** `pytest` fonctionne immédiatement après
-> l'installation — les 297 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
+> l'installation — les 356 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
 > et les notebooks se consultent avec leurs résultats déjà exécutés. En revanche,
 > `python src/pipeline.py` nécessite la clé FRED ci-dessous et un accès internet :
 > le dossier `data/` n'est pas versionné dans git et se génère à la première exécution.
@@ -268,7 +268,7 @@ python src/run_phase5.py    # Évaluation OOS : K-Fold purgé + sélection honn�
 ### Tests
 
 ```bash
-pytest                      # suite complète (297 tests, ~2 min, aucun accès réseau)
+pytest                      # suite complète (356 tests, ~2 min, aucun accès réseau)
 pytest -q                   # sortie compacte
 pytest tests/test_clean.py  # un seul module
 pytest -k "forward_fill"    # tests dont le nom correspond au motif

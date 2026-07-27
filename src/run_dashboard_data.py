@@ -187,6 +187,77 @@ def run_universe(universe: str, params: dict) -> tuple[pd.DataFrame, pd.DataFram
     return equity, weights, regime, metrics
 
 
+class StalePhase5Results(RuntimeError):
+    """Raised when `phase5_results.json` predates the Gold data it must describe."""
+
+
+# Filesystem mtime granularity, and the fact that a single `dvc repro` writes
+# several artifacts within the same second, make an exact ordering test
+# flaky. One second of slack catches the failure that actually matters (a
+# results file DAYS older than its inputs) without failing on same-run writes.
+_STALENESS_TOLERANCE_SECONDS = 1.0
+
+
+def _assert_phase5_describes_current_gold(
+    phase5_path: Path,
+    gold_inputs: list[Path],
+    tolerance_seconds: float = _STALENESS_TOLERANCE_SECONDS,
+) -> None:
+    """
+    Refuse to publish if the Phase 5 CIs are older than the Gold data.
+
+    Addresses: P4 — this runner COPIES Phase 5's held-out CIs verbatim into
+    `dashboard_showcase.json`, where Page 1 renders them directly beneath the
+    headline Sharpes this run just computed. The two must therefore describe
+    the SAME data, or the page presents a validation of numbers that no longer
+    exist while asserting the opposite ("le chiffre ci-dessus a été revalidé").
+
+    This is not hypothetical. On 2026-07-25 the BVC dividend correction
+    (commit 7ec3626) and the deep ETF window regenerated every Gold return
+    series, but `phase5_results.json` was left at its 2026-07-22 run — so the
+    dashboard showed corrected point estimates under pre-correction intervals
+    for three days, undetected. The existing verbatim-copy test could not see
+    it: it verifies copy FIDELITY against a fixture, which is a different
+    property from FRESHNESS.
+
+    mtime is a deliberately coarse proxy — it cannot prove the two runs used
+    identical inputs, only catch the ordering violation that actually occurs
+    in this workflow (regenerate Gold, forget the ~45-minute Phase 5 rerun).
+    A content hash would be stronger and is worth doing if the artifacts ever
+    grow a provenance header; ordering is what this failure class looks like
+    today.
+
+    Raises:
+        StalePhase5Results: if `phase5_path` is older than any Gold input by
+            more than `tolerance_seconds`, naming the offending file and the
+            command that fixes it — a silent stale CI is exactly the failure
+            this project treats as a bug (§15.13).
+    """
+    if not phase5_path.exists():
+        raise StalePhase5Results(
+            f"{phase5_path} is missing — run `dvc repro phase5_compare` before "
+            f"regenerating the dashboard; Page 1 cannot show held-out intervals "
+            f"without it."
+        )
+
+    phase5_mtime = phase5_path.stat().st_mtime
+    stale_against = [
+        (p, p.stat().st_mtime)
+        for p in gold_inputs
+        if p.exists() and p.stat().st_mtime - phase5_mtime > tolerance_seconds
+    ]
+    if stale_against:
+        newest, newest_mtime = max(stale_against, key=lambda pair: pair[1])
+        lag_hours = (newest_mtime - phase5_mtime) / 3600.0
+        raise StalePhase5Results(
+            f"{phase5_path.name} is {lag_hours:.1f}h OLDER than {newest.name}. "
+            f"Its confidence intervals were computed on superseded data, and the "
+            f"dashboard renders them directly beneath this run's Sharpe ratios — "
+            f"publishing would present a validation of numbers that no longer "
+            f"exist. Run `dvc repro phase5_compare` (~45 min), then rerun this."
+        )
+
+
 def build_showcase(all_metrics: dict, params: dict, equity: pd.DataFrame,
                    weights: pd.DataFrame) -> dict:
     """Assemble the compact JSON summary the dashboard's Page 1 headlines from.
@@ -197,7 +268,15 @@ def build_showcase(all_metrics: dict, params: dict, equity: pd.DataFrame,
     percentage. This IS the "our system beats Markowitz by X%" claim, computed
     from the numbers this run just produced — no hardcoded numbers anywhere.
     """
-    p5 = json.loads((ROOT / params["phase5"]["results_path"]).read_text())
+    phase5_path = ROOT / params["phase5"]["results_path"]
+    _assert_phase5_describes_current_gold(
+        phase5_path,
+        [
+            ROOT / "data" / "gold" / "log_returns.parquet",
+            ROOT / "data" / "gold" / "log_returns_etf.parquet",
+        ],
+    )
+    p5 = json.loads(phase5_path.read_text())
 
     showcase = {
         "universes": {},
