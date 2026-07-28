@@ -92,6 +92,37 @@ quantité. Détails : [`docs/DEEP_MOROCCO_EXPERIMENT.md`](docs/DEEP_MOROCCO_EXPE
 [`notebooks/deep_morocco_data_expansion.ipynb`](notebooks/deep_morocco_data_expansion.ipynb) ·
 `experiments/deep_morocco_starvation.py`.
 
+### Note de recherche — la contrainte de plafond fait plus que les modèles (2026-07)
+
+Sur l'univers `etf_2017`, le **plafond de 25 % par actif** — choisi en Phase 2 comme une
+*contrainte réaliste de gestion*, pas comme un outil de modélisation — s'avère être le régulariseur
+le plus puissant du projet. En balayant le seul plafond sur 248 rééquilibrages et 20,7 ans, tout le
+reste étant fixé :
+
+| `max_weight` | Meilleur Sharpe net classique | Allocations distinctes (`min_variance_lw`) |
+|---|---:|---:|
+| **0,25 (le nôtre)** | **0,953** | **1** sur 248 |
+| 0,30 | 0,939 | 171 |
+| 0,35 | 0,933 | 248 |
+| 0,40 | 0,912 | 248 |
+| 1,00 (sans plafond) | 0,865 | 248 |
+
+Deux conséquences :
+- **Un écart de 10,1 % de Sharpe dû à la seule contrainte**, décroissant de façon monotone à mesure
+  que le plafond se relâche — **plus que l'écart entre deux modèles quelconques** sur cet univers
+  (Ledoit-Wolf, EWMA, DCC-GARCH et la commutation de régime HMM réunis le déplacent moins). C'est le
+  résultat de **Jagannathan & Ma (2003)** reproduit sur nos données : une contrainte de poids
+  active équivaut mathématiquement à un rétrécissement (*shrinkage*) de la matrice de covariance.
+  La contrainte réalisait donc le contrôle d'erreur d'estimation (P1) que le ML devait apporter.
+- **À 0,25, le plafond détermine presque toute l'allocation** : avec 5 actifs, `5 × 0,25 = 1,25`,
+  donc tout portefeuille admissible place au moins 4 actifs *au plafond*. L'univers à 9 actifs n'est
+  pas concerné (`9 × 0,25 = 2,25`).
+
+À présenter comme un résultat, pas comme une limite : *le contrôle du risque le plus efficace sur
+cet univers s'est révélé être la limite de position qu'un mandat réel imposerait de toute façon.*
+Détails : [`docs/ETF_DEEP_HISTORY_EXPERIMENT.md`](docs/ETF_DEEP_HISTORY_EXPERIMENT.md) ·
+`experiments/etf_cap_verdict.py`.
+
 ### Note de recherche — fondamentaux (2026-07)
 
 Suite directe de la note précédente : puisque le plafond serait la **qualité** des données, on
