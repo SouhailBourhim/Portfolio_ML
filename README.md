@@ -92,6 +92,69 @@ quantité. Détails : [`docs/DEEP_MOROCCO_EXPERIMENT.md`](docs/DEEP_MOROCCO_EXPE
 [`notebooks/deep_morocco_data_expansion.ipynb`](notebooks/deep_morocco_data_expansion.ipynb) ·
 `experiments/deep_morocco_starvation.py`.
 
+### Note de recherche — plafond conditionné au régime : hypothèse réfutée (2026-07)
+
+Suite directe de la note sur le plafond : si la contrainte régularise mieux que tout modèle de
+covariance, il faut conditionner **le plafond** au régime plutôt que la covariance — le resserrer en
+régime baissier (davantage de *shrinkage* quand les corrélations explosent : P1 + P3), le relâcher en
+régime haussier. Aucune ligne de code de production n'a été nécessaire :
+`RegimeConditionalStrategy` accepte déjà des sous-stratégies, donc c'est
+`MaxSharpe(max_weight=plafond_haussier)` + `MinVarianceLW(max_weight=plafond_baissier)`.
+
+Le protocole inclut le **contrôle capable de tuer l'hypothèse** : des plafonds fixes (isolant « c'est
+le niveau qui aide ») et une variante **INVERSÉE** (large en baissier, serré en haussier — la
+mauvaise direction). Résultats pré-enregistrés avant exécution.
+
+| | référence (25/25) | meilleur candidat | contrôle INVERSÉ | meilleur fixe |
+|---|---:|---:|---:|---:|
+| `full_2021` | **1,2363** | `both_40_15` 1,2663 (**+0,030**) | 1,1430 (−0,093) | 1,2333 (−0,003) |
+| `etf_2017` | **0,9371** | `aggressive_40_25` 0,8525 (**−0,085**) | 0,8899 (−0,047) | 0,9525 (+0,015) |
+
+**Verdict (C) sur les deux univers : aucune variante ne dépasse la référence de façon matérielle.**
+Le mécanisme supposé échoue — resserrer en baissier n'apporte rien (+0,0016 / −0,117) ; et surtout
+**le contrôle change de signe selon l'univers** (l'INVERSÉ *bat* le meilleur candidat « correct » sur
+`etf_2017`), ce qui exclut un véritable effet de régime. Un résultat négatif propre : une hypothèse
+bien motivée, pré-enregistrée, contrôlée — et réfutée.
+
+Confirmation incidente de la dégénérescence du plafond : sur `etf_2017` au plafond 0,20,
+`min_variance_lw` et `max_sharpe` renvoient **exactement 0,7694**, le Sharpe de l'équipondéré, car
+`5 × 0,20 = 1,0` impose le 1/N quel que soit l'objectif.
+
+Détails : [`docs/REGIME_CONDITIONAL_CAP_EXPERIMENT.md`](docs/REGIME_CONDITIONAL_CAP_EXPERIMENT.md).
+
+### Note de recherche — walk-forward imbriqué : acheter de la puissance statistique (2026-07)
+
+La limite explicitement annoncée par la Phase 5 : sur `full_2021`, la fenêtre de test gelée ne fait
+que ~1,75 an (455 lignes) et **tous** les intervalles de confiance dépassent 2,2 de Sharpe. Ce n'est
+pas un problème de modèle — c'est un problème de **taille d'échantillon**, qu'aucun modèle meilleur
+ne corrige. Le walk-forward imbriqué (`experiments/nested_walkforward.py`) ré-sélectionne la
+configuration F7 à **6 frontières successives** et concatène chaque segment hors échantillon :
+**793 lignes hors échantillon contre 455**, la sélection ne voyant jamais sa propre fenêtre
+d'évaluation.
+
+| Stratégie | Découpage unique | largeur | **Imbriqué** | largeur | resserrement |
+|---|---:|---:|---:|---:|---:|
+| `regime_conditional` | 1,213 | 2,167 | **1,672** [0,89 ; 2,51] | **1,612** | 25,6 % |
+| `xgb_signal_tuned` | **1,308** | 2,260 | 1,436 [0,70 ; 2,26] | 1,558 | 31,1 % |
+| `equal_weight` | 1,003 | 2,333 | 1,284 [0,48 ; 2,18] | 1,705 | 26,9 % |
+| `rf_signal_tuned` | 1,040 | 2,125 | 1,256 [0,57 ; 2,04] | 1,472 | 30,7 % |
+
+- **Largeur moyenne des intervalles : 2,221 → 1,587, soit −28,6 %**, mieux que les 24,3 % prédits par
+  la seule racine carrée de l'échantillon. Sharpe déflaté **0,835 sur 198 configurations** (contre
+  0,67 sur 36) : recherche plus large *et* gagnant plus robuste.
+- **Toutes les bornes inférieures sont désormais positives** (0,478 à 0,893) ; au découpage unique,
+  celle de `equal_weight` descendait à **−0,090**. Sur cet univers, chaque stratégie examinée est
+  maintenant crédiblement positive hors échantillon.
+- ⚠️ **La hausse des niveaux est un effet de période, pas une amélioration** : le Sharpe ponctuel de
+  *toutes* les stratégies monte, la fenêtre imbriquée commençant en 2023-07 contre 2024-10. Seules
+  les comparaisons *internes à un même passage* ont un sens.
+- Le classement **repasse à `regime_conditional`** — soit un **troisième ordre différent** en trois
+  évaluations de `full_2021`. La lecture honnête n'est pas « le régime gagne finalement » mais que
+  **l'ordre ponctuel est instable au protocole d'évaluation**, ce que la Phase 5 concluait déjà. Les
+  intervalles se chevauchent presque intégralement : aucune significativité, dans aucun sens.
+
+Détails : [`docs/NESTED_WALKFORWARD_EXPERIMENT.md`](docs/NESTED_WALKFORWARD_EXPERIMENT.md).
+
 ### Note de recherche — la contrainte de plafond fait plus que les modèles (2026-07)
 
 Sur l'univers `etf_2017`, le **plafond de 25 % par actif** — choisi en Phase 2 comme une
