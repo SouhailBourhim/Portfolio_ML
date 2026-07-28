@@ -64,7 +64,10 @@ def run_phase1() -> None:
 
         # ── Silver ────────────────────────────────────────────────────────────
         log.info("=== SILVER: cleaning and validating ===")
-        log_returns = silver_pipeline()
+        # require_dividends: this is the full unattended pipeline entry point,
+        # so a missing dividend history must stop the run rather than write a
+        # silently price-only Silver layer every phase downstream would trust.
+        log_returns = silver_pipeline(require_dividends=True)
 
         mlflow.log_metrics({
             "n_trading_days": len(log_returns),

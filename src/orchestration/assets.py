@@ -25,6 +25,7 @@ from dagster import AssetExecutionContext, MetadataValue, asset
 
 from ingest import ingest_bam_macro, ingest_bvc, ingest_macro, ingest_prices
 from clean import silver_pipeline
+from dividends import load_bvc_dividends
 from features import gold_pipeline
 from ml_features import run_phase3
 
@@ -58,12 +59,44 @@ def raw_bam_macro(context: AssetExecutionContext) -> None:
 
 
 @asset(
+    group_name="bronze",
+    description=(
+        "BVC per-share dividend history (amounts + ex-dates) scraped from "
+        "casablanca-bourse.com. A Bronze asset in its own right because the "
+        "9-asset universe's returns are WRONG without it: the ETFs arrive "
+        "dividend-adjusted and the BVC names do not, so omitting this "
+        "understates Moroccan assets by ~3.0-4.3%/yr (docs/DIVIDEND_BIAS.md). "
+        "Wired here so the scrape refreshes on the same schedule as the prices "
+        "it corrects, per the 2026-07-20 lesson (CLAUDE.md §17.7)."
+    ),
+)
+def bvc_dividends(context: AssetExecutionContext) -> None:
+    df = load_bvc_dividends()
+    if df.empty:
+        raise ValueError(
+            "BVC dividend scrape returned no rows — refusing to report success. "
+            "log_returns would silently fall back to price-only returns."
+        )
+    context.add_output_metadata({
+        "n_dividends": len(df),
+        "tickers": MetadataValue.md(", ".join(sorted(df["ticker"].unique()))),
+        "date_range": f"{df['ex_date'].min()} -> {df['ex_date'].max()}",
+    })
+
+
+@asset(
     group_name="silver",
-    deps=[raw_etf_prices, raw_bvc_prices],
-    description="Calendar-aligned, Pandera-validated log-returns (9-asset universe).",
+    deps=[raw_etf_prices, raw_bvc_prices, bvc_dividends],
+    description=(
+        "Calendar-aligned, Pandera-validated log-returns (9-asset universe), "
+        "on a TOTAL-RETURN basis for the BVC names."
+    ),
 )
 def log_returns(context: AssetExecutionContext) -> None:
-    df = silver_pipeline()
+    # require_dividends: on an unattended schedule nobody reads WARNINGs, so a
+    # failed dividend scrape must fail the asset instead of quietly writing a
+    # price-only Silver layer that every downstream phase would then trust.
+    df = silver_pipeline(require_dividends=True)
     context.add_output_metadata({
         "rows": df.shape[0],
         "n_assets": df.shape[1],

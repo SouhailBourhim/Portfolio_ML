@@ -28,6 +28,7 @@ All offline/synthetic (tmp_path Gold snapshot), never the real data/ tree.
 from __future__ import annotations
 
 import json
+import os
 
 import numpy as np
 import pandas as pd
@@ -248,4 +249,84 @@ class TestNumbersMatchSource:
             f"Hardcoded Sharpe-like literals found in run_dashboard_data.py: "
             f"{suspicious}. Every number the dashboard shows must be computed "
             f"from Gold artifacts, never typed in."
+        )
+
+
+class TestPhase5Freshness:
+    """The guard for the failure that actually happened (2026-07-25).
+
+    The dividend correction regenerated every Gold return series while
+    `phase5_results.json` stayed at its three-day-old run, so the dashboard
+    rendered pre-correction confidence intervals directly beneath corrected
+    Sharpe ratios — under a sentence claiming the latter had been validated on
+    the former. `TestNumbersMatchSource` could not catch it: it verifies the
+    CIs are copied FAITHFULLY, which stays true when the source is stale.
+    Fidelity and freshness are different properties and need different tests.
+    """
+
+    def test_publishing_is_refused_when_phase5_predates_the_gold_data(self, tmp_path):
+        _write_gold_snapshot(tmp_path)
+        gold = tmp_path / "data" / "gold"
+        phase5 = gold / "phase5_results.json"
+        # Gold regenerated a day after the last Phase 5 run — the exact shape
+        # of the real incident.
+        old = phase5.stat().st_mtime - 86_400
+        os.utime(phase5, (old, old))
+
+        with pytest.raises(run_dashboard_data.StalePhase5Results) as excinfo:
+            run_dashboard_data._assert_phase5_describes_current_gold(
+                phase5, [gold / "log_returns.parquet", gold / "log_returns_etf.parquet"]
+            )
+        message = str(excinfo.value)
+        assert "log_returns" in message, "error must name the file that outdates it"
+        assert "phase5_compare" in message, "error must name the command that fixes it"
+
+    def test_missing_phase5_results_is_refused_not_silently_skipped(self, tmp_path):
+        _write_gold_snapshot(tmp_path)
+        gold = tmp_path / "data" / "gold"
+        phase5 = gold / "phase5_results.json"
+        phase5.unlink()
+
+        with pytest.raises(run_dashboard_data.StalePhase5Results):
+            run_dashboard_data._assert_phase5_describes_current_gold(
+                phase5, [gold / "log_returns.parquet"]
+            )
+
+    def test_artifacts_written_in_the_same_run_are_accepted(self, tmp_path):
+        """A guard that fires on its own pipeline is worse than no guard —
+        one `dvc repro` writes these seconds apart, in either order."""
+        _write_gold_snapshot(tmp_path)
+        gold = tmp_path / "data" / "gold"
+        phase5 = gold / "phase5_results.json"
+        # Phase 5 written a hair BEFORE the Gold parquet, same run.
+        just_before = (gold / "log_returns.parquet").stat().st_mtime - 0.5
+        os.utime(phase5, (just_before, just_before))
+
+        run_dashboard_data._assert_phase5_describes_current_gold(
+            phase5, [gold / "log_returns.parquet", gold / "log_returns_etf.parquet"]
+        )
+
+    def test_the_real_runner_refuses_to_publish_a_stale_dashboard(
+        self, tmp_path, monkeypatch
+    ):
+        """End-to-end: the guard is actually wired into the publish path, not
+        merely available as a helper nobody calls."""
+        _write_gold_snapshot(tmp_path)
+        gold = tmp_path / "data" / "gold"
+        phase5 = gold / "phase5_results.json"
+        old = phase5.stat().st_mtime - 86_400
+        os.utime(phase5, (old, old))
+
+        monkeypatch.setattr(run_dashboard_data, "ROOT", tmp_path)
+        monkeypatch.setattr(run_dashboard_data, "load_params", lambda: _params())
+        import run_phase4
+
+        monkeypatch.setattr(run_phase4, "ROOT", tmp_path)
+
+        with pytest.raises(run_dashboard_data.StalePhase5Results):
+            run_dashboard_data.main()
+
+        assert not (gold / "dashboard_showcase.json").exists(), (
+            "a refused run must leave NO showcase behind — a half-written "
+            "artifact would be published by the next reader as if it were valid"
         )

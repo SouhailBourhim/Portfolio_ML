@@ -23,6 +23,14 @@ import pyarrow.parquet as pq
 
 from schemas import validate_log_returns, ALL_ASSETS
 from ingest import START_DATE
+# Imported at module level, NOT lazily inside silver_pipeline. The lazy import
+# hid a real failure: Dagster's long-lived gRPC code server (started 2026-07-24)
+# had no `dividends` module in its import state when the file landed 2026-07-25,
+# so every scheduled run got 30 s into `log_returns` and died with
+# ModuleNotFoundError — invisible until someone read the run history (§17.9).
+# At module level the same breakage surfaces when the code location LOADS,
+# which Dagster reports immediately and `dagster definitions validate` catches.
+from dividends import load_bvc_dividends
 
 logging.basicConfig(
     level=logging.INFO,
@@ -228,11 +236,26 @@ def merge_bvc_prices(etf_prices: pd.DataFrame) -> pd.DataFrame:
     return merged
 
 
+class DividendDataUnavailable(RuntimeError):
+    """
+    BVC dividend history could not be loaded and the caller demanded it.
+
+    Addresses: P4 — the price-only fallback understates every BVC asset by
+    ~3.0-4.3%/yr and asymmetrically inflates the optimizers' measured edge
+    (docs/DIVIDEND_BIAS.md). That is survivable when a human is watching the
+    WARNING; it is not survivable on the unattended Dagster schedule, where
+    nobody reads logs and the corrupted Silver layer silently feeds every
+    downstream phase. `require_dividends=True` converts that WARNING into a
+    hard stop for exactly those callers.
+    """
+
+
 def silver_pipeline(
     ffill_limit: int = 5,
     include_bvc: bool = True,
     output_stem: str = "log_returns",
     adjust_dividends: bool = True,
+    require_dividends: bool = False,
 ) -> pd.DataFrame:
     """
     Full Bronze → Silver transformation.
@@ -256,9 +279,18 @@ def silver_pipeline(
             docs/DIVIDEND_BIAS.md). Only meaningful when `include_bvc` is
             True — the ETFs are already dividend-adjusted at ingest. Set
             False only to reproduce the pre-2026-07-25 price-only numbers.
+        require_dividends: Treat an unavailable/empty dividend history as a
+            FATAL error instead of degrading to price-only returns. Defaults
+            False so ad-hoc and offline use still works; every UNATTENDED
+            caller (Dagster's `log_returns` asset, `pipeline.py`) passes True,
+            because a WARNING nobody reads is indistinguishable from success.
 
     Returns:
         Validated log-returns DataFrame (wide, DatetimeIndex).
+
+    Raises:
+        DividendDataUnavailable: if `require_dividends` and the BVC dividend
+            history could not be loaded or came back empty.
     """
     SILVER_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -275,20 +307,33 @@ def silver_pipeline(
 
     dividends = None
     if include_bvc and adjust_dividends:
-        from dividends import load_bvc_dividends
-
+        failure: str | None = None
         try:
             dividends = load_bvc_dividends()
         except Exception as exc:  # noqa: BLE001 — network/scrape, must not be silent
-            # Degrading to price-only would silently reintroduce the exact bias
-            # this step exists to remove, so it is a WARNING a human must read
-            # (§15.13), not a debug line.
-            log.warning(
-                "BVC dividend history unavailable (%s) — falling back to "
-                "PRICE-ONLY returns. BVC assets will be understated by ~3.6-4.3%%/yr "
-                "relative to the dividend-adjusted ETFs. See docs/DIVIDEND_BIAS.md.",
-                exc,
+            dividends, failure = None, str(exc)
+
+        # An EMPTY frame is the same failure wearing a success costume: the
+        # scrape "worked" but yielded nothing, and compute_log_returns would
+        # quietly produce price-only returns. Treated identically.
+        if failure is None and (dividends is None or dividends.empty):
+            failure = "the scrape returned no dividend rows"
+
+        if failure is not None:
+            dividends = None
+            message = (
+                f"BVC dividend history unavailable ({failure}) — returns would "
+                f"fall back to PRICE-ONLY, understating BVC assets by "
+                f"~3.0-4.3%/yr relative to the dividend-adjusted ETFs and "
+                f"inflating every optimizer's measured edge. "
+                f"See docs/DIVIDEND_BIAS.md."
             )
+            # Degrading to price-only would silently reintroduce the exact bias
+            # this step exists to remove (§15.13). Attended callers get a
+            # WARNING they can act on; unattended ones must not proceed at all.
+            if require_dividends:
+                raise DividendDataUnavailable(message)
+            log.warning("%s Continuing with price-only returns.", message)
 
     aligned = align_calendars(prices, ffill_limit=ffill_limit)
     log_returns = compute_log_returns(aligned, dividends=dividends)

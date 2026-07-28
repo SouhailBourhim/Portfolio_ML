@@ -170,11 +170,12 @@ if labels:
 st.info(
     """
     **Lecture honnête de ce graphique.** Sur cette fenêtre de test, notre système
-    conserve la meilleure performance ponctuelle — mais les intervalles de confiance
-    se chevauchent largement. Nous présentons donc ce gain comme une **estimation
-    ponctuelle favorable**, pas comme une supériorité statistiquement démontrée : la
-    fenêtre de test (~1,8 an) est trop courte pour trancher. Cette prudence est
-    délibérée — c'est précisément ce qu'un backtest sur-optimisé ne montrerait pas.
+    devance la diversification naïve (1/N) en estimation ponctuelle — mais les
+    intervalles de confiance se chevauchent largement. Nous présentons donc ce gain
+    comme une **estimation ponctuelle favorable**, pas comme une supériorité
+    statistiquement démontrée : la fenêtre de test est trop courte pour trancher.
+    Cette prudence est délibérée — c'est précisément ce qu'un backtest sur-optimisé
+    ne montrerait pas.
     """,
     icon="ℹ️",
 )
@@ -220,10 +221,18 @@ st.markdown(
       à 30 %, elle en produit 169. L'univers à 9 actifs n'est pas concerné.
     - **La significativité statistique n'est pas établie.** Les intervalles de
       confiance se chevauchent ; la fenêtre de test hors échantillon est courte.
-    - **La couche de prédiction de rendement (F7) n'apporte rien.** Trois expériences
-      indépendantes (calibration honnête, historique marocain profond sur 20 ans,
-      ajout de données fondamentales) l'ont confirmé. Notre valeur ajoutée vient du
-      **régime et de la covariance dynamique**, pas de la prédiction de rendement.
+    - **La couche de prédiction de rendement (F7) n'apporte rien de statistiquement
+      significatif.** Quatre évaluations indépendantes le confirment : calibration
+      honnête (Phase 5), historique marocain profond sur 20 ans, ajout de données
+      fondamentales, et la ré-évaluation menée après la correction des dividendes.
+      Son estimation ponctuelle passe **au-dessus ou en dessous** de notre système
+      selon la fenêtre de test retenue — sur la dernière ré-évaluation elle le
+      dépasse sur `full_2021` et lui reste inférieure sur `etf_2017`, l'inverse de
+      ce qu'indiquait l'évaluation précédente. Ce **changement de signe** est
+      justement ce qui démontre qu'il s'agit de bruit et non d'un avantage. Notre
+      valeur ajoutée revendiquée reste donc le **régime et la covariance dynamique**,
+      dont le gain est mesuré sur l'intégralité de la période hors échantillon et non
+      sur une fenêtre courte. Détail chiffré : livrable Phase 5.
     - **Exposition de change non couverte.** Les actifs BVC sont en MAD, les ETF en
       USD ; les résultats intègrent une exposition USD/MAD non couverte.
     - **Historique BVC limité.** Les données gratuites de la Bourse de Casablanca ne
