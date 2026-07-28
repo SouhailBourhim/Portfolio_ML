@@ -34,18 +34,27 @@ stages:
   clean:
     cmd: python src/clean.py
     deps:
+    - path: data/bronze/bvc_dividends
+      hash: md5
+      md5: f33c41bd81ff15ccfb0876a5dc76f646.dir
+      size: 715775
+      nfiles: 4
     - path: data/bronze/bvc_prices.parquet
       hash: md5
-      md5: eccfe591ea0c8eb9ce8e1bb63bc2dfe9
-      size: 29926
+      md5: 18232304b5505992e9db2665f22de539
+      size: 29941
     - path: data/bronze/raw_prices.parquet
       hash: md5
-      md5: c147d96d46a468ce5effc51396f84aa0
-      size: 243682
+      md5: 89129e1fbadba721b5fbd6f22f8e5e59
+      size: 243625
     - path: src/clean.py
       hash: md5
-      md5: dd97ef1906cdfa4aff54e1d6d907aa98
-      size: 15160
+      md5: 849d2b908407eb0f1f4e6fcbfe3a07b0
+      size: 17127
+    - path: src/dividends.py
+      hash: md5
+      md5: 4a3834c99e50eed26249b084ad6573f5
+      size: 12882
     - path: src/schemas.py
       hash: md5
       md5: 571dff80d91de09c69a78bf836507ae6
@@ -60,16 +69,16 @@ stages:
       size: 117723
     - path: data/silver/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
-      size: 317942
+      md5: 08ae08f96b22fe816cc6ee519502cc52
+      size: 318067
     - path: data/silver/validation_report.json
       hash: md5
       md5: e0680fe3e6c077d5702c63f2355b89ba
       size: 1822
     - path: data/silver/validation_report_log_returns_etf.json
       hash: md5
-      md5: 7acea7a53a8948548f95e7dd9d1149da
-      size: 1218
+      md5: f4a980ef16c62d02a28704d5e0cbae75
+      size: 1219
   features:
     cmd: python src/features.py
     deps:

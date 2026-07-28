@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dagster import Definitions, ScheduleDefinition, define_asset_job
 
 from assets import (
+    bvc_dividends,
     gold_layer,
     log_returns,
     log_returns_etf,
@@ -54,6 +55,7 @@ daily_schedule = ScheduleDefinition(
 defs = Definitions(
     assets=[
         raw_etf_prices, raw_fred_macro, raw_bvc_prices, raw_bam_macro,
+        bvc_dividends,
         log_returns, log_returns_etf, gold_layer, ml_features_layer,
     ],
     jobs=[pipeline_job],

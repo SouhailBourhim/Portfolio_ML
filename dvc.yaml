@@ -25,8 +25,15 @@ stages:
     deps:
       - src/clean.py
       - src/schemas.py
+      - src/dividends.py
       - data/bronze/raw_prices.parquet
       - data/bronze/bvc_prices.parquet
+      # The BVC dividend cache is a real INPUT to Silver, not a side file: it
+      # is what makes the BVC series total-return rather than price-only
+      # (docs/DIVIDEND_BIAS.md). Undeclared, a refreshed scrape would change
+      # log_returns.parquet without `dvc repro` noticing -- the same invisible
+      # -input class of bug as the 2026-07-20 Dagster gap (CLAUDE.md §17.7).
+      - data/bronze/bvc_dividends
     outs:
       - data/silver/log_returns.parquet
       - data/silver/validation_report.json

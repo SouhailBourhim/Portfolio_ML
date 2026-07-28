@@ -198,7 +198,7 @@ pip install -r requirements.txt
 ```
 
 > **Vérification rapide sans configuration :** `pytest` fonctionne immédiatement après
-> l'installation — les 360 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
+> l'installation — les 369 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
 > et les notebooks se consultent avec leurs résultats déjà exécutés. En revanche,
 > `python src/pipeline.py` nécessite la clé FRED ci-dessous et un accès internet :
 > le dossier `data/` n'est pas versionné dans git et se génère à la première exécution.
@@ -268,7 +268,7 @@ python src/run_phase5.py    # Évaluation OOS : K-Fold purgé + sélection honn�
 ### Tests
 
 ```bash
-pytest                      # suite complète (360 tests, ~2 min, aucun accès réseau)
+pytest                      # suite complète (369 tests, ~2 min, aucun accès réseau)
 pytest -q                   # sortie compacte
 pytest tests/test_clean.py  # un seul module
 pytest -k "forward_fill"    # tests dont le nom correspond au motif
