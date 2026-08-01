@@ -8,8 +8,17 @@
 %      \usepackage{polyglossia}
 %      \setmainlanguage{french}
 %      \setotherlanguage{english}
-%      \setotherlanguage[numerals=maghrib]{arabic}
+%      \setotherlanguage{arabic}
 %      \newfontfamily\arabicfont[Script=Arabic]{Amiri}   % ou Scheherazade New
+%
+%  ⚠ Le texte est dans un environnement `Arabic` AVEC UNE MAJUSCULE : en
+%  minuscules, `\begin{arabic}` entre en collision avec la commande LaTeX
+%  \arabic{compteur} et la compilation échoue sur « Missing number ». C'est
+%  la forme documentée par polyglossia pour ce cas.
+%
+%  ⚠ Choisir une police arabe qui contient AUSSI la ponctuation latine : Geeza
+%  Pro n'a pas le caractère « : » et laisse un rectangle vide. Amiri (TeX Live,
+%  Overleaf) et Al Bayan (macOS) conviennent — vérifié.
 %
 %  puis, à l'endroit voulu du document :  \input{frontmatter/resume_ar}
 %
@@ -18,11 +27,11 @@
 %  résumé arabe mal rendu dessert le document plus qu'il ne le sert.
 % =============================================================================
 
-\chapter*{ملخص}
-\addcontentsline{toc}{chapter}{ملخص}
+\chapter*{\textarabic{ملخص}}
+\addcontentsline{toc}{chapter}{\textarabic{ملخص}}
 \markboth{RÉSUMÉ (AR)}{RÉSUMÉ (AR)}
 
-\begin{arabic}
+\begin{Arabic}
 
 يتناول هذا المشروع، المنجَز داخل شركة \textenglish{EURAFRIC Information}، مسألة
 توزيع رأس المال بين عدة أصول مالية: كيف يُوزَّع مبلغ من المال بين أربع شركات
@@ -58,4 +67,4 @@
 المخفي، مصفوفة التغاير، الاختبار الرجعي، التحقق خارج العينة، بورصة الدار
 البيضاء، إدارة المخاطر.
 
-\end{arabic}
+\end{Arabic}

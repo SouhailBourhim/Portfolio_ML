@@ -1,8 +1,20 @@
 # Montage du rapport dans le modèle INPT
 
-Ce dossier ne contient **pas** de `main.tex` : le squelette, la page de garde et
-la mise en page viennent du modèle INPT PFE. Les fichiers ci-dessous sont conçus
-pour y être déposés tels quels.
+Le rapport final est monté dans le **modèle INPT PFE** (page de garde et mise en
+page officielles). Les fichiers de ce dossier sont conçus pour y être déposés
+tels quels.
+
+`main.tex` est un **build autonome de vérification** : il n'est pas le rapport
+final, mais il prouve que tout compile et produit un PDF lisible sans Overleaf.
+
+```bash
+cd docs/rapport
+tectonic -X compile main.tex        # ou : xelatex main.tex (deux passes)
+```
+
+État du dernier build vérifié : **73 pages, 0 référence non résolue, 0 caractère
+manquant, 2 débordements de marge résiduels (4,0 pt et 0,2 pt — invisibles à
+l'impression).** Moteur : XeTeX (requis par `fontspec` / `polyglossia`).
 
 ## 1. Fichiers à copier dans le projet Overleaf
 
@@ -67,13 +79,42 @@ inchangées :
 
 ## 5. Le résumé en arabe
 
-`frontmatter/resume_ar.tex` **ne compile pas avec pdfLaTeX**. Deux options :
+`frontmatter/resume_ar.tex` **ne compile pas avec pdfLaTeX** : il exige XeLaTeX
+ou LuaLaTeX. Si le projet Overleaf reste en pdfLaTeX, ne pas l'inclure — le
+résumé français et l'abstract anglais suffisent.
 
-- **Le projet est déjà en XeLaTeX ou LuaLaTeX** → ajouter au préambule les
-  quatre lignes `polyglossia` indiquées en tête du fichier, installer une police
-  arabe (Amiri ou Scheherazade New), puis décommenter la ligne `\input`.
-- **Le projet reste en pdfLaTeX** → ne pas l'inclure. Le résumé français et
-  l'abstract anglais suffisent ; un texte arabe mal rendu dessert le document.
+Si le projet est en XeLaTeX/LuaLaTeX, quatre points ont été **vérifiés à la
+compilation** et doivent être respectés, faute de quoi le document échoue ou
+s'imprime avec des rectangles vides :
+
+1. **Déclarer l'arabe en toute fin de préambule**, après `hyperref` et tous les
+   autres paquets. `polyglossia` charge `bidi` dès qu'une langue de droite à
+   gauche est déclarée, et `bidi` exige d'être chargé en dernier. Sinon :
+   `Unable to properly define \@@leqno`.
+
+2. **Utiliser l'environnement `Arabic` avec une majuscule.** En minuscules,
+   `\begin{arabic}` entre en collision avec la commande LaTeX
+   `\arabic{compteur}` et la compilation s'arrête sur `Missing number`. La
+   majuscule est la forme documentée par polyglossia pour ce cas.
+
+3. **Choisir une police qui contient aussi les chiffres et la ponctuation
+   latins.** Geeza Pro n'a ni les chiffres ni le caractère « : » : le texte
+   s'imprime avec des rectangles à la place de `1952`, `6,2` et `390`. Amiri
+   convient, chargée **par nom de fichier** — la seule forme qui fonctionne à la
+   fois sur Overleaf/TeX Live et avec tectonic :
+
+   ```latex
+   \setotherlanguage{arabic}
+   \newfontfamily\arabicfont[Script=Arabic,Extension=.ttf,
+                             UprightFont=Amiri-Regular]{Amiri}
+   ```
+
+4. **Encadrer les titres arabes de `\textarabic{}`** (`\chapter*`,
+   `\addcontentsline`). Sinon ils sont composés dans la police latine du
+   document, qui ne possède aucun glyphe arabe.
+
+`main.tex` applique les quatre points et sert de référence ; l'inclusion y est
+pilotée par `\ARABICRESUME` (1 = inclure, 0 = omettre).
 
 ## 6. Figures — comment les régénérer
 

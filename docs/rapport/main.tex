@@ -1,0 +1,160 @@
+% =============================================================================
+%  main.tex — build AUTONOME du rapport
+%
+%  Ce fichier n'est PAS le rapport final : celui-ci est monté dans le modèle
+%  INPT PFE (voir MONTAGE.md). Il sert à deux choses :
+%
+%    1. vérifier que tous les chapitres et pages liminaires compilent,
+%    2. produire un PDF lisible sans dépendre d'Overleaf.
+%
+%  Compilation (moteur XeTeX, requis pour fontspec/polyglossia) :
+%
+%      tectonic -X compile main.tex        # ou : xelatex main.tex (deux passes)
+%
+%  Le résumé arabe est inclus conditionnellement : voir \ARABICRESUME ci-dessous.
+% =============================================================================
+\documentclass[11pt,a4paper,twoside,openright]{book}
+
+% ── Inclure (1) ou non (0) le résumé en arabe ────────────────────────────────
+% Nécessite polyglossia + une police arabe installée. Mettre à 0 si la police
+% n'est pas disponible : le document compile alors sans le ملخص.
+\newcommand{\ARABICRESUME}{1}
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{french}
+\setotherlanguage{english}
+
+
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.7cm,right=2.4cm]{geometry}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{fancyhdr}
+\usepackage{emptypage}
+\usepackage[hidelinks]{hyperref}
+
+\usepackage{rapport_style}     % encadrés Définition / Remarque / Résultat
+
+\setlength{\parskip}{0.45em}
+\setlength{\parindent}{0pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\small\thepage}
+\fancyhead[RE]{\small\nouppercase{\leftmark}}
+\fancyhead[LO]{\small\nouppercase{\rightmark}}
+\renewcommand{\headrulewidth}{0.3pt}
+
+% ── Support de l'arabe (résumé optionnel) ────────────────────────────────────
+% Chaîne de repli : Amiri (présent sur Overleaf / TeX Live) → Al Bayan et
+% Geeza Pro (polices système macOS). Si aucune n'est disponible, mettre
+% \ARABICRESUME à 0 : le document compile alors sans le ملخص.
+\if\ARABICRESUME1
+  \setotherlanguage{arabic}
+  % Amiri est chargée PAR NOM DE FICHIER : c'est la seule forme qui
+  % fonctionne à la fois sur Overleaf/TeX Live et avec tectonic. Les polices
+  % système macOS servent de repli — attention, Geeza Pro n'a ni chiffres
+  % latins ni « : », d'où l'ordre de préférence.
+  \IfFontExistsTF{Amiri-Regular.ttf}{%
+    \newfontfamily\arabicfont[Script=Arabic,Extension=.ttf,
+                              UprightFont=Amiri-Regular]{Amiri}}{%
+    \IfFontExistsTF{Amiri}{%
+      \newfontfamily\arabicfont[Script=Arabic]{Amiri}}{%
+      \newfontfamily\arabicfont[Script=Arabic]{Al Bayan}}}
+\fi
+
+\begin{document}
+
+% =============================================================================
+%  Page de garde (gabarit simplifié — la version finale vient du modèle INPT)
+% =============================================================================
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+
+\begin{minipage}[c]{0.31\textwidth}
+  \centering\includegraphics[height=2.1cm,width=\linewidth,keepaspectratio]{assets/logos/inpt_trim.png}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.31\textwidth}
+  \centering\includegraphics[height=1.9cm,width=\linewidth,keepaspectratio]{assets/logos/inpt_campus_trim.png}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.31\textwidth}
+  \centering\includegraphics[height=1.7cm,width=\linewidth,keepaspectratio]{assets/logos/eurafric_trim.png}
+\end{minipage}
+
+\vspace{1.4cm}
+{\large Institut National des Postes et Télécommunications\par}
+{\large Filière Smart ICT — Année universitaire 2025--2026\par}
+
+\vspace{1.6cm}
+{\Large\scshape Rapport de stage\par}
+{\large Projet de Fin d'Année\par}
+
+\vspace{1.2cm}
+\rule{\textwidth}{0.8pt}\par
+\vspace{0.7cm}
+{\huge\bfseries Système d'optimisation de portefeuille\\[0.3em]
+piloté par apprentissage automatique\par}
+\vspace{0.6cm}
+{\large\itshape Allocation d'actifs sous contraintes réalistes,\\
+et évaluation honnête de ce qu'elle apporte\par}
+\vspace{0.7cm}
+\rule{\textwidth}{0.8pt}\par
+
+\vspace{1.6cm}
+{\large Réalisé au sein d'\textbf{EURAFRIC Information}\par}
+{\large Bouskoura, Casablanca\par}
+\vspace{0.4cm}
+{\large Du 18 juin au 1\textsuperscript{er} août 2026\par}
+
+\vfill
+
+\begin{minipage}[t]{0.48\textwidth}
+  \raggedright
+  \textbf{Réalisé par :}\\[0.3em]
+  Souhail BOURHIM\\
+  Zakarya EL WALI\\
+  Yasmine BOUAJINE
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
+  \raggedleft
+  \textbf{Encadré par :}\\[0.3em]
+  M. Abdelmouttalib MAQIL\\
+  \textit{EURAFRIC Information}
+\end{minipage}
+
+\vspace{1.2cm}
+\end{titlepage}
+
+% =============================================================================
+%  Pages liminaires
+% =============================================================================
+\frontmatter
+\pagenumbering{roman}
+
+\input{frontmatter/dedicace}
+\input{frontmatter/remerciements}
+\input{frontmatter/resume}
+\if\ARABICRESUME1
+  \input{frontmatter/resume_ar}
+\fi
+\input{frontmatter/acronymes}
+\input{frontmatter/glossaire}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+% =============================================================================
+%  Corps
+% =============================================================================
+\mainmatter
+
+\input{chapters/Chapter1}
+\input{chapters/Chapter2}
+\input{chapters/Chapter3}
+\input{chapters/Chapter4}
+\input{chapters/Chapter5}
+\input{chapters/Conclusion}
+
+\end{document}
