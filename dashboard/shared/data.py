@@ -94,6 +94,17 @@ def load_crisis() -> dict:
 
 
 @st.cache_data(show_spinner=False)
+def load_cap_sweep() -> dict:
+    """The `max_weight` sweep on the deep etf_2017 window.
+
+    Optional, like `load_crisis`: absent artifact hides the section rather than
+    breaking the page.
+    """
+    path = GOLD / "etf_cap_verdict.json"
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+@st.cache_data(show_spinner=False)
 def load_phase5() -> dict:
     """The committed out-of-sample evaluation — used for the credibility layer."""
     return json.loads(_require(GOLD / "phase5_results.json").read_text())

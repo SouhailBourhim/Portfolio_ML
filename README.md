@@ -81,6 +81,42 @@ Notebooks de validation, exécutés et lisibles avec leurs résultats :
 [`phase4c_cost_aware.ipynb`](notebooks/phase4c_cost_aware.ipynb) ·
 [`phase5_oos_evaluation.ipynb`](notebooks/phase5_oos_evaluation.ipynb).
 
+### ⭐ Note de recherche — comportement en crise, et le seul résultat significatif (2026-07)
+
+**P3** (rupture de la diversification en crise) était le problème le moins directement étayé :
+toutes les phases rapportaient un Sharpe et un drawdown sur période complète, aucune ne mesurait
+le comportement **pendant** les crises. Cinq fenêtres, délimitées par les dates de sommet-à-creux
+**publiées du S&P 500** et fixées avant tout examen des résultats.
+
+**Résultat A — l'optimisation sous contrainte protège ; le 1/N non, sur les 5 crises.**
+
+| Crise | optimiseurs | équipondéré |
+|---|---:|---:|
+| Crise financière 2008 | -21,2 % · DD -26,9 % | **-30,2 % · DD -36,2 %** |
+| Dette européenne 2011 | **+1,6 %** (positif) | -5,4 % |
+| COVID 2020 | DD -16,2 % · récup. 37 j | DD -19,1 % · récup. 71 j |
+
+Le **délai de récupération** est l'écart le plus régulier : environ **deux fois moins de temps sous
+l'eau**. ⚠️ Attribution honnête : ce gain revient à la **contrainte et au modèle de covariance**
+(P1/P3), pas à la couche de régime — sur 3 des 5 fenêtres les trois optimiseurs sont identiques.
+
+**Résultat B — le HMM non supervisé a détecté les cinq crises.**
+
+Régime baissier **91,7 % pendant** les crises contre
+**29,2 % hors crise** — rapport **3.13×**,
+**5/5** crises au-dessus du taux de base. Test des signes
+conservateur (chaque crise = une observation) : **p = 0.03125**.
+
+**C'est le seul résultat statistiquement significatif du projet** — toutes les comparaisons de
+Sharpe ont des intervalles qui se chevauchent. *Réserve :* « baissier » est défini comme l'état à
+plus faible rendement moyen, donc une part de l'association est définitionnelle ; ce qui ne l'est
+pas, c'est que la détection est **causale et en temps réel**.
+
+À garder dans deux phrases distinctes : le détecteur **voit** bien ce qu'il prétend voir ; que le
+fait d'**agir** dessus rapporte reste statistiquement indiscernable. Détails :
+[`docs/CRISIS_WINDOWS_EXPERIMENT.md`](docs/CRISIS_WINDOWS_EXPERIMENT.md) ·
+`experiments/crisis_windows.py`.
+
 ### Note de recherche — expansion des données (2026-07)
 
 Le signal ML était-il *sous-alimenté* en données ? Test sur un univers marocain **profond de 12
@@ -292,7 +328,7 @@ pip install -r requirements.txt
 ```
 
 > **Vérification rapide sans configuration :** `pytest` fonctionne immédiatement après
-> l'installation — les 369 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
+> l'installation — les 390 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
 > et les notebooks se consultent avec leurs résultats déjà exécutés. En revanche,
 > `python src/pipeline.py` nécessite la clé FRED ci-dessous et un accès internet :
 > le dossier `data/` n'est pas versionné dans git et se génère à la première exécution.
@@ -362,7 +398,7 @@ python src/run_phase5.py    # Évaluation OOS : K-Fold purgé + sélection honn�
 ### Tests
 
 ```bash
-pytest                      # suite complète (369 tests, ~2 min, aucun accès réseau)
+pytest                      # suite complète (390 tests, ~2 min, aucun accès réseau)
 pytest -q                   # sortie compacte
 pytest tests/test_clean.py  # un seul module
 pytest -k "forward_fill"    # tests dont le nom correspond au motif

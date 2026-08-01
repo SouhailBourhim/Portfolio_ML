@@ -80,12 +80,41 @@ def client(tmp_path, monkeypatch):
         "cost_bps": {"etf": 10, "bvc": 30},
     }))
 
+    # Minimal crisis artifact so the /crisis tests exercise the real endpoint
+    # instead of skipping — a skipped test guards nothing.
+    (gold / "crisis_windows.json").write_text(json.dumps({
+        "crises": {"covid_2020": {"label": "COVID-19", "start": "2020-02-19",
+                                  "end": "2020-03-23", "note": "-33.9%"}},
+        "methodology": "external S&P peak-to-trough dates, fixed in advance",
+        "universes": {"etf_2017": {"covid_2020": {
+            "equal_weight": {"cum_return": -0.169, "max_drawdown": -0.191,
+                             "recovery_days": 71, "n_days": 24, "worst_day": -0.06,
+                             "ann_vol": 0.5, "partial_window": False},
+            "min_variance_lw": {"cum_return": -0.135, "max_drawdown": -0.162,
+                                "recovery_days": 37, "n_days": 24, "worst_day": -0.05,
+                                "ann_vol": 0.4, "partial_window": False}}}},
+        "regime_detection": {"etf_2017": {
+            "bear_rate_in_crisis": 0.917, "bear_rate_outside": 0.292, "risk_ratio": 3.13,
+            "n_crisis_rebalances": 36, "n_calm_rebalances": 212,
+            "per_crisis": {"covid_2020": {"n_rebalances": 1, "n_bear": 1, "bear_rate": 1.0}},
+            "significance": {"fisher_exact_p_liberal": 7.78e-13, "fisher_odds_ratio": 26.6,
+                             "crises_exceeding_base_rate": "5/5",
+                             "sign_test_p_conservative": 0.03125, "note": "lead with the sign test"},
+        }},
+    }))
+
     monkeypatch.setattr(api_main, "GOLD", gold)
-    for fn in (api_main._showcase, api_main._equity, api_main._weights):
-        fn.cache_clear()
+    # Caching moved down a layer: the loaders are plain functions now and the
+    # cache lives on the (path, mtime)-keyed readers, so a regenerated artifact
+    # is picked up without a restart. Tests still clear it so one test's
+    # tmp_path cannot leak into the next.
+    def _clear():
+        api_main._read_json.cache_clear()
+        api_main._read_parquet.cache_clear()
+
+    _clear()
     yield TestClient(api_main.app)
-    for fn in (api_main._showcase, api_main._equity, api_main._weights):
-        fn.cache_clear()
+    _clear()
 
 
 class TestCatalogue:
@@ -174,3 +203,64 @@ class TestIntegrity:
     def test_metrics_bundle_also_carries_the_test_window(self, client):
         body = client.get("/metrics", params={"universe": "etf_2017"}).json()
         assert body["phase5_test_window"]["regime_conditional"]["test_sharpe_ci"]
+
+
+class TestCrisisEndpoint:
+    """The project's only statistically significant result, exposed to machines
+    with its caveat attached — the same contract `/compare` honours for the
+    Sharpe lift."""
+
+    def test_crisis_returns_windows_and_detection(self, client):
+        r = client.get("/crisis", params={"universe": "etf_2017"})
+        if r.status_code == 404:
+            pytest.skip("crisis_windows.json not generated in this environment.")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["per_crisis"], "no per-crisis statistics returned"
+        assert body["regime_detection"], "regime-detection block missing"
+
+    def test_the_significance_result_ships_with_its_caveat(self, client):
+        """A consumer must not be able to take the p-value without the reason
+        it does not mean 'the ML layer earns money'."""
+        r = client.get("/crisis", params={"universe": "etf_2017"})
+        if r.status_code == 404:
+            pytest.skip("crisis_windows.json not generated in this environment.")
+        body = r.json()
+        sig = body["regime_detection"]["significance"]
+        assert sig["sign_test_p_conservative"] is not None
+        caveat = body["caveat"].lower()
+        assert "contrainte" in caveat, "attribution caveat missing"
+        assert "indiscernable" in caveat, "the not-significant-for-returns caveat is missing"
+
+    def test_unknown_universe_is_404(self, client):
+        r = client.get("/crisis", params={"universe": "nope"})
+        assert r.status_code == 404
+
+
+class TestArtifactCacheIsNotStale:
+    """Regression for the third stale-cache bug in this project (after the
+    Dagster code server and Streamlit's module cache). `lru_cache(maxsize=1)`
+    pinned artifacts for the process lifetime, so a regenerated Gold layer was
+    served as the old numbers until someone restarted the API."""
+
+    def test_regenerated_artifact_is_picked_up_without_restart(self, tmp_path, monkeypatch):
+        import json as _json
+        import api.main as m
+
+        gold = tmp_path / "gold"
+        gold.mkdir()
+        path = gold / "dashboard_showcase.json"
+        path.write_text(_json.dumps({"universes": {"u": {"marker": 1}}}))
+        monkeypatch.setattr(m, "GOLD", gold)
+
+        assert m._showcase()["universes"]["u"]["marker"] == 1
+
+        # Rewrite with a distinct mtime, as a pipeline re-run would.
+        import os
+        path.write_text(_json.dumps({"universes": {"u": {"marker": 2}}}))
+        os.utime(path, (path.stat().st_atime + 10, path.stat().st_mtime + 10))
+
+        assert m._showcase()["universes"]["u"]["marker"] == 2, (
+            "the API served a cached artifact after it was regenerated — the "
+            "stale-cache bug this keying exists to prevent"
+        )

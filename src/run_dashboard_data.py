@@ -1,9 +1,13 @@
 """
 run_dashboard_data.py — Persist headline artifacts consumed by the Streamlit dashboard.
 
-Addresses: §16 "verify claims against current data" rule. The dashboard MUST
-never show a number that has drifted from what the source pipeline currently
-produces. This runner is the single source of truth for what the dashboard
+Addresses: P4 — reporting integrity, which is backtest overfitting's last mile.
+A stakeholder-facing surface quoting a number that has drifted from what the
+pipeline currently produces is indistinguishable, to a reader, from a number
+that was overfitted; both are unreproducible. This runner is the single source
+of what the dashboard shows, regenerated deterministically from committed Gold
+via a DVC stage (§16's "verify claims against current data" rule made
+mechanical). This runner is the single source of truth for what the dashboard
 sees, and its output is regenerated deterministically from committed Gold
 inputs via a DVC stage — so the "did I remember to refresh?" failure class
 (that hit `phase2_hurdle.json` once already, §17.1) cannot happen here.
