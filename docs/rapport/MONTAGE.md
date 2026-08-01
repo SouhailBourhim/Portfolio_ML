@@ -140,9 +140,9 @@ versionnées dans `assets/figures/`.
   projet.
 - Page de garde : les champs sont déjà renseignés dans `main.tex` (filière
   **Smart ICT**, promotion **2025/2026**, encadrant **M. Abdelmouttalib MAQIL**,
-  période **18 juin – 1er août 2026**, projet **réalisé à distance**). Reste à
-  compléter **la date de soutenance et les deux examinateurs INPT**, laissés en
-  pointillés à remplir.
+  période **18 juin – 1er août 2026**, projet **réalisé à distance**). Pas de
+  bloc jury : il n'y en a pas à ce stade. Si une soutenance est programmée,
+  ajouter les examinateurs sous « Encadré par ».
 - Les logos du bandeau sont `inpt_trim.png` (gauche) et `logo_anrt.jpg`
   (droite) ; l'illustration du campus (`inpt_campus_trim.png`) est en pied de
   page, comme dans le modèle officiel.
