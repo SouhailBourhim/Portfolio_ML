@@ -55,7 +55,7 @@ from model_selection import select_ml_hyperparameters, select_portfolio_levers
 from run_phase4 import build_strategies as build_phase4_strategies
 from run_phase4 import load_features, load_universe
 from strategies import RandomForestSignalStrategy, XGBoostSignalStrategy
-from utils import load_params
+from utils import configure_mlflow, load_params
 
 logging.basicConfig(
     level=logging.INFO,
@@ -144,6 +144,7 @@ def run_phase5() -> dict:
     hurdle_path = ROOT / "data" / "gold" / "phase4_results.json"
     stored_hurdle = json.loads(hurdle_path.read_text()) if hurdle_path.exists() else {}
 
+    configure_mlflow()
     mlflow.set_experiment("phase5_oos_evaluation")
     output: dict[str, dict] = {}
 

@@ -28,7 +28,7 @@ import json
 from backtest import BacktestResult, build_cost_vector, run_backtest
 from metrics import annualized_sharpe, summarize
 from strategies import EqualWeight, MaxSharpe, MinVariance, MinVarianceLW, Strategy
-from utils import load_params
+from utils import configure_mlflow, load_params
 
 logging.basicConfig(
     level=logging.INFO,
@@ -78,6 +78,7 @@ def run_phase2() -> dict[str, list[BacktestResult]]:
         MaxSharpe(max_weight=max_weight, risk_free_annual=rf),
     ]
 
+    configure_mlflow()
     mlflow.set_experiment("phase2_backtest")
     all_results: dict[str, list[BacktestResult]] = {}
 

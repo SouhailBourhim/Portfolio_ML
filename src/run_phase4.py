@@ -53,7 +53,7 @@ from strategies import (
     RegimeConditionalStrategy,
     Strategy,
 )
-from utils import load_params
+from utils import configure_mlflow, load_params
 
 logging.basicConfig(
     level=logging.INFO,
@@ -187,6 +187,7 @@ def run_phase4() -> dict[str, list[BacktestResult]]:
 
     n_strategies = len(build_strategies(params))
 
+    configure_mlflow()
     mlflow.set_experiment("phase4_regime_covariance")
     all_results: dict[str, list[BacktestResult]] = {}
     phase4_output: dict[str, dict] = {}

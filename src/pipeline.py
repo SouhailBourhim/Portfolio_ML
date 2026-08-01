@@ -15,6 +15,8 @@ from dotenv import load_dotenv
 
 import mlflow
 
+from utils import configure_mlflow
+
 # Load .env so FRED_API_KEY is available
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -41,6 +43,7 @@ def run_phase1() -> None:
     MLflow logs parameters and metrics for every run so results are
     reproducible and comparable across experiments.
     """
+    configure_mlflow()
     mlflow.set_experiment("phase1_data_pipeline")
 
     with mlflow.start_run(run_name="phase1_full"):

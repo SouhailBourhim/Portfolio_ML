@@ -64,7 +64,7 @@ from metrics import annualized_sharpe, summarize
 from run_phase4 import load_features, load_universe
 from run_phase4b import build_strategies as build_phase4b_strategies
 from strategies import RandomForestSignalStrategy, Strategy, XGBoostSignalStrategy
-from utils import load_params
+from utils import configure_mlflow, load_params
 
 logging.basicConfig(
     level=logging.INFO,
@@ -181,6 +181,7 @@ def run_phase4c() -> dict[str, list[BacktestResult]]:
 
     n_strategies = len(build_strategies(params))
 
+    configure_mlflow()
     mlflow.set_experiment("phase4c_cost_aware")
     all_results: dict[str, list[BacktestResult]] = {}
     phase4c_output: dict[str, dict] = {}

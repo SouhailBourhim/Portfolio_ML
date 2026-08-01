@@ -1,0 +1,171 @@
+% =============================================================================
+%  main.tex — build AUTONOME du rapport
+%
+%  Ce fichier n'est PAS le rapport final : celui-ci est monté dans le modèle
+%  INPT PFE (voir MONTAGE.md). Il sert à deux choses :
+%
+%    1. vérifier que tous les chapitres et pages liminaires compilent,
+%    2. produire un PDF lisible sans dépendre d'Overleaf.
+%
+%  Compilation (moteur XeTeX, requis pour fontspec/polyglossia) :
+%
+%      tectonic -X compile main.tex        # ou : xelatex main.tex (deux passes)
+%
+%  Le résumé arabe est inclus conditionnellement : voir \ARABICRESUME ci-dessous.
+% =============================================================================
+\documentclass[11pt,a4paper,twoside,openright]{book}
+
+% ── Inclure (1) ou non (0) le résumé en arabe ────────────────────────────────
+% Nécessite polyglossia + une police arabe installée. Mettre à 0 si la police
+% n'est pas disponible : le document compile alors sans le ملخص.
+\newcommand{\ARABICRESUME}{1}
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{french}
+\setotherlanguage{english}
+
+
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.7cm,right=2.4cm]{geometry}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{fancyhdr}
+\usepackage{emptypage}
+\usepackage[hidelinks]{hyperref}
+
+\usepackage{rapport_style}     % encadrés Définition / Remarque / Résultat
+
+\setlength{\parskip}{0.45em}
+\setlength{\parindent}{0pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\small\thepage}
+\fancyhead[RE]{\small\nouppercase{\leftmark}}
+\fancyhead[LO]{\small\nouppercase{\rightmark}}
+\renewcommand{\headrulewidth}{0.3pt}
+
+% ── Support de l'arabe (résumé optionnel) ────────────────────────────────────
+% Chaîne de repli : Amiri (présent sur Overleaf / TeX Live) → Al Bayan et
+% Geeza Pro (polices système macOS). Si aucune n'est disponible, mettre
+% \ARABICRESUME à 0 : le document compile alors sans le ملخص.
+\if\ARABICRESUME1
+  \setotherlanguage{arabic}
+  % Amiri est chargée PAR NOM DE FICHIER : c'est la seule forme qui
+  % fonctionne à la fois sur Overleaf/TeX Live et avec tectonic. Les polices
+  % système macOS servent de repli — attention, Geeza Pro n'a ni chiffres
+  % latins ni « : », d'où l'ordre de préférence.
+  \IfFontExistsTF{Amiri-Regular.ttf}{%
+    \newfontfamily\arabicfont[Script=Arabic,Extension=.ttf,
+                              UprightFont=Amiri-Regular]{Amiri}}{%
+    \IfFontExistsTF{Amiri}{%
+      \newfontfamily\arabicfont[Script=Arabic]{Amiri}}{%
+      \newfontfamily\arabicfont[Script=Arabic]{Al Bayan}}}
+\fi
+
+\begin{document}
+
+% =============================================================================
+%  Page de garde (gabarit simplifié — la version finale vient du modèle INPT)
+% =============================================================================
+\newgeometry{top=1.8cm,bottom=1.4cm,left=2.2cm,right=2.2cm}
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+
+% ── Bandeau : INPT à gauche, ANRT à droite ──────────────────────────────────
+% Le logo ANRT est haut (bloc « anrt » + trois lignes de baseline) : il est
+% donc calé sur la LARGEUR et non sur la hauteur, pour équilibrer visuellement
+% le logo INPT qui est, lui, plus large que haut.
+\begin{minipage}[c]{0.46\textwidth}
+  \raggedright
+  \includegraphics[height=2.0cm,keepaspectratio]{assets/logos/inpt_trim.png}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.46\textwidth}
+  \raggedleft
+  \includegraphics[width=3.7cm,keepaspectratio]{assets/logos/logo_anrt.jpg}
+\end{minipage}
+
+\vspace{1.1cm}
+
+{\Large\bfseries Rapport de projet de fin d'année\par}
+\vspace{0.45em}
+{\large\scshape Filière~: Smart ICT\par}
+
+\vspace{0.75cm}
+\rule{\textwidth}{1.1pt}\par
+\vspace{0.45cm}
+{\huge\bfseries Système d'optimisation de portefeuille\\[0.28em]
+piloté par apprentissage automatique\par}
+\vspace{0.42cm}
+\rule{\textwidth}{1.1pt}\par
+
+\vspace{0.5cm}
+{\large\itshape Allocation d'actifs sous contraintes réalistes,\\
+et évaluation honnête de ce qu'elle apporte\par}
+
+\vspace{0.7cm}
+\includegraphics[height=2.2cm,keepaspectratio]{assets/logos/eurafric_trim.png}
+
+\vspace{0.6cm}
+
+{\large\itshape Réalisé par~:\par}
+\vspace{0.5em}
+{\large Souhail BOURHIM \quad\textbullet\quad Zakarya EL WALI
+\quad\textbullet\quad Yasmine BOUAJINE\par}
+
+\vspace{0.55cm}
+
+{\large\itshape Encadré par~:\par}
+\vspace{0.5em}
+{\large M. Abdelmouttalib MAQIL\par}
+{\itshape EURAFRIC Information\par}
+
+\vspace{0.55cm}
+{\itshape Projet réalisé à distance pour EURAFRIC Information,\\
+du 18 juin au 1\textsuperscript{er} août 2026\par}
+
+\vfill
+\includegraphics[height=2.2cm,keepaspectratio]{assets/logos/inpt_campus_trim.png}
+
+\vspace{0.35cm}
+{\scshape\small Agence Nationale de Réglementation des Télécommunications\par}
+{\scshape\small Institut National des Postes et Télécommunications\par}
+\vspace{0.25em}
+{\small Promotion~: 2025/2026\par}
+
+\end{titlepage}
+\restoregeometry
+
+% =============================================================================
+%  Pages liminaires
+% =============================================================================
+\frontmatter
+\pagenumbering{roman}
+
+\input{frontmatter/dedicace}
+\input{frontmatter/remerciements}
+\input{frontmatter/resume}
+\if\ARABICRESUME1
+  \input{frontmatter/resume_ar}
+\fi
+\input{frontmatter/acronymes}
+\input{frontmatter/glossaire}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+% =============================================================================
+%  Corps
+% =============================================================================
+\mainmatter
+
+\input{chapters/Chapter1}
+\input{chapters/Chapter2}
+\input{chapters/Chapter3}
+\input{chapters/Chapter4}
+\input{chapters/Chapter5}
+\input{chapters/Conclusion}
+
+\end{document}

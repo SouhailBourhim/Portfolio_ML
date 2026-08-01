@@ -56,3 +56,11 @@ anaconda_projects/
 
 # Microsoft Office lock/temp files (created when a .docx deliverable is open)
 ~$*
+
+# LaTeX build artefacts (le PDF, lui, est versionné)
+docs/rapport/main.log
+docs/rapport/*.aux
+docs/rapport/*.toc
+docs/rapport/*.out
+docs/rapport/*.lof
+docs/rapport/*.lot

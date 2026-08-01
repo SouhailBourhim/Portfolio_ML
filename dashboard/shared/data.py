@@ -36,6 +36,23 @@ STRATEGY_LABELS = {
 CLASSICAL_STRATEGIES = ("equal_weight", "min_variance_lw", "max_sharpe")
 ML_STRATEGIES = ("regime_conditional",)
 
+# French display names for the crisis windows. The artifact stores them in
+# English (its own doc and the experiment script are in English, per the
+# code-in-English convention); translating at the UI layer keeps the artifact
+# language-neutral and mirrors how STRATEGY_LABELS works.
+CRISIS_LABELS = {
+    "gfc_2008": "Crise financière de 2008",
+    "eu_debt_2011": "Crise de la dette européenne (2011)",
+    "q4_2018": "Repli du 4e trimestre 2018",
+    "covid_2020": "Krach COVID-19 (2020)",
+    "rate_shock_2022": "Choc de taux de 2022",
+}
+
+
+def crisis_label(key: str, fallback: str = "") -> str:
+    return CRISIS_LABELS.get(key, fallback or key)
+
+
 UNIVERSE_LABELS = {
     "etf_2017": "ETF internationaux (5 actifs, 2004→)",
     "full_2021": "Portefeuille EURAFRIC (9 actifs BVC + ETF, 2021→)",
