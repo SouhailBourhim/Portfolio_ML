@@ -1,0 +1,186 @@
+% =============================================================================
+%  Conclusion générale
+%
+%  Aucun chiffre n'est introduit ici qui ne figure déjà, avec son contexte et
+%  sa marge d'erreur, au chapitre 5. La conclusion synthétise ; elle ne
+%  renforce pas.
+% =============================================================================
+
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+\label{chap:conclusion}
+\markboth{CONCLUSION GÉNÉRALE}{CONCLUSION GÉNÉRALE}
+
+% =============================================================================
+\section*{Ce qui était demandé, ce qui a été livré}
+% =============================================================================
+
+L'énoncé d'EURAFRIC Information demandait un système d'optimisation de
+portefeuille piloté par apprentissage automatique, capable d'apprendre les
+corrélations dynamiques entre actifs, opérant sous des contraintes réalistes de
+gestion, et évalué dans un cadre rigoureux de \emph{backtesting} hors
+échantillon.
+
+Le livrable est une chaîne complète et reproductible~: collecte et validation de
+données provenant de cinq sources hétérogènes~; une couche de préparation en
+trois niveaux, validée à l'écriture~; un moteur de simulation temporelle dont
+l'absence de vision du futur est vérifiée par des tests plutôt qu'affirmée~;
+quatre familles de modèles ajoutées une à une, du rétrécissement de covariance à
+la détection de régime, de la prédiction de rendement à l'optimisation sensible
+aux coûts~; un protocole d'évaluation comportant validation croisée purgée,
+segment de test gelé, intervalles de confiance et correction pour le nombre
+d'essais~; et deux surfaces d'usage — une application web à deux pages et une
+interface REST — partageant une couche de données unique. L'ensemble est couvert
+par \textbf{390~tests} exécutés hors ligne en moins de deux minutes.
+
+% =============================================================================
+\section*{Ce que le projet établit}
+% =============================================================================
+
+Les résultats sont classés selon leur force probante, et cette distinction est
+elle-même un résultat de la démarche.
+
+\paragraph{Démontré.} Le détecteur de régime, non supervisé et n'ayant jamais
+reçu la moindre liste de crises, a identifié les cinq crises étudiées~: 91,7~\%
+de ses décisions sont classées « baissier » à l'intérieur des fenêtres de crise
+contre 29,2~\% en dehors, soit un rapport de \textbf{3,13}, avec un dépassement
+du taux de base sur \textbf{cinq crises sur cinq} ($p = 0{,}031$ au test des
+signes). C'est le seul résultat statistiquement significatif du projet. Sa portée
+doit être énoncée avec précision~: le modèle \emph{voit} ce qu'il prétend voir, en
+temps réel et sans connaître la suite~; le fait que le système \emph{gagne} à agir
+sur cette information est, lui, indémontrable à cette taille d'échantillon.
+
+\paragraph{Observé, non démontré.} Le système complet dépasse la meilleure
+approche classique de \textbf{6,2~\%} de ratio de Sharpe net sur le portefeuille
+visé, et lui est inférieur de \textbf{1,6~\%} sur l'univers ETF. Les intervalles
+de confiance se chevauchent largement, le classement change selon le protocole
+d'évaluation retenu, et le gain provient d'une réduction de volatilité et non
+d'un supplément de rendement. Ces trois réserves sont affichées dans le rapport,
+dans le tableau de bord et dans l'interface de programmation — cette dernière
+livrant la réserve de manière indissociable du chiffre.
+
+\paragraph{Observé, robuste.} Pendant les cinq crises, l'optimisation sous
+contrainte a systématiquement mieux protégé le capital que la diversification
+naïve, avec un délai de retour au sommet environ deux fois plus court.
+L'attribution est faite honnêtement~: ce gain revient à la contrainte de position
+et au modèle de covariance, non à la couche de régime, qui dans trois de ces cinq
+fenêtres produit exactement la même allocation qu'une stratégie classique.
+
+\paragraph{Découvert.} Le plafond de 25~\% par actif, retenu comme règle métier et
+non comme dispositif de modélisation, s'est révélé le régulariseur le plus
+efficace du système~: le relâcher coûte 10,1~\% de ratio de Sharpe, davantage que
+l'écart entre deux modèles quelconques testés sur cet univers. Ce résultat est la
+reproduction, sur nos propres données, d'un théorème connu — une contrainte de
+position active équivaut mathématiquement à un rétrécissement de la matrice de
+covariance.
+
+\paragraph{Réfuté.} Cinq pistes indépendantes visant à dépasser la ligne de base
+ont été explorées et fermées~: la prédiction de rendement calibrée honnêtement,
+un historique cinq fois plus long, l'ajout de données fondamentales, la
+re-sélection à chaque repli temporel, et le conditionnement de la contrainte au
+régime. Le constat qui émerge de leur convergence est plus intéressant que chaque
+échec pris isolément~: \textbf{à cette taille d'échantillon, l'évaluation ne peut
+pas résoudre des écarts de l'ordre de grandeur que ces idées produisent}. Deux de
+ces études établissent en outre, séparément, que \emph{précision de prédiction et
+performance de portefeuille sont deux objectifs distincts}~: le coefficient
+d'information a doublé sans que le ratio de Sharpe suive, et il a même reculé
+dans un cas.
+
+% =============================================================================
+\section*{Ce que le projet apporte au-delà des chiffres}
+% =============================================================================
+
+La contribution la plus durable de ce travail n'est probablement pas une
+performance, mais un \emph{dispositif}.
+
+Un incident l'illustre mieux qu'un discours. À trois semaines de la fin, la
+découverte que les dividendes marocains manquaient dans les données a réduit de
+plus de moitié le gain publié du système. Le chiffre corrigé a remplacé l'ancien
+partout — rapport, tableau de bord, livrables — et deux affirmations défendues
+depuis le début du projet ont dû être retirées. Cette correction n'a été possible
+que parce que la chaîne était reconstructible de bout en bout à partir des
+sources~; elle n'aurait probablement pas été détectée du tout dans un projet où
+les résultats sont produits à la main.
+
+De là vient le principe qui structure l'ingénierie du projet~: \textbf{une règle
+importante n'est pas documentée, elle est rendue exécutable}. L'impossibilité de
+consulter le futur, l'interdiction d'écrire un chiffre de performance en dur dans
+une interface, la cohérence entre documents publiés, la traçabilité de chaque
+fonction vers le problème qu'elle traite, l'hermétisme réseau de la suite de
+tests~: chacune de ces règles est un test qui échoue si on l'enfreint. Les trois
+incidents les plus coûteux du projet ont tous consisté en une règle respectée par
+discipline jusqu'au jour où elle ne l'a plus été, sans que rien ne le signale.
+Chacun a donné lieu à un garde-fou automatique, validé en rejouant l'incident
+réel.
+
+% =============================================================================
+\section*{Limites}
+% =============================================================================
+
+Elles sont énoncées ici plutôt que laissées à découvrir.
+
+\begin{itemize}
+  \item \textbf{La taille d'échantillon est la limite dominante.} Le portefeuille
+        visé ne compte qu'environ cinq années d'historique exploitable. C'est ce
+        qui empêche de conclure, et aucun modèle supplémentaire ne le corrigera.
+  \item \textbf{L'historique marocain gratuit ne remonte pas avant 2021}, ce qui
+        exclut la crise de 2020 de l'univers principal. La conception à double
+        univers en atténue l'effet~; elle ne le supprime pas.
+  \item \textbf{Un rendement de dividende sur quatre a dû être estimé}, la source
+        publique ne le publiant pas. L'analyse de sensibilité correspondante est
+        documentée, mais la donnée reste une estimation.
+  \item \textbf{La correction pour le nombre d'essais est bornée} au périmètre de
+        chaque recherche, et non à l'ensemble des expériences menées au cours du
+        projet — définition volontairement explicite, mais moins sévère que
+        l'idéal.
+  \item \textbf{Le système n'a pas été exposé à des conditions d'exploitation
+        réelles}~: ni exécution d'ordres, ni flux temps réel, ni couverture du
+        risque de change dirham/dollar, exclus du périmètre dès le cadrage.
+\end{itemize}
+
+% =============================================================================
+\section*{Perspectives}
+% =============================================================================
+
+Quatre suites se dégagent, classées par rapport valeur/effort.
+
+\textbf{Étendre l'historique marocain.} C'est la seule action qui attaque la
+limite dominante. Un historique long a été obtenu manuellement pour dix-sept
+valeurs de la Bourse de Casablanca lors d'une des études~; l'industrialiser —
+raccorder cet historique profond aux données récentes sur leur période de
+recouvrement, puis l'intégrer à la chaîne — donnerait au portefeuille visé la
+profondeur dont il manque, y compris la crise de 2008.
+
+\textbf{Adopter le protocole imbriqué comme protocole de référence.} Il a réduit
+la largeur des intervalles de confiance de 28,6~\% pour un coût de calcul modéré,
+et il a montré que les réglages sélectionnés changent d'un repli à l'autre — ce
+qui confirme qu'une valeur unique et globale est inadaptée.
+
+\textbf{Calibrer la pénalité de rotation par modèle.} Les mesures ont établi
+qu'une valeur globale unique dégrade le bon modèle tout en corrigeant le mauvais.
+La rendre spécifique à chaque modèle est un travail de calibration circonscrit,
+au protocole déjà disponible.
+
+\textbf{Adoucir le basculement de régime.} Le basculement franc actuel produit un
+pic de transactions à chaque frontière de régime. Un mélange continu, pondéré par
+la probabilité de régime, est une alternative documentée dès la conception et non
+encore mesurée.
+
+% =============================================================================
+\section*{Bilan}
+% =============================================================================
+
+Ce projet aura moins appris à l'équipe comment faire gagner un modèle qu'à
+\emph{savoir si un modèle gagne}. C'est un apprentissage inconfortable~: il
+consiste, l'essentiel du temps, à construire les instruments qui feront tomber
+les résultats auxquels on tenait — un test qui interdit de voir le futur, un
+intervalle de confiance qui absorbe l'écart qu'on voulait annoncer, une donnée
+corrigée qui divise un gain par deux à trois semaines de la remise.
+
+C'est pourtant, dans un domaine où les performances publiées sont notoirement
+difficiles à reproduire, la seule compétence qui se transporte d'un sujet à
+l'autre. Le système livré à EURAFRIC Information ne prétend pas battre les
+méthodes classiques~: il dit précisément dans quelles conditions il les dépasse,
+de combien, avec quelle incertitude, et dans quels cas il leur est inférieur. Un
+outil qui sait dire cela est plus utile à un gestionnaire qu'un outil qui promet
+davantage.

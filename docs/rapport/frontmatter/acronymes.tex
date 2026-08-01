@@ -1,0 +1,61 @@
+% =============================================================================
+%  Liste des acronymes
+%
+%  Volontairement composée avec un simple `longtable` plutôt qu'avec le paquet
+%  `acronym` ou `glossaries` : le modèle INPT ne les charge pas nécessairement,
+%  et une liste statique ne peut pas se désynchroniser d'un compteur.
+% =============================================================================
+
+\chapter*{Liste des acronymes}
+\addcontentsline{toc}{chapter}{Liste des acronymes}
+\markboth{LISTE DES ACRONYMES}{LISTE DES ACRONYMES}
+
+\begin{longtable}{@{}p{2.6cm}p{11.4cm}@{}}
+\toprule
+\textbf{Acronyme} & \textbf{Signification} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Acronyme} & \textbf{Signification} \\
+\midrule
+\endhead
+
+API & \emph{Application Programming Interface} — interface de programmation
+applicative \\
+BAM & Bank Al-Maghrib — banque centrale du Royaume du Maroc \\
+BVC & Bourse des Valeurs de Casablanca \\
+DCC & \emph{Dynamic Conditional Correlation} — corrélation conditionnelle
+dynamique (Engle, 2002) \\
+DSR & \emph{Deflated Sharpe Ratio} — ratio de Sharpe déflaté \\
+DVC & \emph{Data Version Control} — outil de versionnement des données et des
+pipelines \\
+EM & \emph{Expectation-Maximization} — algorithme d'estimation employé par le
+modèle de Markov caché \\
+ETF & \emph{Exchange-Traded Fund} — fonds indiciel coté \\
+EWMA & \emph{Exponentially Weighted Moving Average} — moyenne mobile à
+pondération exponentielle \\
+FRED & \emph{Federal Reserve Economic Data} — base de données macroéconomiques
+de la Réserve fédérale de Saint-Louis \\
+GARCH & \emph{Generalized Autoregressive Conditional Heteroskedasticity} —
+modèle de volatilité variable dans le temps \\
+HMM & \emph{Hidden Markov Model} — modèle de Markov caché \\
+IC & \emph{Information Coefficient} — coefficient d'information \\
+INPT & Institut National des Postes et Télécommunications \\
+MAD & Dirham marocain (code ISO~4217) \\
+ML & \emph{Machine Learning} — apprentissage automatique \\
+MPT & \emph{Modern Portfolio Theory} — théorie moderne du portefeuille
+(Markowitz, 1952) \\
+OOS & \emph{Out-Of-Sample} — hors échantillon \\
+PFA & Projet de Fin d'Année \\
+REST & \emph{Representational State Transfer} — style d'architecture des
+interfaces web \\
+RF & \emph{Random Forest} — forêt aléatoire \\
+SLSQP & \emph{Sequential Least SQuares Programming} — algorithme
+d'optimisation sous contraintes \\
+USD & Dollar américain (code ISO~4217) \\
+VIX & \emph{Volatility Index} — indice de volatilité implicite du marché
+américain \\
+XGB & \emph{eXtreme Gradient Boosting} — bibliothèque de \emph{gradient
+boosting} d'arbres \\
+\bottomrule
+\end{longtable}

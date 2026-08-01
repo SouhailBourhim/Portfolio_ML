@@ -1,0 +1,90 @@
+% =============================================================================
+%  Résumé (français) et Abstract (anglais)
+%
+%  Le résumé en arabe est dans frontmatter/resume_ar.tex : il exige un moteur
+%  XeLaTeX ou LuaLaTeX (voir les instructions en tête de ce fichier). Ne
+%  l'inclure que si le projet compile avec l'un des deux.
+% =============================================================================
+
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+\markboth{RÉSUMÉ}{RÉSUMÉ}
+
+Ce projet de fin d'année, réalisé au sein d'EURAFRIC Information, porte sur
+l'allocation d'un capital entre plusieurs actifs financiers~: comment répartir
+une somme entre quatre valeurs de la Bourse de Casablanca et cinq fonds
+indiciels internationaux de manière à obtenir le meilleur rendement possible pour
+un risque maîtrisé.
+
+La théorie classique répond à cette question depuis 1952, mais échoue en pratique
+pour quatre raisons structurelles~: les quantités qu'elle estime sont bruitées,
+le comportement des marchés change au cours du temps, la diversification
+disparaît précisément pendant les crises, et les performances mesurées sur le
+passé sont systématiquement optimistes. Le travail construit une chaîne complète
+qui traite ces quatre problèmes~: préparation et validation des données en trois
+couches, moteur de simulation temporelle dont l'absence de vision du futur est
+vérifiée par des tests, puis quatre familles de modèles ajoutées une à une —
+rétrécissement de la matrice de covariance, détection non supervisée de régimes
+de marché par modèle de Markov caché, prédiction de rendement par ensembles
+d'arbres, et optimisation tenant compte des coûts de transaction. L'évaluation
+est traitée comme un objet d'ingénierie à part entière~: validation croisée
+purgée et sous embargo, segment de test gelé, intervalles de confiance par
+bootstrap à blocs et correction pour le nombre de configurations essayées.
+
+Les résultats sont rapportés selon leur force probante. Le détecteur de régime
+identifie les cinq crises étudiées, à plus de trois fois son taux de base et sans
+alerte permanente — seul résultat statistiquement significatif du projet. Le
+système complet dépasse la meilleure approche classique de 6,2~\% de ratio de
+Sharpe net sur le portefeuille visé et lui est inférieur de 1,6~\% sur l'univers
+international~; ces écarts ne sont pas significatifs et sont présentés comme
+tels. Cinq pistes indépendantes visant à faire mieux ont été explorées et
+fermées, établissant notamment que précision de prédiction et performance de
+portefeuille sont deux objectifs distincts. Enfin, le plafond de position imposé
+comme règle métier s'est révélé le régulariseur le plus efficace du système. Le
+livrable comprend un tableau de bord à deux pages et une interface REST, couverts
+par 390~tests automatisés.
+
+\vspace{0.6em}
+\noindent\textbf{Mots-clés~:} optimisation de portefeuille, apprentissage
+automatique, modèle de Markov caché, matrice de covariance, backtesting,
+validation hors échantillon, Bourse de Casablanca, gestion du risque.
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\markboth{ABSTRACT}{ABSTRACT}
+
+This final-year project, carried out at EURAFRIC Information, addresses capital
+allocation across financial assets: how to split a sum between four Casablanca
+Stock Exchange equities and five international index funds so as to obtain the
+best possible return for a controlled level of risk.
+
+Classical theory has answered this question since 1952, but fails in practice for
+four structural reasons: the quantities it estimates are noisy, market behaviour
+changes over time, diversification vanishes precisely during crises, and
+performance measured on past data is systematically optimistic. This work builds
+a complete pipeline addressing all four: a three-layer data preparation and
+validation stack, a walk-forward simulation engine whose inability to see the
+future is enforced by tests rather than asserted, and four model families added
+one at a time — covariance shrinkage, unsupervised market-regime detection via a
+hidden Markov model, return prediction with tree ensembles, and
+transaction-cost-aware optimisation. Evaluation is treated as an engineering
+artefact in its own right: purged and embargoed cross-validation, a frozen test
+segment, block-bootstrap confidence intervals, and a deflation correcting for the
+number of configurations tried.
+
+Results are reported by strength of evidence. The regime detector identifies all
+five crises studied, at more than three times its base rate and without crying
+wolf — the project's only statistically significant result. The full system
+exceeds the best classical approach by 6.2\% of net Sharpe ratio on the target
+portfolio and falls 1.6\% short of it on the international universe; neither gap
+is significant, and both are presented as such. Five independent avenues for
+improvement were explored and closed, establishing among other things that
+prediction accuracy and portfolio performance are distinct objectives. Finally,
+the position cap imposed as a business rule turned out to be the system's most
+effective regulariser. Deliverables include a two-page dashboard and a REST
+interface, covered by 390 automated tests.
+
+\vspace{0.6em}
+\noindent\textbf{Keywords:} portfolio optimisation, machine learning, hidden
+Markov model, covariance estimation, backtesting, out-of-sample validation,
+Casablanca Stock Exchange, risk management.
