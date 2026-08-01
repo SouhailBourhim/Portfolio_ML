@@ -1,0 +1,75 @@
+% =============================================================================
+%  rapport_style.sty — encadrés et réglages propres à ce rapport
+%
+%  À placer à la racine du projet Overleaf, puis dans le préambule (ou dans
+%  le fichier « Packages » du modèle INPT) :
+%
+%      \usepackage{rapport_style}
+%
+%  Ce fichier n'écrase aucun réglage du modèle : il n'ajoute que deux
+%  environnements d'encadré et la palette de couleurs employée par les
+%  figures, afin que le document et les illustrations restent cohérents.
+% =============================================================================
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{rapport_style}[2026/08/01 Encadres du rapport de stage PFA]
+
+\RequirePackage{xcolor}
+\RequirePackage[most]{tcolorbox}
+\RequirePackage{graphicx}
+
+% ── Palette : identique à celle des figures (scripts/build_figures_chap2.py) ──
+\definecolor{rapportBleu}{HTML}{1F3864}
+\definecolor{rapportGris}{HTML}{595959}
+\definecolor{rapportRouge}{HTML}{B03000}
+\definecolor{rapportBleuClair}{HTML}{EEF2F8}
+\definecolor{rapportGrisClair}{HTML}{F4F4F4}
+
+% ── Encadré « Définition » ────────────────────────────────────────────────────
+%  Employé au premier emploi de chaque notion financière, pour qu'un lecteur
+%  non spécialiste n'ait jamais à chercher ailleurs.
+\newtcolorbox{definitionbox}[1]{%
+  enhanced, breakable,
+  colback=rapportBleuClair,
+  colframe=rapportBleu,
+  boxrule=0.4pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  arc=2pt,
+  borderline west={2.2pt}{0pt}{rapportBleu},
+  fonttitle=\bfseries\small,
+  coltitle=rapportBleu,
+  title={Définition — #1},
+  attach boxed title to top left={xshift=8pt, yshift=-8pt},
+  boxed title style={colback=rapportBleuClair, colframe=rapportBleuClair,
+                     boxrule=0pt, arc=0pt},
+  top=14pt,
+}
+
+% ── Encadré « Remarque » ─────────────────────────────────────────────────────
+%  Réservé aux points d'interprétation : ce qu'il faut retenir, ou l'erreur
+%  de lecture qu'il faut éviter.
+\newtcolorbox{remarquebox}{%
+  enhanced, breakable,
+  colback=rapportGrisClair,
+  colframe=rapportGris,
+  boxrule=0pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  arc=2pt,
+  borderline west={2.2pt}{0pt}{rapportGris},
+  fontupper=\itshape,
+}
+
+% ── Encadré « Résultat » (utilisé au chapitre des résultats) ─────────────────
+\newtcolorbox{resultatbox}[1]{%
+  enhanced, breakable,
+  colback=white,
+  colframe=rapportRouge,
+  boxrule=0.6pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  arc=2pt,
+  fonttitle=\bfseries\small,
+  coltitle=white,
+  colbacktitle=rapportRouge,
+  title={#1},
+}
+
+\endinput
