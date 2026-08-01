@@ -174,7 +174,7 @@ if crisis and crisis.get("universes", {}).get("etf_2017"):
         if not opt or not ew_:
             continue
         rows.append({
-            "Crise": meta["label"],
+            "Crise": D.crisis_label(key, meta["label"]),
             "Optimiseurs sous contrainte": f"{100*opt['cum_return']:+.1f} %",
             "Équipondéré (1/N)": f"{100*ew_['cum_return']:+.1f} %",
             "Perte évitée": f"{100*(opt['cum_return']-ew_['cum_return']):+.1f} pts",
