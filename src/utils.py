@@ -3,6 +3,7 @@ utils.py — Shared helpers for DuckDB queries and logging setup.
 """
 
 import logging
+import os
 from pathlib import Path
 
 import duckdb
@@ -53,3 +54,30 @@ def setup_logging(level: int = logging.INFO) -> None:
         level=level,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
+
+
+def configure_mlflow() -> str:
+    """Point MLflow at a backend that actually stores metrics, and return it.
+
+    Addresses: P4 — experiment tracking is part of the audit trail: it is how a
+    reported Sharpe can be traced back to the run and parameters that produced
+    it. That guarantee was silently void. Under MLflow 3.x the bare-directory
+    file store is in maintenance mode, so `mlflow.log_metrics` wrote NOTHING but
+    the artifacts — every run directory under `mlruns/` contains an `artifacts/`
+    folder and no `meta.yaml`, and the UI renders an empty list. The runners
+    believed they were tracking; nothing was persisted.
+
+    A SQLite backend is what MLflow's own error message recommends, and
+    `mlflow.db` was already in `.gitignore`, so a database backend was the
+    original intent. Setting it here — once, in a shared helper the runners
+    call — rather than asking each operator to export an environment variable
+    keeps the guarantee in code instead of in discipline.
+
+    An explicit `MLFLOW_TRACKING_URI` always wins, so a team server or a test
+    sandbox can override it without editing anything.
+    """
+    import mlflow
+
+    uri = os.environ.get("MLFLOW_TRACKING_URI") or f"sqlite:///{ROOT / 'mlflow.db'}"
+    mlflow.set_tracking_uri(uri)
+    return uri
