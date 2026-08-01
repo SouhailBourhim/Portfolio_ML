@@ -138,6 +138,11 @@ versionnées dans `assets/figures/`.
 - `frontmatter/dedicace.tex` — gabarit, à réécrire.
 - `frontmatter/remerciements.tex` — à relire ; les noms sont ceux du dossier de
   projet.
-- Page de garde du modèle : filière **Smart ICT**, année **2025–2026**,
-  encadrant **M. Abdelmouttalib MAQIL** (EURAFRIC Information), période
-  **18 juin – 1er août 2026**.
+- Page de garde : les champs sont déjà renseignés dans `main.tex` (filière
+  **Smart ICT**, promotion **2025/2026**, encadrant **M. Abdelmouttalib MAQIL**,
+  période **18 juin – 1er août 2026**, projet **réalisé à distance**). Reste à
+  compléter **la date de soutenance et les deux examinateurs INPT**, laissés en
+  pointillés à remplir.
+- Les logos du bandeau sont `inpt_trim.png` (gauche) et `logo_anrt.jpg`
+  (droite) ; l'illustration du campus (`inpt_campus_trim.png`) est en pied de
+  page, comme dans le modèle officiel.
