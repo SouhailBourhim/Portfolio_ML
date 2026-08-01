@@ -37,7 +37,7 @@ CLASSICAL_STRATEGIES = ("equal_weight", "min_variance_lw", "max_sharpe")
 ML_STRATEGIES = ("regime_conditional",)
 
 UNIVERSE_LABELS = {
-    "etf_2017": "ETF internationaux (5 actifs, 2017→)",
+    "etf_2017": "ETF internationaux (5 actifs, 2004→)",
     "full_2021": "Portefeuille EURAFRIC (9 actifs BVC + ETF, 2021→)",
 }
 
@@ -78,6 +78,30 @@ def load_weights() -> pd.DataFrame:
 def load_regime() -> pd.DataFrame:
     """HMM regime timeline for regime_conditional: (Date, universe, bull_prob, regime)."""
     return pd.read_parquet(_require(GOLD / "dashboard_regime.parquet"))
+
+
+@st.cache_data(show_spinner=False)
+def load_crisis() -> dict:
+    """Per-crisis behaviour + unsupervised regime-detection rates.
+
+    Optional: returns {} when the artifact hasn't been generated, so the pitch
+    page degrades to its other sections rather than failing. Everything else
+    here is required, because a missing headline is worse than a missing
+    supporting section.
+    """
+    path = GOLD / "crisis_windows.json"
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+@st.cache_data(show_spinner=False)
+def load_cap_sweep() -> dict:
+    """The `max_weight` sweep on the deep etf_2017 window.
+
+    Optional, like `load_crisis`: absent artifact hides the section rather than
+    breaking the page.
+    """
+    path = GOLD / "etf_cap_verdict.json"
+    return json.loads(path.read_text()) if path.exists() else {}
 
 
 @st.cache_data(show_spinner=False)

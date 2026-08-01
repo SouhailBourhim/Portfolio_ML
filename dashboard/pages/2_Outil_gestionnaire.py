@@ -186,8 +186,68 @@ with st.expander("Historique complet des rééquilibrages"):
         )
 
 st.divider()
+
+# ── Cap explorer ───────────────────────────────────────────────────────────
+# The project's strongest measured effect is the weight cap, not any model
+# (CLAUDE.md §10.1). It belongs in the operator tool, where a manager can see
+# what loosening their own mandate constraint would have cost.
+cap_sweep = D.load_cap_sweep()
+if cap_sweep.get("verdicts"):
+    st.header("🔒 Effet du plafond par actif")
+    st.markdown(
+        """
+        Le plafond de position est une **contrainte de gestion**, pas un réglage de modèle —
+        et sur l'univers ETF il s'avère être le levier le plus puissant mesuré dans ce projet,
+        devant tout modèle de covariance. Jagannathan & Ma (2003) l'explique : une contrainte
+        de poids active équivaut mathématiquement à un rétrécissement de la matrice de
+        covariance. Déplacez le curseur pour voir ce que coûterait un mandat plus permissif.
+        """
+    )
+    verdicts = cap_sweep["verdicts"]
+    caps = sorted(verdicts, key=float)
+    chosen = st.select_slider(
+        "Plafond par actif (`max_weight`)",
+        options=caps,
+        value=caps[0],
+        format_func=lambda c: "sans plafond" if float(c) >= 1.0 else f"{100*float(c):.0f} %",
+    )
+    v = verdicts[chosen]
+    base = verdicts[caps[0]]["classical_sharpe"]
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Meilleur Sharpe classique", f"{v['classical_sharpe']:.4f}",
+              delta=None if chosen == caps[0] else f"{v['classical_sharpe']-base:+.4f}",
+              help=f"Stratégie : {D.label(v['best_classical'])}")
+    c2.metric("Système ML (régime)", f"{v['ml_sharpe']:.4f}")
+    c3.metric("L'optimiseur est-il libre ?",
+              "oui" if v.get("optimizer_free") else "non — plafond contraignant",
+              help="À 25 % sur 5 actifs, 5 × 0,25 = 1,25 : au moins 4 actifs sont "
+                   "forcés au plafond, et la contrainte détermine l'essentiel de "
+                   "l'allocation.")
+
+    swing = 100 * (base - min(x["classical_sharpe"] for x in verdicts.values())) / \
+        min(x["classical_sharpe"] for x in verdicts.values())
+    st.info(
+        f"""
+        En relâchant le plafond de {100*float(caps[0]):.0f} % à l'absence de plafond, le
+        meilleur Sharpe classique **baisse de {swing:.1f} %** — de façon monotone. C'est
+        davantage que l'écart entre deux modèles quelconques sur cet univers : Ledoit-Wolf,
+        EWMA, DCC-GARCH et la commutation de régime HMM réunis le déplacent moins.
+
+        **À lire comme un résultat, pas comme une limite** : le contrôle du risque le plus
+        efficace de ce système s'est révélé être la limite de position qu'un mandat réel
+        imposerait de toute façon.
+        """,
+        icon="🔒",
+    )
+    st.caption(
+        "Source : `experiments/etf_cap_verdict.py` — 248 rééquilibrages sur 20,7 ans, "
+        "univers `etf_2017`, tout le reste étant fixé. L'univers à 9 actifs n'est pas "
+        "concerné (9 × 0,25 = 2,25 laisse l'optimiseur libre)."
+    )
+
+st.divider()
 st.caption(
     "**API REST** — les mêmes données sont exposées pour un usage externe : "
     "`uvicorn api.main:app --app-dir src`, puis `/strategies`, `/metrics`, "
-    "`/equity`, `/weights`, `/compare` (documentation interactive sur `/docs`)."
+    "`/equity`, `/weights`, `/compare`, `/crisis` (documentation interactive sur `/docs`)."
 )

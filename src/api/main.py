@@ -1,9 +1,14 @@
 """
 main.py — Thin FastAPI service over the portfolio system (Phase 6).
 
-Addresses: the "production" deliverable — a REST surface a portfolio manager's
-tooling (or the dashboard's manager page) can consume, rather than importing
-the modelling code directly.
+Addresses: P4 — the "production" deliverable, and an anti-drift surface. A REST
+API a portfolio manager's tooling can consume without importing the modelling
+code, serving ONLY committed, DVC-tracked artifacts. Because it never refits on
+request, what it returns is exactly what the pipeline produced and can be
+re-derived from — the same reproducibility guarantee the dashboard's integrity
+test enforces, extended to machine consumers. `/compare` additionally ships the
+confidence interval inseparably with the lift, so a client cannot quote the gain
+without its uncertainty.
 
 Deliberately THIN. Every endpoint reads the committed Gold artifacts produced
 by `src/run_dashboard_data.py`; none of them refit a model on request. That is
@@ -58,28 +63,55 @@ class ArtifactsMissing(HTTPException):
         )
 
 
-@lru_cache(maxsize=1)
+# Cache keyed on (path, mtime) rather than `lru_cache(maxsize=1)`.
+#
+# The plain version cached for the PROCESS LIFETIME: regenerate Gold and the API
+# kept serving the previous numbers indefinitely, with no signal. That is the
+# third instance of one bug class in this project — Dagster's gRPC code server
+# served pre-`dividends.py` imports for days (§17.9), and Streamlit cached
+# `shared.data` from before `load_crisis` existed. An API that silently serves
+# superseded results is the worst of the three, because its consumers cannot
+# see a stale timestamp the way a human reading a dashboard might.
+#
+# Keying on mtime means a regenerated artifact is picked up on the next request
+# while repeat reads stay free.
+@lru_cache(maxsize=8)
+def _read_json(path_str: str, _mtime: float) -> dict:
+    return json.loads(Path(path_str).read_text())
+
+
+@lru_cache(maxsize=8)
+def _read_parquet(path_str: str, _mtime: float) -> pd.DataFrame:
+    return pd.read_parquet(path_str)
+
+
+def _fresh(path: Path, required: bool = True):
+    """Load `path`, re-reading whenever it changes on disk."""
+    if not path.exists():
+        if required:
+            raise ArtifactsMissing(path.name)
+        return None
+    mtime = path.stat().st_mtime
+    if path.suffix == ".json":
+        return _read_json(str(path), mtime)
+    return _read_parquet(str(path), mtime)
+
+
 def _showcase() -> dict:
-    path = GOLD / "dashboard_showcase.json"
-    if not path.exists():
-        raise ArtifactsMissing(path.name)
-    return json.loads(path.read_text())
+    return _fresh(GOLD / "dashboard_showcase.json")
 
 
-@lru_cache(maxsize=1)
 def _equity() -> pd.DataFrame:
-    path = GOLD / "dashboard_equity.parquet"
-    if not path.exists():
-        raise ArtifactsMissing(path.name)
-    return pd.read_parquet(path)
+    return _fresh(GOLD / "dashboard_equity.parquet")
 
 
-@lru_cache(maxsize=1)
 def _weights() -> pd.DataFrame:
-    path = GOLD / "dashboard_weights.parquet"
-    if not path.exists():
-        raise ArtifactsMissing(path.name)
-    return pd.read_parquet(path)
+    return _fresh(GOLD / "dashboard_weights.parquet")
+
+
+def _crisis() -> dict | None:
+    """Optional — absent artifact yields a 404 on /crisis, not a broken API."""
+    return _fresh(GOLD / "crisis_windows.json", required=False)
 
 
 def _check_universe(universe: str) -> dict:
@@ -222,6 +254,47 @@ def weights(
             r.asset: round(float(r.weight), 6) for r in group.itertuples()
         }
     return {"universe": universe, "strategy": strategy, "history": history}
+
+
+@app.get("/crisis", tags=["résultats"])
+def crisis(universe: str = Query("etf_2017")) -> dict:
+    """Comportement en crise + détection de régime non supervisée.
+
+    Le résultat le plus solide du projet, et le seul statistiquement
+    significatif — exposé ici pour qu'un consommateur machine puisse le citer
+    avec sa réserve, comme `/compare` le fait pour l'écart de Sharpe.
+    """
+    data = _crisis()
+    if not data:
+        raise HTTPException(
+            status_code=404,
+            detail=("Artefact 'crisis_windows.json' absent. Lancez "
+                    "`python experiments/crisis_windows.py`."),
+        )
+    per_universe = data.get("universes", {})
+    if universe not in per_universe:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Univers inconnu ou non couvert : '{universe}'. "
+                   f"Disponibles : {sorted(per_universe)}.",
+        )
+    detection = (data.get("regime_detection") or {}).get(universe)
+    return {
+        "universe": universe,
+        "methodology": data["methodology"],
+        "windows": data["crises"],
+        "per_crisis": per_universe[universe],
+        "regime_detection": detection,
+        "caveat": (
+            "Le gain en crise revient à la CONTRAINTE de portefeuille et au modèle "
+            "de covariance (P1/P3), pas spécifiquement à la couche de régime : sur "
+            "plusieurs fenêtres les optimiseurs sont identiques. La détection de "
+            "régime est un résultat distinct — le modèle voit bien ce qu'il prétend "
+            "voir ; que le fait d'agir dessus rapporte reste statistiquement "
+            "indiscernable (Phase 5). Ces deux affirmations ne doivent pas être "
+            "confondues."
+        ),
+    }
 
 
 @app.get("/compare", tags=["résultats"])

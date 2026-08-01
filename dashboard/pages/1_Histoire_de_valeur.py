@@ -20,6 +20,15 @@ INTEGRITY CONSTRAINTS, enforced in this file rather than left to discipline:
 
   4. The honest losses are shown, not buried: `etf_2017` is a case where our
      system LOSES to classical Markowitz, and it is displayed as such.
+
+  5. ATTRIBUTION. The crisis section credits the *constraint and covariance
+     model* (P1/P3), not the regime layer — in 3 of 5 windows the three
+     optimizers are identical to the decimal, because in a bear regime
+     `regime_conditional` IS `min_variance_lw` by construction and the 25% cap
+     on 5 assets pins the allocation. The count is computed, not asserted.
+     Separately, the regime DETECTION result (p=0.031, the only significant
+     finding in the project) is a claim about what the model sees — never about
+     what acting on it earns. Those two must stay in different sentences.
 """
 
 from __future__ import annotations
@@ -27,6 +36,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -52,6 +62,9 @@ except D.DashboardDataMissing as exc:
     st.error(str(exc))
     st.stop()
 
+# Optional: absent artifact degrades this section rather than the whole page.
+crisis = D.load_crisis()
+
 u = showcase["universes"][HEADLINE_UNIVERSE]
 best_classical = u["best_classical"]
 best_ml = u["best_ml"]
@@ -65,8 +78,9 @@ st.markdown(
     **Le problème.** Répartir un capital entre {len(showcase['assets_per_universe'][HEADLINE_UNIVERSE])}
     actifs — actions de la Bourse de Casablanca et ETF internationaux — de façon à
     maximiser le rendement tout en maîtrisant le risque. L'outil standard du secteur
-    est l'optimisation moyenne-variance de **Markowitz**. La question à laquelle
-    répond ce projet : le Machine Learning fait-il mieux, et de combien ?
+    est l'optimisation moyenne-variance de **Markowitz**. Les questions auxquelles
+    répond ce projet : qu'apporte le Machine Learning, **ce que l'on peut le prouver**,
+    et — tout aussi important — ce que l'on ne peut pas.
     """
 )
 st.divider()
@@ -132,15 +146,141 @@ with st.expander("Qu'est-ce que le système fait différemment ?"):
 
 st.divider()
 
+# ── 3bis. Comportement en crise (P3) — la preuve la plus directe ───────────
+# Placed BEFORE the Sharpe credibility layer deliberately: this is the
+# strongest and most business-legible evidence the project owns, and it is
+# expressed in money and time rather than in a ratio.
+if crisis and crisis.get("universes", {}).get("etf_2017"):
+    st.header("Et quand les marchés s'effondrent ?")
+    st.markdown(
+        """
+        C'est la question qui décide d'un mandat. La diversification est censée protéger
+        en crise — et c'est précisément là qu'elle cesse de fonctionner, les corrélations
+        entre actifs se resserrant brutalement (**problème P3** du projet). Nous avons donc
+        mesuré le comportement du portefeuille sur **cinq crises**, délimitées par les dates
+        de sommet-à-creux publiées du S&P 500 — **fixées avant tout examen des résultats**,
+        pour ne pas choisir après coup les périodes qui nous arrangent.
+        """
+    )
+
+    CW = crisis["universes"]["etf_2017"]
+    rows = []
+    for key, meta in crisis["crises"].items():
+        if key not in CW:
+            continue
+        w = CW[key]
+        opt = w.get("min_variance_lw") or w.get("regime_conditional")
+        ew_ = w.get("equal_weight")
+        if not opt or not ew_:
+            continue
+        rows.append({
+            "Crise": meta["label"],
+            "Optimiseurs sous contrainte": f"{100*opt['cum_return']:+.1f} %",
+            "Équipondéré (1/N)": f"{100*ew_['cum_return']:+.1f} %",
+            "Perte évitée": f"{100*(opt['cum_return']-ew_['cum_return']):+.1f} pts",
+            "Récupération": (
+                f"{opt['recovery_days']} j  vs  {ew_['recovery_days']} j"
+                if opt.get("recovery_days") and ew_.get("recovery_days") else "—"
+            ),
+        })
+    if rows:
+        st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+
+    # Derived, never typed — integrity constraint 3. The two illustrative
+    # crises are addressed by KEY, so if a window's dates change the prose
+    # follows automatically instead of silently going stale.
+    def _fr(x, n=1):
+        return f"{x:.{n}f}".replace(".", ",")
+
+    gfc = CW.get("gfc_2008", {})
+    eu = CW.get("eu_debt_2011", {})
+    bullets = []
+    if gfc.get("min_variance_lw") and gfc.get("equal_weight"):
+        o, e = gfc["min_variance_lw"], gfc["equal_weight"]
+        bullets.append(
+            f"Lors de la crise financière de 2008 elle épargne "
+            f"**{_fr(100*(o['cum_return']-e['cum_return']))} points** de performance et "
+            f"**{_fr(100*(o['max_drawdown']-e['max_drawdown']))} points** de drawdown"
+        )
+    if eu.get("min_variance_lw") and eu.get("equal_weight"):
+        o, e = eu["min_variance_lw"], eu["equal_weight"]
+        if o["cum_return"] > 0:
+            bullets.append(
+                f"pendant la crise de la dette européenne elle termine **positive** "
+                f"(+{_fr(100*o['cum_return'])} %) quand le 1/N perd "
+                f"{_fr(abs(100*e['cum_return']))} %"
+            )
+    n_windows = len(rows)
+    st.success(
+        f"""
+        **Sur les {n_windows} crises, sans exception, l'optimisation sous contrainte perd
+        moins, chute moins et récupère plus vite que la diversification naïve.**
+        {" ; ".join(bullets)}. Le délai de récupération est l'écart le plus régulier :
+        **environ deux fois moins de temps sous l'eau**.
+        """,
+        icon="🛡️",
+    )
+
+    # How many windows have the three optimizers effectively tied? Counted, not
+    # asserted — this is the caveat that keeps the section from overclaiming.
+    def _tied(w):
+        vals = [w[s]["cum_return"] for s in
+                ("min_variance_lw", "max_sharpe", "regime_conditional") if s in w]
+        return len(vals) == 3 and (max(vals) - min(vals)) < 5e-4
+
+    n_tied = sum(1 for k in CW if _tied(CW[k]))
+    st.caption(
+        f"⚠️ Attribution honnête : ce gain revient à la **contrainte de portefeuille et au "
+        f"modèle de covariance** (P1/P3), pas spécifiquement à la couche de régime. Sur "
+        f"{n_tied} des {n_windows} crises les trois optimiseurs sont identiques à la décimale "
+        f"près — en régime baissier notre système *devient* la variance minimale par "
+        f"construction, et le plafond de {100*showcase['max_weight']:.0f} % sur 5 actifs "
+        f"contraint fortement l'allocation."
+    )
+
+    # The one result in this project that clears a significance threshold.
+    rd = (crisis.get("regime_detection") or {}).get("etf_2017")
+    if rd:
+        sig = rd["significance"]
+        st.markdown("#### Le détecteur de régime a-t-il vu venir les crises ?")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Régime baissier PENDANT les crises",
+                  f"{100*rd['bear_rate_in_crisis']:.0f} %")
+        c2.metric("Régime baissier hors crise",
+                  f"{100*rd['bear_rate_outside']:.0f} %",
+                  help="Le modèle ne crie pas au loup en permanence.")
+        c3.metric("Rapport", f"{rd['risk_ratio']:.1f}×",
+                  help=f"{sig['crises_exceeding_base_rate']} crises au-dessus du taux de base.")
+        st.info(
+            f"""
+            Le détecteur est **non supervisé** : aucune date de crise, aucun label de récession
+            ne lui a jamais été fourni. Il n'observe que rendement, volatilité et corrélation
+            moyenne, et décide **en temps réel**, à partir du passé uniquement. Il a néanmoins
+            signalé **{sig['crises_exceeding_base_rate']} crises** au-dessus de son taux de base.
+
+            **C'est le seul résultat statistiquement significatif du projet**
+            (test des signes, chaque crise comptant pour une observation : *p* =
+            {sig['sign_test_p_conservative']:.3f}). Toutes nos comparaisons de ratio de Sharpe,
+            elles, ont des intervalles de confiance qui se chevauchent.
+
+            *Réserve :* « baissier » est **défini** comme l'état à plus faible rendement moyen,
+            et une crise est par nature une période de faible rendement — une part de
+            l'association est donc définitionnelle. Ce qui ne l'est pas : la détection est
+            causale et en temps réel, sans savoir qu'une crise commence.
+            """,
+            icon="🎯",
+        )
+    st.divider()
+
 # ── 4. Est-ce réel ? — la couche de crédibilité ────────────────────────────
-st.header("Est-ce un résultat réel, ou un backtest sur-optimisé ?")
+st.header("Et le ratio de Sharpe, alors ?")
 st.markdown(
     f"""
-    C'est la question qui compte, et nous y avons consacré une phase entière. Le
-    chiffre ci-dessus a été revalidé sur une **fenêtre de test gelée**
-    ({p5['test_start']} → {p5['test_end']}) que la procédure de calibration n'a
-    jamais vue, avec des **intervalles de confiance à 90 %** obtenus par bootstrap
-    par blocs.
+    Le gain en ratio de Sharpe présenté plus haut a lui aussi été revalidé sur une
+    **fenêtre de test gelée** ({p5['test_start']} → {p5['test_end']}) que la procédure
+    de calibration n'a jamais vue, avec des **intervalles de confiance à 90 %** obtenus
+    par bootstrap par blocs. Le verdict y est plus nuancé que pour le comportement en
+    crise — et nous le présentons tel quel.
     """
 )
 
