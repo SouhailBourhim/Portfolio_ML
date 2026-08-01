@@ -54,8 +54,10 @@ All four strategies are reported for every window.
 
 **The consistent finding is optimizer-vs-1/N, in all five windows.** The constrained optimizers
 lose less, draw down less, and recover faster than equal weighting every single time. The clearest
-cases are the two deepest crises: in the GFC the optimizers saved **9.3 percentage points** of
-return and **9.3 points** of drawdown against 1/N; through the EU debt crisis they were *positive*
+cases are the two deepest crises: in the GFC `regime_conditional` saved **9.3 percentage points**
+of return and **9.3 points** of drawdown against 1/N (`min_variance_lw`: 9.0 and 9.3 — the
+dashboard quotes the latter, since it is the strategy the three optimizers collapse onto in most
+windows); through the EU debt crisis they were *positive*
 (+1.6%) while 1/N lost 5.4%. Recovery is the most consistent margin of all — 53 d vs 105 d in 2018,
 37 d vs 71 d in COVID: roughly **half the time underwater**.
 
