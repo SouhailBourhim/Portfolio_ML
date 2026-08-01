@@ -71,6 +71,7 @@ conception justifiés, résultats réels, tests, limitations et traçabilité P1
 - [`docs/Livrable_Phase4C_Optimisation_Sensible_aux_Couts.docx`](docs/Livrable_Phase4C_Optimisation_Sensible_aux_Couts.docx)
 - [`docs/Livrable_Phase5_Evaluation_OOS.docx`](docs/Livrable_Phase5_Evaluation_OOS.docx)
 - [`docs/Livrable_Phase6-7_Suite_Portfolio_ML.docx`](docs/Livrable_Phase6-7_Suite_Portfolio_ML.docx)
+- [`docs/Livrable_Phase8_Etudes_Robustesse.docx`](docs/Livrable_Phase8_Etudes_Robustesse.docx) — les cinq études post-Phase 5 (données profondes, fondamentaux, walk-forward imbriqué, plafond conditionné au régime, comportement en crise) et le seul résultat significatif du projet
 
 Notebooks de validation, exécutés et lisibles avec leurs résultats :
 [`phase1_eda.ipynb`](notebooks/phase1_eda.ipynb) ·
@@ -103,9 +104,9 @@ l'eau**. ⚠️ Attribution honnête : ce gain revient à la **contrainte et au 
 **Résultat B — le HMM non supervisé a détecté les cinq crises.**
 
 Régime baissier **91,7 % pendant** les crises contre
-**29,2 % hors crise** — rapport **3.13×**,
+**29,2 % hors crise** — rapport **3,13×**,
 **5/5** crises au-dessus du taux de base. Test des signes
-conservateur (chaque crise = une observation) : **p = 0.03125**.
+conservateur (chaque crise = une observation) : **p = 0,03125**.
 
 **C'est le seul résultat statistiquement significatif du projet** — toutes les comparaisons de
 Sharpe ont des intervalles qui se chevauchent. *Réserve :* « baissier » est défini comme l'état à
