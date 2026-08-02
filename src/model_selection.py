@@ -102,6 +102,11 @@ def _instantiate(model_type: str, params: Mapping):
     if model_type == "xgboost":
         from xgboost import XGBRegressor
 
+        # On this project's macOS runtime, allowing XGBoost to choose its
+        # native worker count caused Phase 5 to terminate with SIGSEGV after
+        # the preceding RandomForest workload. Keep the search single-worker
+        # unless an explicitly reviewed configuration overrides it.
+        resolved.setdefault("n_jobs", 1)
         return XGBRegressor(**resolved)
     raise ValueError(f"Unknown model_type: {model_type!r}.")
 

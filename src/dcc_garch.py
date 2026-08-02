@@ -52,9 +52,15 @@ import pandas as pd
 from scipy.optimize import minimize
 from sklearn.covariance import LedoitWolf
 
+from memo import ContentCache, content_key
+
 log = logging.getLogger("dcc_garch")
 
 TRADING_DAYS_PER_YEAR = 252
+
+# One two-stage DCC fit per (window, hyperparameters) rather than one per
+# strategy that happens to want DCC covariance at the same date. See `memo`.
+_DCC_CACHE = ContentCache("dcc_covariance")
 
 
 class DCCGarchNonConvergence(Exception):
@@ -164,6 +170,38 @@ def dcc_covariance(
     WARNING naming the cause, if any asset's GARCH fit or the DCC
     optimization fails to converge on this window (see `strategies.
     MinVarianceLW` — same estimator, same annualization convention).
+    """
+    # `dcc_garch` and `rf_signal_cost_dcc` fit this same two-stage estimator
+    # on the same window at every rebalance date. It is deterministic (fixed
+    # initial values, deterministic optimizer), so the second call can reuse
+    # the first result; content-addressed, see `memo`. `.copy()` because the
+    # caller receives a mutable array.
+    key = content_key(
+        "dcc_covariance", train_returns,
+        garch_p, garch_q, dcc_a_init, dcc_b_init, rescale_factor,
+    )
+    return _DCC_CACHE.get_or_compute(
+        key,
+        lambda: _dcc_covariance_uncached(
+            train_returns, garch_p, garch_q, dcc_a_init, dcc_b_init, rescale_factor
+        ),
+    ).copy()
+
+
+def _dcc_covariance_uncached(
+    train_returns: pd.DataFrame,
+    garch_p: int,
+    garch_q: int,
+    dcc_a_init: float,
+    dcc_b_init: float,
+    rescale_factor: float,
+) -> np.ndarray:
+    """The two-stage estimation itself — see `dcc_covariance` for the contract.
+
+    Addresses: P1, P2, P3 — split out from `dcc_covariance` so the fit can be
+    memoized on its inputs without a cache lookup interleaved with the
+    estimation. Behaviour, including the Ledoit-Wolf non-convergence
+    fallback and its WARNING, is unchanged.
     """
     assets = train_returns.columns
     n_obs, n_assets = train_returns.shape

@@ -21,6 +21,9 @@ env/
 /data/bronze/
 /data/silver/
 /data/gold/
+# Synthetic output of the `smoke` CI wiring target — a DVC out, and not a
+# result: it must never be committed or mistaken for an evaluation artifact.
+/data/smoke/
 *.dvc
 # the DVC config directory itself IS tracked (its own .gitignore excludes the cache)
 !.dvc

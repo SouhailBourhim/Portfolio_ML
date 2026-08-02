@@ -350,3 +350,67 @@ stages:
       - data/gold/dashboard_weights.parquet
       - data/gold/dashboard_regime.parquet
       - data/gold/dashboard_showcase.json
+
+  # ── Phase 8: crisis-window analysis consumed by report, dashboard and API ──
+  # This was previously a manually run experiment even though public-facing
+  # surfaces quote it. Making it a DVC stage prevents the report from silently
+  # referring to a crisis artifact produced from a different dashboard snapshot.
+  crisis_windows:
+    cmd: python experiments/crisis_windows.py
+    deps:
+      - experiments/crisis_windows.py
+      - data/gold/dashboard_equity.parquet
+      - data/gold/dashboard_regime.parquet
+    outs:
+      - data/gold/crisis_windows.json
+
+  # ── CI wiring check — SYNTHETIC DATA, NOT A RESULT ────────────────────────
+  # Runs the real engine and the real strategy classes over a small seeded
+  # synthetic universe in ~15s, so a broken import, a renamed parameter or a
+  # cap violation fails fast instead of surfacing 45 minutes into
+  # `phase4c_compare`. It writes to data/smoke/, never data/gold/, and is NOT
+  # a dependency of `snapshot_manifest`: it can never stand in for the real
+  # evaluation, and its numbers must never be cited.
+  smoke:
+    cmd: python scripts/smoke_pipeline.py
+    deps:
+      - scripts/smoke_pipeline.py
+      - src/backtest.py
+      - src/strategies.py
+      - src/regime.py
+      - src/ml_signals.py
+    outs:
+      - data/smoke/smoke_results.json
+
+  # ── Release gate: one manifest tying all public artifacts to one snapshot ──
+  # The manifest hashes raw inputs, Gold matrices, results, dashboard artifacts,
+  # and the crisis study. It never embeds market data, so it can accompany a
+  # report/release while data remains in DVC or a controlled release archive.
+  snapshot_manifest:
+    cmd: python src/snapshot.py write
+    deps:
+      - src/snapshot.py
+      - params.yaml
+      - requirements.txt
+      - requirements.lock.txt
+      - data/bronze/raw_prices.parquet
+      - data/bronze/bvc_prices.parquet
+      - data/bronze/raw_macro.parquet
+      - data/bronze/raw_bam_macro.parquet
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_full.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/phase2_hurdle.json
+      - data/gold/phase4_results.json
+      - data/gold/phase4b_results.json
+      - data/gold/phase4c_results.json
+      - data/gold/phase5_results.json
+      - data/gold/dsr_trial_ledger.json
+      - data/gold/dashboard_showcase.json
+      - data/gold/dashboard_equity.parquet
+      - data/gold/dashboard_weights.parquet
+      - data/gold/dashboard_regime.parquet
+      - data/gold/crisis_windows.json
+    outs:
+      - data/gold/snapshot_manifest.json

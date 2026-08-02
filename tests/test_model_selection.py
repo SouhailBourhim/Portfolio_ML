@@ -15,6 +15,7 @@ import pytest
 
 from metrics import DSRTrialLedger
 from model_selection import (
+    _instantiate,
     information_coefficient,
     select_ml_hyperparameters,
     select_portfolio_levers,
@@ -55,6 +56,15 @@ def _returns_with_signal(n_dates=260, assets=("A", "B", "C", "D"), seed=0):
 
 
 class TestSelectMLHyperparameters:
+    def test_xgboost_cv_uses_a_single_native_worker_by_default(self):
+        """Regression guard for Phase 5's native -11 crash on macOS."""
+        model = _instantiate("xgboost", {"n_estimators": 5, "max_depth": 2})
+        assert model.get_params()["n_jobs"] == 1
+
+    def test_xgboost_cv_allows_an_explicit_reviewed_worker_override(self):
+        model = _instantiate("xgboost", {"n_estimators": 5, "max_depth": 2, "n_jobs": 2})
+        assert model.get_params()["n_jobs"] == 2
+
     def test_returns_best_params_from_the_grid_and_a_full_table(self):
         returns = _returns_with_signal()
         grid = {"max_depth": [2, 4], "n_estimators": [40]}

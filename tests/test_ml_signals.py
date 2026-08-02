@@ -6,6 +6,8 @@ and supervised return-prediction dataset construction.
 from __future__ import annotations
 
 import json
+import sys
+import types
 
 import numpy as np
 import pandas as pd
@@ -294,6 +296,33 @@ class TestFitPredictExpectedReturns:
         )
         assert list(result.index) == list(returns.columns)
         assert np.isfinite(result.to_numpy()).all()
+
+    def test_xgboost_walkforward_fit_uses_one_native_worker_by_default(self, monkeypatch):
+        """Regression guard for the Phase 5 macOS native -11 failure path."""
+        from ml_signals import fit_predict_expected_returns
+
+        captured: dict[str, object] = {}
+
+        class CapturingXGBRegressor:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+
+            def fit(self, X, y):
+                return self
+
+            def predict(self, X):
+                return np.zeros(len(X))
+
+        monkeypatch.setitem(
+            sys.modules, "xgboost", types.SimpleNamespace(XGBRegressor=CapturingXGBRegressor)
+        )
+        result = fit_predict_expected_returns(
+            self._returns(), extras=None, model_type="xgboost", min_train_rows=50,
+            condition_on_regime=False,
+        )
+
+        assert list(result.index) == ["A0", "A1", "A2", "A3"]
+        assert captured["n_jobs"] == 1
 
     def test_fallback_below_min_train_rows_logs_warning(self, caplog):
         from ml_signals import fit_predict_expected_returns

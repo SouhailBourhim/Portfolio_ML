@@ -48,12 +48,19 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from memo import ContentCache, content_key
+
 log = logging.getLogger("ml_signals")
 
 ROOT = Path(__file__).resolve().parents[1]
 TRADING_DAYS_PER_YEAR = 252
 
 VALID_MU_TRANSFORMS = ("none", "shrink", "rank")
+
+# Shared across every signal strategy in a run: five RandomForest variants
+# differ only in post-prediction settings, so without this they fit the same
+# forest five times per rebalance date. Content-addressed — see `memo`.
+_PREDICTION_CACHE = ContentCache("ml_signal_predict")
 
 
 def _validate_mu_transform(mu_transform: str, shrinkage_weight: float) -> None:
@@ -584,13 +591,84 @@ def fit_predict_expected_returns(
     # using the same validator apply_mu_transform enforces at the end.
     _validate_mu_transform(mu_transform, shrinkage_weight)
 
+    # The model fit does not depend on `mu_transform`/`shrinkage_weight` —
+    # those are applied to the prediction AFTERWARDS — so the expensive part
+    # is cached on everything EXCEPT them. That is what lets `rf_signal`,
+    # `rf_signal_cost`, `rf_signal_shrunk`, `rf_signal_rank` and
+    # `rf_signal_cost_dcc` share one fit per rebalance date instead of five.
+    # See `memo` for why a content-addressed cache cannot serve a stale value.
+    #
+    # The key deliberately names the two `extras` frames this function reads
+    # rather than digesting `extras` wholesale. That is not a shortcut: the
+    # turnover-penalized variants also receive `backtest.CURRENT_WEIGHTS_KEY`
+    # in `extras`, which is consumed by `strategies._extract_current_weights`
+    # AFTER this call and never read here. Keying on the whole mapping would
+    # therefore separate `rf_signal_cost` from `rf_signal` on an input that
+    # provably cannot change this function's output — correct, but it would
+    # forfeit most of the saving. Anything read below must appear here.
+    key = content_key(
+        "ml_signal_predict", train_returns,
+        (extras or {}).get("features"), (extras or {}).get("fundamentals"),
+        model_type, model_params, min_train_rows, short_window, long_window,
+        tuple(momentum_windows), condition_on_regime, n_states, n_restarts,
+        random_state_base, covariance_type, min_regime_train_days,
+    )
+    predicted, used_fallback = _PREDICTION_CACHE.get_or_compute(
+        key,
+        lambda: _predict_expected_returns_uncached(
+            train_returns, extras, model_type, model_params, min_train_rows,
+            short_window, long_window, momentum_windows, condition_on_regime,
+            n_states, n_restarts, random_state_base, covariance_type,
+            min_regime_train_days, fallback,
+        ),
+    )
+    # Copy so a caller that mutates the returned Series in place — or takes a
+    # zero-copy `.to_numpy()` view of it, as `_MLSignalStrategy.fit` does —
+    # cannot corrupt the cached entry for every later strategy.
+    predicted = predicted.copy()
+
+    # Every fallback path returns the naive mean unchanged, exactly as before:
+    # a transform of the naive estimate toward itself is a no-op for
+    # "shrink", and ranking an estimate we already decided not to trust would
+    # be noise. Preserving that branch is why the cache stores the flag too.
+    if used_fallback:
+        return predicted
+    return apply_mu_transform(predicted, fallback, mu_transform, shrinkage_weight)
+
+
+def _predict_expected_returns_uncached(
+    train_returns: pd.DataFrame,
+    extras: Mapping[str, pd.DataFrame] | None,
+    model_type: str,
+    model_params: Mapping | None,
+    min_train_rows: int,
+    short_window: int,
+    long_window: int,
+    momentum_windows: list[int],
+    condition_on_regime: bool,
+    n_states: int,
+    n_restarts: int,
+    random_state_base: int,
+    covariance_type: str,
+    min_regime_train_days: int,
+    fallback: pd.Series,
+) -> tuple[pd.Series, bool]:
+    """The panel fit/predict itself, with no `mu` transform applied.
+
+    Addresses: P1, P2, P3 — this is the body `fit_predict_expected_returns`
+    used to inline; it was split out unchanged so the expensive half can be
+    memoized on its own inputs (see `memo`). Returns `(prediction,
+    used_fallback)`; the caller applies the transform only when the model
+    genuinely produced an estimate, preserving the previous behaviour that
+    fallbacks are never transformed.
+    """
     if model_type not in ("random_forest", "xgboost"):
         log.warning(
             "ml_signals(%s): unknown model_type (expected 'random_forest' or "
             "'xgboost') — falling back to the naive sample mean for this rebalance.",
             model_type,
         )
-        return fallback
+        return fallback, True
 
     wide = build_asset_features(
         train_returns,
@@ -628,7 +706,7 @@ def fit_predict_expected_returns(
             "falling back to the naive sample mean for this rebalance.",
             model_type, len(X), min_train_rows,
         )
-        return fallback
+        return fallback, True
 
     X_predict_ordered = X_predict.reindex(columns=X.columns)
     if X_predict_ordered.isna().any().any():
@@ -637,7 +715,7 @@ def fit_predict_expected_returns(
             "falling back to the naive sample mean for this rebalance.",
             model_type,
         )
-        return fallback
+        return fallback, True
 
     # Both estimators are stochastic (bootstrap sampling / feature subsampling)
     # and default to an UNSEEDED random_state — two fit() calls on identical
@@ -656,6 +734,10 @@ def fit_predict_expected_returns(
         else:
             from xgboost import XGBRegressor
 
+            # Match the CV path in model_selection: do not let XGBoost create
+            # an uncontrolled native worker pool during repeated walk-forward
+            # fits. An explicit model_params["n_jobs"] remains authoritative.
+            resolved_params.setdefault("n_jobs", 1)
             model = XGBRegressor(**resolved_params)
 
         model.fit(X.to_numpy(), y.to_numpy())
@@ -666,7 +748,7 @@ def fit_predict_expected_returns(
             "falling back to the naive sample mean for this rebalance.",
             model_type, exc,
         )
-        return fallback
+        return fallback, True
 
     predicted = pd.Series(
         raw_predictions, index=X_predict.index.get_level_values("ASSET")
@@ -679,9 +761,9 @@ def fit_predict_expected_returns(
             "falling back to the naive sample mean for this rebalance.",
             model_type,
         )
-        return fallback
+        return fallback, True
 
-    return apply_mu_transform(result, fallback, mu_transform, shrinkage_weight)
+    return result, False
 
 
 def run_ml_signal_features(

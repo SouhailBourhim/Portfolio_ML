@@ -81,6 +81,32 @@ def allow_network(monkeypatch):
     """Opt back out of `_no_network` for a test that truly needs a socket."""
     monkeypatch.undo()
 
+
+@pytest.fixture(autouse=True)
+def _clear_estimator_caches():
+    """Reset the content-addressed estimator caches between tests.
+
+    `memo.ContentCache` assumes identical inputs imply an identical result,
+    which holds in production because the code is fixed for the lifetime of
+    a process. A test that `monkeypatch`es an estimator's internals breaks
+    that assumption deliberately — it changes behaviour WITHOUT changing the
+    inputs, so a cached entry from an earlier test would mask the very
+    failure path being exercised (this is not hypothetical: it silently
+    defeated `test_dcc_garch.py`'s two Ledoit-Wolf fallback tests when the
+    cache was first wired in).
+
+    Clearing between tests also keeps tests order-independent, which the
+    caches would otherwise quietly break.
+    """
+    import dcc_garch
+    import ml_signals
+    for cache in (ml_signals._PREDICTION_CACHE, dcc_garch._DCC_CACHE):
+        cache.clear()
+    yield
+    for cache in (ml_signals._PREDICTION_CACHE, dcc_garch._DCC_CACHE):
+        cache.clear()
+
+
 ASSETS = ["IAM.CS", "ATW.CS", "CIH.CS", "BCP.CS", "SPY", "QQQ", "EEM", "GLD", "TLT"]
 MACRO_SERIES = ["VIX", "US10Y", "DXY", "CREDIT_SPREAD"]
 

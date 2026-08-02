@@ -111,6 +111,35 @@ def fit_hmm(
             f"fit_hmm only supports 2-state (bull/bear) models; got n_states={n_states}."
         )
 
+    # Do not memoize this estimator.  Fixed restart seeds make the selected
+    # state/label normally stable, but hmmlearn's EM likelihood is not
+    # bit-for-bit deterministic on this runtime.  Reusing a prior fit would
+    # therefore change the calculation instead of merely avoiding duplicate
+    # work, which is unacceptable for a research result.
+    return _fit_hmm_uncached(
+        feature_window, n_states, n_restarts, random_state_base,
+        covariance_type, min_regime_train_days, features,
+    )
+
+
+def _fit_hmm_uncached(
+    feature_window: pd.DataFrame,
+    n_states: int,
+    n_restarts: int,
+    random_state_base: int,
+    covariance_type: str,
+    min_regime_train_days: int,
+    features: list[str],
+) -> HMMFit:
+    """The EM fit itself, unchanged — see `fit_hmm` for the contract.
+
+    Addresses: P2, P3 — this split exists for READABILITY ONLY. It was
+    introduced to let the multi-restart EM be memoized, and the memoization
+    was then removed once the estimator was shown not to be bit-for-bit
+    reproducible on this runtime (see the comment in `fit_hmm` and the
+    "WHAT IS DELIBERATELY NOT MEMOIZED" section of `memo`). The separation is
+    kept so that the reason is recorded at the call site rather than lost.
+    """
     from hmmlearn.hmm import GaussianHMM
 
     clean = feature_window[features].dropna()
