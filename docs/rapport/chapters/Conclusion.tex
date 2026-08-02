@@ -40,24 +40,24 @@ par \textbf{390~tests} exécutés hors ligne en moins de deux minutes.
 Les résultats sont classés selon leur force probante, et cette distinction est
 elle-même un résultat de la démarche.
 
-\paragraph{Démontré.} Le détecteur de régime, non supervisé et n'ayant jamais
-reçu la moindre liste de crises, a identifié les cinq crises étudiées~: 91,7~\%
-de ses décisions sont classées « baissier » à l'intérieur des fenêtres de crise
-contre 29,2~\% en dehors, soit un rapport de \textbf{3,13}, avec un dépassement
-du taux de base sur \textbf{cinq crises sur cinq} ($p = 0{,}031$ au test des
-signes). C'est le seul résultat statistiquement significatif du projet. Sa portée
-doit être énoncée avec précision~: le modèle \emph{voit} ce qu'il prétend voir, en
-temps réel et sans connaître la suite~; le fait que le système \emph{gagne} à agir
-sur cette information est, lui, indémontrable à cette taille d'échantillon.
+\paragraph{Exploré.} Le détecteur de régime, non supervisé et n'ayant jamais
+reçu de liste de crises, est plus souvent dans son état étiqueté « baissier » à
+l'intérieur des cinq fenêtres de crise étudiées (91,7~\%) qu'en dehors (29,2~\%),
+soit un rapport de \textbf{3,13}. Le diagnostic par test des signes ($p = 0{,}031$)
+est conservé pour transparence, mais ne constitue pas une preuve confirmatoire~:
+l'échantillon ne comporte que cinq événements et l'état « baissier » est défini
+par son rendement moyen plus faible. La portée défendable est plus étroite~: le
+modèle produit une lecture causale de l'état de marché associée à ces fenêtres ;
+il ne démontre pas qu'agir sur cette lecture améliore la performance économique.
 
-\paragraph{Observé, non démontré.} Le système complet dépasse la meilleure
-approche classique de \textbf{6,2~\%} de ratio de Sharpe net sur le portefeuille
-visé, et lui est inférieur de \textbf{1,6~\%} sur l'univers ETF. Les intervalles
-de confiance se chevauchent largement, le classement change selon le protocole
-d'évaluation retenu, et le gain provient d'une réduction de volatilité et non
-d'un supplément de rendement. Ces trois réserves sont affichées dans le rapport,
-dans le tableau de bord et dans l'interface de programmation — cette dernière
-livrant la réserve de manière indissociable du chiffre.
+\paragraph{Observé, non démontré.} Le système complet présente un écart observé
+de \textbf{6,2~\%} de ratio de Sharpe net sur le portefeuille visé, et de
+$-1{,}6$~\% sur l'univers ETF. Le classement change selon le protocole
+d'évaluation retenu et l'écart provient d'une réduction de volatilité, non d'un
+supplément de rendement. Les intervalles de confiance publiés sont marginaux~:
+ils quantifient l'incertitude, mais sans bootstrap pairé ils ne permettent ni de
+démontrer une supériorité ni de conclure à l'équivalence. Cette réserve est
+affichée dans le rapport, le tableau de bord et l'interface de programmation.
 
 \paragraph{Observé, robuste.} Pendant les cinq crises, l'optimisation sous
 contrainte a systématiquement mieux protégé le capital que la diversification
@@ -179,8 +179,8 @@ corrigée qui divise un gain par deux à trois semaines de la remise.
 
 C'est pourtant, dans un domaine où les performances publiées sont notoirement
 difficiles à reproduire, la seule compétence qui se transporte d'un sujet à
-l'autre. Le système livré à EURAFRIC Information ne prétend pas battre les
-méthodes classiques~: il dit précisément dans quelles conditions il les dépasse,
-de combien, avec quelle incertitude, et dans quels cas il leur est inférieur. Un
-outil qui sait dire cela est plus utile à un gestionnaire qu'un outil qui promet
-davantage.
+l'autre. Le prototype livré à EURAFRIC Information ne prétend pas battre les
+méthodes classiques, ni recommander ou exécuter une allocation~: il expose les
+écarts historiques observés, leurs limites et les conditions de leur
+reproduction. Il constitue un socle de recherche et d'analyse, pas un outil de
+gestion en production.

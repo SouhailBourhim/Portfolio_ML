@@ -219,9 +219,9 @@ class TestCrisisEndpoint:
         assert body["per_crisis"], "no per-crisis statistics returned"
         assert body["regime_detection"], "regime-detection block missing"
 
-    def test_the_significance_result_ships_with_its_caveat(self, client):
-        """A consumer must not be able to take the p-value without the reason
-        it does not mean 'the ML layer earns money'."""
+    def test_the_crisis_diagnostic_ships_with_its_caveat(self, client):
+        """A consumer must not take the diagnostic p-value as a production or
+        economic-performance claim."""
         r = client.get("/crisis", params={"universe": "etf_2017"})
         if r.status_code == 404:
             pytest.skip("crisis_windows.json not generated in this environment.")
@@ -230,7 +230,7 @@ class TestCrisisEndpoint:
         assert sig["sign_test_p_conservative"] is not None
         caveat = body["caveat"].lower()
         assert "contrainte" in caveat, "attribution caveat missing"
-        assert "indiscernable" in caveat, "the not-significant-for-returns caveat is missing"
+        assert "exploratoire" in caveat, "the exploratory-status caveat is missing"
 
     def test_unknown_universe_is_404(self, client):
         r = client.get("/crisis", params={"universe": "nope"})

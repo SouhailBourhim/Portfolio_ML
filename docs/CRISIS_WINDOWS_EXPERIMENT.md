@@ -78,10 +78,7 @@ window where the regime layer does distinguish itself is the GFC, where it beats
 `min_variance_lw` (−20.9% vs −21.2%) and `max_sharpe` (−23.5%) — a real but small margin over
 17 rebalances.
 
-## Result B — the unsupervised HMM detected every crisis ⭐
-
-This is the stronger half, and it is the kind of claim the project has not been able to make
-anywhere else.
+## Result B — exploratory association between the HMM state and crisis windows
 
 The regime detector is **unsupervised**. It has never been shown a crisis date, a recession label,
 or any external event — it sees only `MARKET_RETURN`, `MARKET_VOL_SHORT` and `AVG_PAIRWISE_CORR`,
@@ -103,20 +100,22 @@ way.
 | COVID-19 | 1/1 (100%) |
 | 2022 rate shock | 9/9 (100%) |
 
-### Significance — and this project can finally claim some
+### Exploratory diagnostics, not confirmatory significance
 
 Two tests, bracketing the serial-dependence problem:
 
-- **Conservative (lead with this): sign test, each crisis as ONE observation, n=5 → p = 0.031.**
-  This discards all within-crisis information and asks only whether each distinct episode beat the
-  base rate. Serial correlation inside a window cannot inflate it.
+- **Sign test: each crisis as ONE observation, n=5 → p = 0.031.** This discards
+  within-crisis information and avoids inflating the calculation through serial
+  correlation inside a window. It remains a diagnostic on five events, not a
+  confirmatory test of generalisation.
 - Liberal: Fisher exact over all 248 rebalances → p = 7.8 × 10⁻¹³, odds ratio 26.6. This treats
   serially-correlated monthly regimes as independent draws and is **optimistic — do not quote it
   alone**.
 
-Even at the conservative bound this clears 5%. **It is, as far as I can tell, the first
-statistically significant finding in the project** — every Sharpe comparison to date has had
-overlapping confidence intervals.
+The numerical threshold alone is not enough to justify a significance claim: the
+study contains five event windows and the comparison is retrospective. The p-value
+is retained in the artifact for transparency, but must not be used to claim that
+the project has established a statistically significant detection result.
 
 ### The caveat that must travel with it
 
@@ -124,10 +123,10 @@ overlapping confidence intervals.
 low-return periods by construction. Some association is therefore definitional, and it would be
 dishonest to present this as if the model had discovered crises from nothing.
 
-The non-trivial content is that the detection is **real-time and causal**: at each rebalance the
-model has only past data, has no idea a crisis is beginning, and still assigns bear at 3× the base
-rate — while *not* crying wolf constantly (29.2% baseline, not 80%). That is a statement about
-timing and specificity, not about labelling hindsight.
+The useful content is narrower: the detection is **real-time and causal** in the
+backtest implementation. At each rebalance the model has only past data and assigns
+bear at 3× the base rate across these historical windows. This is an exploratory
+statement about timing and specificity, not a validated crisis-prediction result.
 
 `full_2021` is too short to say anything: 4 crisis rebalances, one window, sign-test p = 0.5.
 
@@ -136,11 +135,9 @@ timing and specificity, not about labelling hindsight.
 1. **P3 now has direct evidence** rather than an inference from whole-period drawdown.
 2. **The defensible claim is about constrained optimization, not the regime layer** — 1/N is
    materially worse in every crisis, and that is a P1/P3 result worth leading with.
-3. **The regime detector has independent validation.** Its portfolio *contribution* remains
-   statistically indistinguishable from the baselines (Phase 5, nested walk-forward), but its
-   *detection* is now demonstrably real. Those are separate claims and should be stated separately:
-   the model sees what it claims to see; whether acting on it pays is a different, harder question
-   the project has answered honestly in the negative.
+3. **The regime detector has an exploratory diagnostic.** Its portfolio contribution has not
+   established an advantage over the baselines. The state/window association and the economic
+   contribution are separate questions; neither should be presented as a production-ready signal.
 4. **Recovery time is the most consistent margin** and appears nowhere in the current deliverable —
    roughly half the time underwater versus 1/N, in the two windows where all optimizers otherwise
    tie. Worth surfacing to a business audience, for whom time-to-recover is intuitive in a way
@@ -148,8 +145,9 @@ timing and specificity, not about labelling hindsight.
 
 ## Limitations
 
-- Five windows is five observations. The portfolio comparisons (Result A) carry **no significance
-  test at all** and are descriptive; only the regime-detection frequency (Result B) is tested.
+- Five windows is five observations. The portfolio comparisons (Result A) are descriptive. The
+  regime-detection frequency (Result B) includes diagnostic p-values, but they are exploratory
+  rather than confirmatory given the event count and state definition.
 - `etf_2017` only. `full_2021` starts mid-2022 and covers one partial crisis.
 - The strategy set is the dashboard's four; F7 signal models are not included because
   `dashboard_equity.parquet` does not carry them.

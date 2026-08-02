@@ -29,7 +29,7 @@ if str(ROOT) not in sys.path:
 from dashboard.shared import data as D
 from dashboard.shared import plots as P
 
-st.set_page_config(page_title="Outil du gestionnaire", page_icon="🛠️", layout="wide")
+st.set_page_config(page_title="Explorateur de stratégies", page_icon="🛠️", layout="wide")
 
 try:
     showcase = D.load_showcase()
@@ -39,10 +39,10 @@ except D.DashboardDataMissing as exc:
     st.error(str(exc))
     st.stop()
 
-st.title("🛠️ Outil du gestionnaire")
+st.title("🛠️ Explorateur de stratégies")
 st.caption(
-    "Mode avancé — comparaison de stratégies, allocations cibles et export. "
-    "Tous les résultats sont nets de coûts et hors échantillon."
+    "Mode recherche — comparaison de stratégies, allocations historiques et export. "
+    "Ce n'est ni un conseil d'investissement, ni une recommandation client, ni une interface d'exécution."
 )
 
 # ── Controls ───────────────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ st.plotly_chart(
 )
 
 # ── Metrics table ──────────────────────────────────────────────────────────
-st.subheader("Métriques (période complète, hors échantillon)")
+st.subheader("Métriques (période complète, simulation walk-forward)")
 rows = []
 for s in selected:
     m = u["strategies"][s]
@@ -128,10 +128,9 @@ metrics_df = pd.DataFrame(rows).sort_values("Sharpe net", ascending=False)
 st.dataframe(metrics_df, use_container_width=True, hide_index=True)
 
 st.caption(
-    "⚠️ Les écarts de Sharpe entre stratégies sur cette fenêtre ne sont pas "
-    "statistiquement significatifs : les intervalles de confiance hors "
-    "échantillon se chevauchent (voir *Histoire de valeur*). À utiliser comme "
-    "aide à la décision, pas comme classement définitif."
+    "⚠️ Aucun test pairé n'établit de différence statistique entre stratégies. "
+    "Les intervalles de confiance marginaux affichés dans *Résultats de recherche* "
+    "quantifient l'incertitude mais ne suffisent pas à classer les stratégies."
 )
 
 # ── Allocations ────────────────────────────────────────────────────────────

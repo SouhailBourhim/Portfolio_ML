@@ -28,7 +28,7 @@ STRATEGY_LABELS = {
     "equal_weight": "Équipondéré (1/N)",
     "min_variance_lw": "Markowitz — variance minimale (Ledoit-Wolf)",
     "max_sharpe": "Markowitz — Sharpe maximal",
-    "regime_conditional": "Notre système ML (régime + covariance dynamique)",
+    "regime_conditional": "Stratégie à régimes (HMM + covariance)",
     "rf_signal_tuned": "Signal ML RandomForest (F7, calibré)",
     "xgb_signal_tuned": "Signal ML XGBoost (F7, calibré)",
 }

@@ -5,19 +5,25 @@
 **Équipe :** Souhail Bourhim, Zakarya EL WALI, Yasmine BOUAJINE
 **Encadrant :** Abdelmouttalib
 
-## Objectif
+## Objectif et périmètre
 
-Construire un système ML de qualité production permettant d'optimiser un portefeuille
-combinant des actions de la Bourse de Casablanca (BVC) et des ETF internationaux, en
-corrigeant quatre faiblesses structurelles de la théorie moderne du portefeuille (MPT)
-de Markowitz :
+Construire un **prototype de recherche reproductible** d'optimisation de portefeuille,
+combinant des actions de la Bourse de Casablanca (BVC) et des ETF internationaux. Le
+projet évalue, dans un cadre de backtesting temporel, si des méthodes statistiques et
+de Machine Learning atténuent quatre faiblesses structurelles de la théorie moderne du
+portefeuille (MPT) de Markowitz :
 
-| # | Problème | Solution ML |
+| # | Problème | Approche évaluée |
 |---|----------|-------------|
-| P1 | Estimation bruitée de la covariance | Covariance dynamique (Ledoit-Wolf → EWMA → DCC-GARCH) |
+| P1 | Estimation bruitée de la covariance | Régularisation et covariance dynamique (Ledoit-Wolf → EWMA → DCC-GARCH) |
 | P2 | Non-stationnarité des rendements | Hidden Markov Models (régimes de marché) |
-| P3 | Rupture de la diversification en crise | HMM + covariance dynamique |
-| P4 | Surapprentissage du backtesting | Purged K-Fold CV + walk-forward backtesting |
+| P3 | Rupture de la diversification en crise | Contraintes de portefeuille + covariance dynamique + HMM |
+| P4 | Surapprentissage du backtesting | Validation purgée/embargo + backtesting walk-forward |
+
+Le livrable est une aide à l'analyse et à la recherche : il **ne fournit ni conseil
+d'investissement, ni recommandation client, ni exécution automatique d'ordres**. Il ne
+doit pas être présenté comme un système de production ou comme une preuve que le ML
+surperforme les méthodes classiques.
 
 ## Univers d'actifs
 
@@ -71,7 +77,7 @@ conception justifiés, résultats réels, tests, limitations et traçabilité P1
 - [`docs/Livrable_Phase4C_Optimisation_Sensible_aux_Couts.docx`](docs/Livrable_Phase4C_Optimisation_Sensible_aux_Couts.docx)
 - [`docs/Livrable_Phase5_Evaluation_OOS.docx`](docs/Livrable_Phase5_Evaluation_OOS.docx)
 - [`docs/Livrable_Phase6-7_Suite_Portfolio_ML.docx`](docs/Livrable_Phase6-7_Suite_Portfolio_ML.docx)
-- [`docs/Livrable_Phase8_Etudes_Robustesse.docx`](docs/Livrable_Phase8_Etudes_Robustesse.docx) — les cinq études post-Phase 5 (données profondes, fondamentaux, walk-forward imbriqué, plafond conditionné au régime, comportement en crise) et le seul résultat significatif du projet
+- [`docs/Livrable_Phase8_Etudes_Robustesse.docx`](docs/Livrable_Phase8_Etudes_Robustesse.docx) — cinq études post-Phase 5 (données profondes, fondamentaux, walk-forward imbriqué, plafond conditionné au régime, comportement en crise), rapportées comme analyses de robustesse exploratoires
 
 Notebooks de validation, exécutés et lisibles avec leurs résultats :
 [`phase1_eda.ipynb`](notebooks/phase1_eda.ipynb) ·
@@ -82,14 +88,15 @@ Notebooks de validation, exécutés et lisibles avec leurs résultats :
 [`phase4c_cost_aware.ipynb`](notebooks/phase4c_cost_aware.ipynb) ·
 [`phase5_oos_evaluation.ipynb`](notebooks/phase5_oos_evaluation.ipynb).
 
-### ⭐ Note de recherche — comportement en crise, et le seul résultat significatif (2026-07)
+### ⭐ Note de recherche — comportement en crise (analyse exploratoire, 2026-07)
 
 **P3** (rupture de la diversification en crise) était le problème le moins directement étayé :
 toutes les phases rapportaient un Sharpe et un drawdown sur période complète, aucune ne mesurait
 le comportement **pendant** les crises. Cinq fenêtres, délimitées par les dates de sommet-à-creux
 **publiées du S&P 500** et fixées avant tout examen des résultats.
 
-**Résultat A — l'optimisation sous contrainte protège ; le 1/N non, sur les 5 crises.**
+**Résultat A — sur ces cinq fenêtres, l'optimisation sous contrainte a mieux protégé
+le capital que le 1/N.**
 
 | Crise | optimiseurs | équipondéré |
 |---|---:|---:|
@@ -101,20 +108,18 @@ Le **délai de récupération** est l'écart le plus régulier : environ **deux 
 l'eau**. ⚠️ Attribution honnête : ce gain revient à la **contrainte et au modèle de covariance**
 (P1/P3), pas à la couche de régime — sur 3 des 5 fenêtres les trois optimiseurs sont identiques.
 
-**Résultat B — le HMM non supervisé a détecté les cinq crises.**
+**Résultat B — le HMM est plus souvent dans son état « baissier » pendant ces cinq
+fenêtres.**
 
-Régime baissier **91,7 % pendant** les crises contre
-**29,2 % hors crise** — rapport **3,13×**,
-**5/5** crises au-dessus du taux de base. Test des signes
-conservateur (chaque crise = une observation) : **p = 0,03125**.
+Régime baissier **91,7 % pendant** ces fenêtres contre **29,2 % hors fenêtre** — rapport
+**3,13×**, avec **5/5** fenêtres au-dessus du taux de base. C'est une association
+descriptive, pas une preuve confirmatoire : il n'y a que cinq événements, les fenêtres
+sont étudiées a posteriori et « baissier » est défini comme l'état dont le rendement moyen
+est le plus faible. Le test des signes calculé dans l'artefact est donc conservé comme
+diagnostic exploratoire, et non comme un résultat généralisable.
 
-**C'est le seul résultat statistiquement significatif du projet** — toutes les comparaisons de
-Sharpe ont des intervalles qui se chevauchent. *Réserve :* « baissier » est défini comme l'état à
-plus faible rendement moyen, donc une part de l'association est définitionnelle ; ce qui ne l'est
-pas, c'est que la détection est **causale et en temps réel**.
-
-À garder dans deux phrases distinctes : le détecteur **voit** bien ce qu'il prétend voir ; que le
-fait d'**agir** dessus rapporte reste statistiquement indiscernable. Détails :
+À garder dans deux phrases distinctes : le détecteur produit une lecture causale de l'état
+du marché ; l'effet économique d'agir sur cette lecture n'est pas établi. Détails :
 [`docs/CRISIS_WINDOWS_EXPERIMENT.md`](docs/CRISIS_WINDOWS_EXPERIMENT.md) ·
 `experiments/crisis_windows.py`.
 
@@ -122,10 +127,9 @@ fait d'**agir** dessus rapporte reste statistiquement indiscernable. Détails :
 
 Le signal ML était-il *sous-alimenté* en données ? Test sur un univers marocain **profond de 12
 actions sur ~20 ans (2005–2024, 56 000 lignes de panel ≈ 5× l'univers actuel)**, assemblé à partir
-d'historiques investing.com. Résultat honnête : plus de données ont rendu le **modèle plus
-intelligent** (coefficient d'information ×2–4, ~0,07) mais **pas** d'avantage de portefeuille
-statistiquement significatif — le plafond est la **qualité** des données (fondamentaux), pas la
-quantité. Détails : [`docs/DEEP_MOROCCO_EXPERIMENT.md`](docs/DEEP_MOROCCO_EXPERIMENT.md) ·
+d'historiques investing.com. Résultat : davantage de données augmente le coefficient
+d'information (×2–4, ~0,07), sans établir d'avantage robuste de portefeuille. La limite
+observée concerne donc la qualité et la nature des données autant que leur quantité. Détails : [`docs/DEEP_MOROCCO_EXPERIMENT.md`](docs/DEEP_MOROCCO_EXPERIMENT.md) ·
 [`notebooks/deep_morocco_data_expansion.ipynb`](notebooks/deep_morocco_data_expansion.ipynb) ·
 `experiments/deep_morocco_starvation.py`.
 
@@ -134,7 +138,7 @@ quantité. Détails : [`docs/DEEP_MOROCCO_EXPERIMENT.md`](docs/DEEP_MOROCCO_EXPE
 Suite directe de la note sur le plafond : si la contrainte régularise mieux que tout modèle de
 covariance, il faut conditionner **le plafond** au régime plutôt que la covariance — le resserrer en
 régime baissier (davantage de *shrinkage* quand les corrélations explosent : P1 + P3), le relâcher en
-régime haussier. Aucune ligne de code de production n'a été nécessaire :
+régime haussier. Aucune modification du moteur principal n'a été nécessaire :
 `RegimeConditionalStrategy` accepte déjà des sous-stratégies, donc c'est
 `MaxSharpe(max_weight=plafond_haussier)` + `MinVarianceLW(max_weight=plafond_baissier)`.
 
@@ -257,13 +261,14 @@ n'améliore pas significativement la ligne de base régime + covariance dynamiqu
 
 ## Suite Portfolio ML (dashboard + API)
 
-Les phases 6 (outil de production) et 7 (démonstration de valeur) sont livrées comme **une seule
-application Streamlit à deux pages**, partageant une couche de données unique — deux pages ne
-peuvent donc jamais afficher des chiffres divergents pour la même stratégie.
+Les phases 6 et 7 sont livrées comme **une application de recherche** Streamlit à deux
+pages, partageant une couche de données unique — deux pages ne peuvent donc jamais afficher
+des chiffres divergents pour la même stratégie. Ce démonstrateur ne constitue pas un outil
+de gestion en production et ne doit pas servir à prendre ou exécuter une décision d'investissement.
 
 ```bash
-# 1. Générer les artefacts que le dashboard lit (ou : dvc repro dashboard_data)
-python src/run_dashboard_data.py
+# 1. Générer les artefacts que le dashboard lit (ou : ./scripts/dvc.sh repro dashboard_data)
+./.venv/bin/python src/run_dashboard_data.py
 
 # 2. Lancer le dashboard
 streamlit run dashboard/streamlit_app.py
@@ -272,12 +277,12 @@ streamlit run dashboard/streamlit_app.py
 uvicorn api.main:app --app-dir src
 ```
 
-- **📊 Histoire de valeur** — page destinée aux décideurs : ce que le système ML apporte face au
-  Markowitz classique (**+6,2 % de Sharpe net sur `full_2021`**), la validation hors échantillon
-  avec intervalles de confiance, la chronologie des régimes détectés, et les limites énoncées
-  explicitement (dont le cas `etf_2017` où le système **perd −1,6 %**).
-- **🛠️ Outil du gestionnaire** — page métier : comparaison de stratégies, métriques nettes de
-  coûts, allocations cibles, historique des rééquilibrages, export CSV.
+- **📊 Résultats de recherche** — page destinée aux décideurs : l'écart de Sharpe **observé**
+  (+6,2 % sur `full_2021`, −1,6 % sur `etf_2017`) sur la période walk-forward complète, les
+  intervalles de confiance de la fenêtre de test, la chronologie des régimes et les limites.
+  Aucun écart n'est présenté comme une supériorité statistiquement démontrée.
+- **🛠️ Explorateur de stratégies** — comparaison de stratégies, métriques nettes de coûts,
+  allocations historiques et export CSV, réservée à l'analyse de recherche.
 - **API REST** (`src/api/`) — `/strategies`, `/metrics`, `/equity`, `/weights`, `/compare`. Sert
   les mêmes artefacts Gold versionnés ; `/compare` renvoie toujours l'intervalle de confiance et
   la mise en garde avec l'écart de performance.
@@ -324,12 +329,27 @@ python3 -m venv .venv
 source .venv/bin/activate        # macOS / Linux
 # .venv\Scripts\activate         # Windows (PowerShell ou cmd)
 
-# 2. Installer les dépendances
+# 2a. Installer les dépendances (développement — versions souples)
 pip install -r requirements.txt
+
+# 2b. OU rejouer l'environnement EXACT des résultats publiés
+pip install -r requirements.lock.txt
 ```
 
+### Environnement testé
+
+Les résultats versionnés ont été produits sous **Python 3.11.14 / macOS (arm64)** avec les
+versions figées dans [`requirements.lock.txt`](requirements.lock.txt), notamment
+`xgboost==3.2.0`, `scikit-learn==1.9.0`, `numpy==2.4.6`, `pandas==2.3.3`, `hmmlearn==0.3.3`.
+
+`requirements.txt` déclare des intervalles `>=` : il désigne une *famille* d'environnements,
+pas celui d'où viennent les chiffres. La distinction n'est pas théorique — c'est sous
+`xgboost 3.2.0` qu'a été diagnostiqué l'arrêt natif (`-11`) de la Phase 5 et validée la
+politique « un seul worker natif » ; une autre version pourrait modifier les résultats ou
+réactiver ce défaut. Le fichier figé fait donc partie des entrées du manifeste de snapshot.
+
 > **Vérification rapide sans configuration :** `pytest` fonctionne immédiatement après
-> l'installation — les 390 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
+> l'installation — les 411 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
 > et les notebooks se consultent avec leurs résultats déjà exécutés. En revanche,
 > `python src/pipeline.py` nécessite la clé FRED ci-dessous et un accès internet :
 > le dossier `data/` n'est pas versionné dans git et se génère à la première exécution.
@@ -343,6 +363,46 @@ FRED_API_KEY=votre_clé_ici
 
 > ⚠️ **macOS :** ne pas placer le projet sous `~/Desktop`, `~/Documents` ou `~/Downloads` —
 > la protection TCC de macOS empêche les processus lancés par launchd (Dagster) d'y accéder.
+
+## Comment vérifier qu'un résultat est à jour
+
+**Ne pas se fier à la date de modification des fichiers.** DVC restaure les sorties depuis son
+cache en conservant leur horodatage d'origine : un artefact parfaitement valide peut afficher
+une date ancienne, et un fichier récent peut être périmé. L'horodatage ne dit rien.
+
+Deux commandes font foi :
+
+```bash
+# 1. Le graphe est-il à jour vis-à-vis du code et des données ?
+./scripts/dvc.sh status                 # « Data and pipelines are up to date. »
+
+# 2. Les artefacts publiés correspondent-ils au manifeste de release ?
+./.venv/bin/python src/snapshot.py verify
+```
+
+`snapshot.py verify` recalcule le SHA-256 des 23 entrées du snapshot (données brutes, matrices
+Gold, résultats de phase, artefacts du dashboard, étude de crise, `params.yaml`, `dvc.yaml`,
+`requirements.lock.txt`) et les compare au manifeste versionné. Il **échoue** si :
+
+- un artefact requis est absent ou a changé d'un seul octet ;
+- le manifeste a été produit depuis un arbre de travail **non commité** — le `git_commit`
+  inscrit ne désignerait alors pas le code qui a produit les chiffres ;
+- la révision inscrite n'est pas un ancêtre de la révision courante (autre branche, historique
+  réécrit).
+
+La révision inscrite est celle qui a **produit** les artefacts ; le commit qui enregistre le
+manifeste en est nécessairement l'enfant, d'où le test d'ascendance plutôt que d'égalité.
+
+Régénérer le manifeste après une reconstruction — **depuis un arbre propre** :
+
+```bash
+./scripts/dvc.sh repro --force snapshot_manifest
+```
+
+> **Portabilité — limite assumée.** Aucun *remote* DVC n'est configuré : le snapshot est
+> vérifiable localement, mais les données ne peuvent pas être reconstruites à partir du seul
+> dépôt Git. Un relecteur externe a besoin soit d'un remote DVC approuvé, soit d'une archive
+> de release fournie séparément. Les données de marché ne sont pas republiées ici (licences).
 
 ## Docker (environnement reproductible)
 
@@ -436,19 +496,36 @@ launchctl kickstart -k gui/$(id -u)/com.portfolioml.dagster-webserver
 
 ### Versionnage des données (DVC)
 
-Le cache DVC protège les données contre toute perte — indispensable car la source BVC
-(medias24) est une fenêtre glissante : les lignes anciennes disparaissent définitivement.
+Les données et artefacts ne sont pas versionnés par Git. DVC enregistre le graphe de
+production et le cache local protège ce poste de travail, ce qui est indispensable car la
+source BVC (medias24) est une fenêtre glissante : les lignes anciennes disparaissent
+définitivement.
+
+> **État actuel : aucun remote DVC partagé n'est configuré dans ce dépôt.** Un clone
+> neuf ne peut donc pas récupérer seul les données ni reproduire les chiffres publiés.
+> Avant une remise ou une revue externe, il faut publier le snapshot dans un remote DVC
+> contrôlé ou fournir une archive de données avec son manifeste et ses checksums.
 
 ```bash
-dvc status                  # les données correspondent-elles à dvc.lock ?
-dvc commit                  # snapshot des données actuelles dans le cache (après un run)
-dvc checkout                # restaurer les données depuis le cache (fichier supprimé/corrompu)
-dvc repro                   # ré-exécuter uniquement les étapes affectées par un changement
+./scripts/dvc.sh status     # les données correspondent-elles à dvc.lock ?
+./scripts/dvc.sh checkout   # restaurer les données depuis le cache (fichier supprimé/corrompu)
+./scripts/dvc.sh repro      # ré-exécuter uniquement les étapes affectées par un changement
 git log -p dvc.lock         # historique des versions de données
 ```
 
-Après chaque exécution du pipeline qui modifie les données : `dvc commit` puis
-commiter `dvc.lock` dans git — c'est ce couple qui rend chaque version restaurable.
+Après une exécution DVC, vérifier et figer le snapshot publié :
+
+```bash
+./scripts/dvc.sh repro snapshot_manifest
+./.venv/bin/python src/snapshot.py verify
+pytest tests/test_artifact_consistency.py -q
+git add dvc.lock
+```
+
+`dvc repro` met à jour le cache et `dvc.lock`. `dvc commit` ne sert que lorsqu'un
+output DVC a été produit manuellement hors de DVC. Le manifeste
+`data/gold/snapshot_manifest.json` atteste le commit Git, les fichiers, leurs SHA-256
+et la structure des Parquet ; il ne remplace pas un remote DVC ou une archive contrôlée.
 
 ### Requêtes analytiques sur la couche Gold (DuckDB)
 

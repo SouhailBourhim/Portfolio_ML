@@ -1,14 +1,13 @@
 """
 main.py — Thin FastAPI service over the portfolio system (Phase 6).
 
-Addresses: P4 — the "production" deliverable, and an anti-drift surface. A REST
-API a portfolio manager's tooling can consume without importing the modelling
-code, serving ONLY committed, DVC-tracked artifacts. Because it never refits on
-request, what it returns is exactly what the pipeline produced and can be
-re-derived from — the same reproducibility guarantee the dashboard's integrity
-test enforces, extended to machine consumers. `/compare` additionally ships the
-confidence interval inseparably with the lift, so a client cannot quote the gain
-without its uncertainty.
+Addresses: P4 — a research-demo and anti-drift surface. The REST API serves
+ONLY committed, DVC-tracked artifacts without importing the modelling code. It
+is not an advisory, execution, or production investment service. Because it
+never refits on request, what it returns is exactly what the pipeline produced
+and can be re-derived from — the same reproducibility guarantee the dashboard's
+integrity test enforces, extended to machine consumers. `/compare` ships the
+uncertainty context inseparably with an observed difference.
 
 Deliberately THIN. Every endpoint reads the committed Gold artifacts produced
 by `src/run_dashboard_data.py`; none of them refit a model on request. That is
@@ -44,9 +43,9 @@ GOLD = ROOT / "data" / "gold"
 app = FastAPI(
     title="Portfolio ML API",
     description=(
-        "Interface REST du système d'optimisation de portefeuille "
+        "Interface REST de recherche pour l'optimisation de portefeuille "
         "(EURAFRIC / INPT). Sert les artefacts Gold versionnés produits par "
-        "`src/run_dashboard_data.py`."
+        "`src/run_dashboard_data.py`. Ni conseil d'investissement, ni exécution."
     ),
     version="1.0.0",
 )
@@ -260,9 +259,9 @@ def weights(
 def crisis(universe: str = Query("etf_2017")) -> dict:
     """Comportement en crise + détection de régime non supervisée.
 
-    Le résultat le plus solide du projet, et le seul statistiquement
-    significatif — exposé ici pour qu'un consommateur machine puisse le citer
-    avec sa réserve, comme `/compare` le fait pour l'écart de Sharpe.
+    Analyse exploratoire sur cinq fenêtres de crise externes. Le test des
+    signes de l'artefact est fourni comme diagnostic, non comme preuve
+    confirmatoire ou comme justification d'une décision d'investissement.
     """
     data = _crisis()
     if not data:
@@ -286,13 +285,13 @@ def crisis(universe: str = Query("etf_2017")) -> dict:
         "per_crisis": per_universe[universe],
         "regime_detection": detection,
         "caveat": (
-            "Le gain en crise revient à la CONTRAINTE de portefeuille et au modèle "
-            "de covariance (P1/P3), pas spécifiquement à la couche de régime : sur "
-            "plusieurs fenêtres les optimiseurs sont identiques. La détection de "
-            "régime est un résultat distinct — le modèle voit bien ce qu'il prétend "
-            "voir ; que le fait d'agir dessus rapporte reste statistiquement "
-            "indiscernable (Phase 5). Ces deux affirmations ne doivent pas être "
-            "confondues."
+            "Analyse exploratoire : le gain en crise revient à la CONTRAINTE de "
+            "portefeuille et au modèle de covariance (P1/P3), pas spécifiquement à "
+            "la couche de régime ; sur plusieurs fenêtres les optimiseurs sont "
+            "identiques. Cinq fenêtres et un état « baissier » défini par son "
+            "rendement moyen faible ne permettent pas une conclusion confirmatoire. "
+            "Cette analyse ne démontre pas qu'agir sur la détection améliore le "
+            "rendement."
         ),
     }
 
@@ -301,8 +300,8 @@ def crisis(universe: str = Query("etf_2017")) -> dict:
 def compare(universe: str = Query(...)) -> dict:
     """Comparaison directe ML vs. Markowitz classique pour un univers.
 
-    Renvoie toujours l'intervalle de confiance hors échantillon avec l'écart :
-    un consommateur ne peut pas récupérer le gain sans son incertitude.
+    Renvoie toujours le contexte d'incertitude avec l'écart observé : un
+    consommateur ne peut pas récupérer ce chiffre sans sa réserve.
     """
     u = _check_universe(universe)
     return {
@@ -313,8 +312,9 @@ def compare(universe: str = Query(...)) -> dict:
         "lift_absolute_sharpe": u["headline_lift_absolute_sharpe"],
         "out_of_sample_test": u["phase5_test_window"],
         "caveat": (
-            "Le gain est une estimation ponctuelle ; les intervalles de confiance "
-            "à 90 % sur la fenêtre de test gelée se chevauchent. Ne pas présenter "
-            "comme une supériorité statistiquement démontrée."
+            "L'écart est une estimation ponctuelle. Les intervalles à 90 % sont "
+            "marginaux : ils quantifient l'incertitude mais ne constituent pas un "
+            "test pairé de différence. Ne pas présenter comme une supériorité "
+            "statistiquement démontrée."
         ),
     }

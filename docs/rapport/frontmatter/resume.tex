@@ -31,18 +31,19 @@ est traitée comme un objet d'ingénierie à part entière~: validation croisée
 purgée et sous embargo, segment de test gelé, intervalles de confiance par
 bootstrap à blocs et correction pour le nombre de configurations essayées.
 
-Les résultats sont rapportés selon leur force probante. Le détecteur de régime
-identifie les cinq crises étudiées, à plus de trois fois son taux de base et sans
-alerte permanente — seul résultat statistiquement significatif du projet. Le
-système complet dépasse la meilleure approche classique de 6,2~\% de ratio de
-Sharpe net sur le portefeuille visé et lui est inférieur de 1,6~\% sur l'univers
-international~; ces écarts ne sont pas significatifs et sont présentés comme
-tels. Cinq pistes indépendantes visant à faire mieux ont été explorées et
-fermées, établissant notamment que précision de prédiction et performance de
-portefeuille sont deux objectifs distincts. Enfin, le plafond de position imposé
-comme règle métier s'est révélé le régulariseur le plus efficace du système. Le
-livrable comprend un tableau de bord à deux pages et une interface REST, couverts
-par 390~tests automatisés.
+Les résultats sont rapportés selon leur force probante. Sur cinq fenêtres de
+crise externes, le détecteur de régime est plus souvent dans son état « baissier »
+qu'en dehors des fenêtres~; cette association est présentée comme exploratoire,
+car cinq événements et une définition de l'état par le rendement ne permettent
+pas une conclusion confirmatoire. Le système complet présente un écart observé de
+6,2~\% de ratio de Sharpe net sur le portefeuille visé et de $-1{,}6$~\% sur
+l'univers international. Les intervalles publiés sont marginaux et aucun test
+pairé n'établit une supériorité entre stratégies. Cinq pistes indépendantes ont
+été explorées et fermées, établissant notamment que précision de prédiction et
+performance de portefeuille sont deux objectifs distincts. Enfin, le plafond de
+position imposé comme règle métier s'est révélé le régulariseur le plus efficace
+du système. Le livrable comprend un tableau de bord de recherche à deux pages et
+une interface REST de consultation, couverts par 390~tests automatisés.
 
 \vspace{0.6em}
 \noindent\textbf{Mots-clés~:} optimisation de portefeuille, apprentissage
@@ -72,17 +73,19 @@ artefact in its own right: purged and embargoed cross-validation, a frozen test
 segment, block-bootstrap confidence intervals, and a deflation correcting for the
 number of configurations tried.
 
-Results are reported by strength of evidence. The regime detector identifies all
-five crises studied, at more than three times its base rate and without crying
-wolf — the project's only statistically significant result. The full system
-exceeds the best classical approach by 6.2\% of net Sharpe ratio on the target
-portfolio and falls 1.6\% short of it on the international universe; neither gap
-is significant, and both are presented as such. Five independent avenues for
-improvement were explored and closed, establishing among other things that
-prediction accuracy and portfolio performance are distinct objectives. Finally,
-the position cap imposed as a business rule turned out to be the system's most
-effective regulariser. Deliverables include a two-page dashboard and a REST
-interface, covered by 390 automated tests.
+Results are reported by strength of evidence. Across five external crisis
+windows, the regime detector is more often in its ``bear'' state than outside
+those windows; this association is reported as exploratory because five events
+and a return-based state definition cannot support a confirmatory conclusion.
+The full system has an observed 6.2\% net-Sharpe difference on the target
+portfolio and a $-1.6$\% difference on the international universe. Published
+intervals are marginal, and no paired test establishes strategy superiority.
+Five independent avenues for improvement were explored and closed, establishing
+among other things that prediction accuracy and portfolio performance are
+distinct objectives. Finally, the position cap imposed as a business rule turned
+out to be the system's most effective regulariser. Deliverables include a
+two-page research dashboard and a read-only REST interface, covered by 390
+automated tests.
 
 \vspace{0.6em}
 \noindent\textbf{Keywords:} portfolio optimisation, machine learning, hidden

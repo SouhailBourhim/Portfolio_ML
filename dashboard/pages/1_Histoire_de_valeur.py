@@ -4,15 +4,14 @@
 INTEGRITY CONSTRAINTS, enforced in this file rather than left to discipline:
 
   1. "Notre système" means the REGIME + DYNAMIC-COVARIANCE system
-     (`regime_conditional`) — the part that genuinely beat classical Markowitz.
-     The F7 return-prediction signals are NEVER presented as our value-add:
-     Phase 5 proved they add no statistically-significant edge, and two further
-     experiments (deep-Morocco, fundamentals) confirmed it. `ML_STRATEGY` below
-     is a single constant so this cannot drift.
+     (`regime_conditional`) — the system with the higher full-window point estimate
+     on `full_2021`. The F7 return-prediction signals are NEVER presented as our
+     value-add: the available evaluations have not established a robust portfolio
+     edge. `ML_STRATEGY` below is a single constant so this cannot drift.
 
-  2. Every headline number carries its confidence interval. The improvement is
-     always described as a point estimate whose interval is wide — never as a
-     statistically significant result, which the data does not support.
+  2. Every headline number is described as an observed point estimate. Marginal
+     confidence intervals quantify uncertainty but do not replace a paired test of
+     a strategy difference; no superiority claim is made.
 
   3. No number is typed into this file. Everything reads from the Gold
      artifacts via `shared.data`, which `tests/test_run_dashboard_data.py`
@@ -26,9 +25,8 @@ INTEGRITY CONSTRAINTS, enforced in this file rather than left to discipline:
      optimizers are identical to the decimal, because in a bear regime
      `regime_conditional` IS `min_variance_lw` by construction and the 25% cap
      on 5 assets pins the allocation. The count is computed, not asserted.
-     Separately, the regime DETECTION result (p=0.031, the only significant
-     finding in the project) is a claim about what the model sees — never about
-     what acting on it earns. Those two must stay in different sentences.
+     Separately, the regime-detection analysis is exploratory evidence about what
+     the model sees — never a claim about what acting on it earns.
 """
 
 from __future__ import annotations
@@ -72,15 +70,21 @@ lift_pct = u["headline_lift_pct"]
 p5 = u["phase5_test_window"]
 
 # ── 1. Le problème ─────────────────────────────────────────────────────────
-st.title("📊 Quelle valeur le Machine Learning apporte-t-il ?")
+st.title("📊 Résultats de recherche — allocation assistée par ML")
+st.warning(
+    "**Prototype de recherche, pas un outil d'investissement.** Cette application "
+    "présente des résultats historiques de backtesting ; elle ne fournit ni conseil "
+    "d'investissement, ni recommandation client, ni exécution d'ordres."
+)
 st.markdown(
     f"""
     **Le problème.** Répartir un capital entre {len(showcase['assets_per_universe'][HEADLINE_UNIVERSE])}
     actifs — actions de la Bourse de Casablanca et ETF internationaux — de façon à
     maximiser le rendement tout en maîtrisant le risque. L'outil standard du secteur
     est l'optimisation moyenne-variance de **Markowitz**. Les questions auxquelles
-    répond ce projet : qu'apporte le Machine Learning, **ce que l'on peut le prouver**,
-    et — tout aussi important — ce que l'on ne peut pas.
+    répond ce projet : ce que les données suggèrent sur le Machine Learning,
+    **ce qu'elles permettent d'établir**, et — tout aussi important — ce qu'elles
+    ne permettent pas d'affirmer.
     """
 )
 st.divider()
@@ -90,29 +94,31 @@ st.header("Ce qui existe aujourd'hui, et ce que nous ajoutons")
 
 col1, col2, col3 = st.columns(3)
 col1.metric(
-    "Markowitz classique",
+    "Meilleure approche classique",
     f"{best_classical['sharpe_net']:.3f}",
     help=f"Meilleure stratégie classique : {D.label(best_classical['name'])}. "
          f"Ratio de Sharpe net de coûts, hors échantillon.",
 )
 col2.metric(
-    "Notre système ML",
+    "Stratégie à régimes",
     f"{best_ml['sharpe_net']:.3f}",
     delta=f"{lift_pct:+.1f}%",
     help="Régime (HMM) + covariance dynamique. Ratio de Sharpe net de coûts.",
 )
 col3.metric(
-    "Gain net",
+    "Écart observé",
     f"{u['headline_lift_absolute_sharpe']:+.3f} Sharpe",
     help="Différence absolue de ratio de Sharpe, nette de coûts de transaction.",
 )
 
 st.markdown(
     f"""
-    Sur le portefeuille EURAFRIC ({u['oos_start']} → {u['oos_end']}, hors échantillon,
-    net de coûts), notre système obtient un ratio de Sharpe de **{best_ml['sharpe_net']:.3f}**
+    Sur le portefeuille EURAFRIC ({u['oos_start']} → {u['oos_end']}, simulation
+    walk-forward nette de coûts), la stratégie à régimes obtient un ratio de Sharpe de
+    **{best_ml['sharpe_net']:.3f}**
     contre **{best_classical['sharpe_net']:.3f}** pour la meilleure approche classique
-    (*{D.label(best_classical['name'])}*) — soit **{lift_pct:+.1f} %**.
+    (*{D.label(best_classical['name'])}*) — soit un **écart observé de {lift_pct:+.1f} %**.
+    Cet écart descriptif n'est pas une preuve de supériorité généralisable.
     """
 )
 
@@ -211,14 +217,17 @@ if crisis and crisis.get("universes", {}).get("etf_2017"):
                 f"{_fr(abs(100*e['cum_return']))} %"
             )
     n_windows = len(rows)
-    st.success(
+    st.info(
         f"""
-        **Sur les {n_windows} crises, sans exception, l'optimisation sous contrainte perd
-        moins, chute moins et récupère plus vite que la diversification naïve.**
+        **Sur les {n_windows} fenêtres de crise étudiées, l'optimisation sous contrainte
+        perd moins, chute moins et récupère plus vite que la diversification naïve.**
         {" ; ".join(bullets)}. Le délai de récupération est l'écart le plus régulier :
         **environ deux fois moins de temps sous l'eau**.
+
+        Cette comparaison porte sur cinq fenêtres publiées et décrit ces épisodes ; elle
+        ne constitue pas à elle seule une inférence statistique généralisable.
         """,
-        icon="🛡️",
+        icon="ℹ️",
     )
 
     # How many windows have the three optimizers effectively tied? Counted, not
@@ -238,7 +247,8 @@ if crisis and crisis.get("universes", {}).get("etf_2017"):
         f"contraint fortement l'allocation."
     )
 
-    # The one result in this project that clears a significance threshold.
+    # Exploratory association between externally dated crisis windows and the
+    # state labelled "bear" after fitting the HMM.
     rd = (crisis.get("regime_detection") or {}).get("etf_2017")
     if rd:
         sig = rd["significance"]
@@ -258,15 +268,12 @@ if crisis and crisis.get("universes", {}).get("etf_2017"):
             moyenne, et décide **en temps réel**, à partir du passé uniquement. Il a néanmoins
             signalé **{sig['crises_exceeding_base_rate']} crises** au-dessus de son taux de base.
 
-            **C'est le seul résultat statistiquement significatif du projet**
-            (test des signes, chaque crise comptant pour une observation : *p* =
-            {sig['sign_test_p_conservative']:.3f}). Toutes nos comparaisons de ratio de Sharpe,
-            elles, ont des intervalles de confiance qui se chevauchent.
-
-            *Réserve :* « baissier » est **défini** comme l'état à plus faible rendement moyen,
-            et une crise est par nature une période de faible rendement — une part de
-            l'association est donc définitionnelle. Ce qui ne l'est pas : la détection est
-            causale et en temps réel, sans savoir qu'une crise commence.
+            C'est une **association exploratoire**, non une preuve confirmatoire : cinq fenêtres
+            ne suffisent pas à établir une généralisation, et « baissier » est **défini** comme
+            l'état au rendement moyen le plus faible. Le test des signes disponible dans
+            l'artefact (*p* = {sig['sign_test_p_conservative']:.3f}) est donc un diagnostic,
+            pas une revendication de significativité. Cette analyse ne démontre pas qu'agir sur
+            le signal améliore la performance économique.
             """,
             icon="🎯",
         )
@@ -276,7 +283,7 @@ if crisis and crisis.get("universes", {}).get("etf_2017"):
 st.header("Et le ratio de Sharpe, alors ?")
 st.markdown(
     f"""
-    Le gain en ratio de Sharpe présenté plus haut a lui aussi été revalidé sur une
+    L'écart de ratio de Sharpe présenté plus haut a aussi été examiné sur une
     **fenêtre de test gelée** ({p5['test_start']} → {p5['test_end']}) que la procédure
     de calibration n'a jamais vue, avec des **intervalles de confiance à 90 %** obtenus
     par bootstrap par blocs. Le verdict y est plus nuancé que pour le comportement en
@@ -309,13 +316,11 @@ if labels:
 
 st.info(
     """
-    **Lecture honnête de ce graphique.** Sur cette fenêtre de test, notre système
-    devance la diversification naïve (1/N) en estimation ponctuelle — mais les
-    intervalles de confiance se chevauchent largement. Nous présentons donc ce gain
-    comme une **estimation ponctuelle favorable**, pas comme une supériorité
-    statistiquement démontrée : la fenêtre de test est trop courte pour trancher.
-    Cette prudence est délibérée — c'est précisément ce qu'un backtest sur-optimisé
-    ne montrerait pas.
+    **Lecture honnête de ce graphique.** Sur cette fenêtre de test, la stratégie à
+    régimes devance la diversification naïve (1/N) en estimation ponctuelle. Les
+    intervalles affichés sont toutefois marginaux : leur chevauchement ne constitue
+    pas un test pairé de la différence entre stratégies. Cette visualisation quantifie
+    l'incertitude, mais n'établit pas une supériorité statistique.
     """,
     icon="ℹ️",
 )
@@ -348,31 +353,28 @@ ou = showcase["universes"][other_universe]
 
 st.markdown(
     f"""
-    - **Le gain n'est pas universel.** Sur l'univers ETF internationaux seuls
+    - **L'écart observé n'est pas universel.** Sur l'univers ETF internationaux seuls
       ({D.UNIVERSE_LABELS[other_universe]}), notre système fait **{ou['headline_lift_pct']:+.1f} %**
-      face au Markowitz classique — c'est-à-dire qu'il **perd**. Le ML apporte de la
-      valeur là où la diversification naïve est faible et les régimes marqués, pas
-      partout.
+      face au Markowitz classique — c'est-à-dire qu'il **perd**. Ces deux univers ne
+      permettent donc pas de revendiquer une valeur généralisable du ML.
     - **Ce cas défavorable est en partie un artefact de contrainte, pas seulement
       un verdict sur le ML.** Avec 5 actifs et un plafond de 25 %, tout portefeuille
       admissible doit placer au moins 4 actifs *au plafond* (5 × 0,25 = 1,25) : la
       contrainte, et non le modèle, détermine l'essentiel de l'allocation. À 25 % la
       variance minimale ne produit qu'**une seule** allocation sur 248 rééquilibrages ;
       à 30 %, elle en produit 169. L'univers à 9 actifs n'est pas concerné.
-    - **La significativité statistique n'est pas établie.** Les intervalles de
-      confiance se chevauchent ; la fenêtre de test hors échantillon est courte.
-    - **La couche de prédiction de rendement (F7) n'apporte rien de statistiquement
-      significatif.** Quatre évaluations indépendantes le confirment : calibration
+    - **Aucun test pairé n'établit une supériorité statistique.** Les intervalles de
+      confiance marginaux sont larges et la fenêtre de test hors échantillon est courte.
+    - **La couche de prédiction de rendement (F7) n'a pas établi d'avantage robuste de
+      portefeuille.** Quatre évaluations indépendantes vont dans ce sens : calibration
       honnête (Phase 5), historique marocain profond sur 20 ans, ajout de données
       fondamentales, et la ré-évaluation menée après la correction des dividendes.
       Son estimation ponctuelle passe **au-dessus ou en dessous** de notre système
       selon la fenêtre de test retenue — sur la dernière ré-évaluation elle le
       dépasse sur `full_2021` et lui reste inférieure sur `etf_2017`, l'inverse de
-      ce qu'indiquait l'évaluation précédente. Ce **changement de signe** est
-      justement ce qui démontre qu'il s'agit de bruit et non d'un avantage. Notre
-      valeur ajoutée revendiquée reste donc le **régime et la covariance dynamique**,
-      dont le gain est mesuré sur l'intégralité de la période hors échantillon et non
-      sur une fenêtre courte. Détail chiffré : livrable Phase 5.
+      ce qu'indiquait l'évaluation précédente. Ce **changement de signe** rend toute
+      conclusion de supériorité fragile. La stratégie à régimes et la covariance
+      dynamique restent des pistes étudiées, pas une valeur ajoutée démontrée.
     - **Exposition de change non couverte.** Les actifs BVC sont en MAD, les ETF en
       USD ; les résultats intègrent une exposition USD/MAD non couverte.
     - **Historique BVC limité.** Les données gratuites de la Bourse de Casablanca ne

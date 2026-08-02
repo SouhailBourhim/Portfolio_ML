@@ -22,10 +22,10 @@ Chaque performance est donc rapportée avec son intervalle de confiance, et le
 chapitre distingue explicitement trois catégories :
 
 \begin{itemize}
-  \item ce que le projet \textbf{démontre} — un résultat statistiquement
-        significatif, et un seul ;
-  \item ce qu'il \textbf{observe} sans pouvoir le démontrer — des écarts réels
-        mais inférieurs au bruit de mesure ;
+  \item ce qu'il \textbf{observe} — des écarts historiques, sans les transformer
+        en supériorité généralisable faute de test pairé ;
+  \item ce qu'il \textbf{explore} — des associations sur un faible nombre
+        d'événements, utiles pour orienter l'analyse mais non confirmatoires ;
   \item ce qu'il \textbf{réfute} — cinq pistes explorées et fermées.
 \end{itemize}
 
@@ -133,19 +133,19 @@ fenêtre d'évaluation.
   \caption[Intervalles de confiance]{Ratios de Sharpe hors échantillon et
   intervalles de confiance à 90~\% (bootstrap par blocs), pour les deux
   protocoles. Le protocole imbriqué (bleu) resserre les intervalles de
-  \textbf{28,6~\%} en moyenne. Les intervalles restent néanmoins largement
-  chevauchants~: aucun écart entre stratégies n'est statistiquement
-  significatif.}
+  \textbf{28,6~\%} en moyenne. Les intervalles marginaux restent néanmoins
+  largement chevauchants~: ils quantifient l'incertitude, sans constituer un
+  test pairé de différence entre stratégies.}
   \label{fig:intervalles}
 \end{figure}
 
 \begin{resultatbox}{Le verdict honnête}
-Hors échantillon, sur données gelées et avec de vraies barres d'erreur, le
-système ML et les approches classiques sont \textbf{statistiquement
-indiscernables} sur les deux univers. Les intervalles de confiance couvrent
-environ 1,5 à 2,3 points de Sharpe, pour des écarts entre stratégies de l'ordre
-de 0,07~: l'écart mesuré est un ordre de grandeur plus petit que l'incertitude
-de mesure.
+Hors échantillon, sur données gelées et avec des barres d'erreur, les écarts
+observés entre le système à régimes et les approches classiques restent petits
+face à l'incertitude. Les intervalles de confiance sont marginaux et couvrent
+environ 1,5 à 2,3 points de Sharpe, pour des écarts de l'ordre de 0,07. Ils ne
+permettent ni de démontrer une supériorité, ni de conclure à l'équivalence~: un
+bootstrap pairé sur les écarts de rendements serait nécessaire.
 \end{resultatbox}
 
 Trois éléments confirment ce diagnostic plutôt qu'ils ne l'affaiblissent.
@@ -220,7 +220,7 @@ contraint fortement l'allocation. L'attribuer au \emph{Machine Learning} serait
 inexact.
 
 % =============================================================================
-\section{La détection de régime : le seul résultat significatif (P2)}
+\section{La détection de régime : une analyse exploratoire (P2)}
 % =============================================================================
 
 Le détecteur de régime est un modèle \textbf{non supervisé}~: aucune date de
@@ -245,17 +245,19 @@ rapport de \textbf{3,13}, et les cinq crises dépassent le taux de base.
 
 \begin{table}[htbp]
   \centering
-  \caption[Significativité de la détection]{Deux tests encadrant le problème de
-  dépendance sérielle. Le test conservateur doit être cité en premier.}
-  \label{tab:significativite}
+\caption[Diagnostic de la détection]{Deux diagnostics encadrent le problème de
+  dépendance sérielle. Ils sont rapportés pour transparence, non comme une
+  confirmation statistique généralisable sur cinq événements.}
+\label{tab:diagnostic_detection}
   \small
   \begin{tabular}{llp{7.4cm}}
     \toprule
-    Test & Résultat & Lecture \\
+    Diagnostic & Résultat & Lecture \\
     \midrule
-    Test des signes \emph{(conservateur)} & $p = 0{,}031$ &
-      Chaque crise compte pour une seule observation ($n = 5$). La corrélation
-      sérielle à l'intérieur d'une fenêtre ne peut pas gonfler ce résultat. \\
+    Test des signes \emph{(exploratoire)} & $p = 0{,}031$ &
+      Chaque crise compte pour une observation ($n = 5$). Ce calcul évite la
+      dépendance sérielle interne, mais cinq observations ne permettent pas une
+      conclusion confirmatoire. \\
     Fisher exact \emph{(libéral)} & $p = 7{,}8 \times 10^{-13}$ &
       Traite 248 rééquilibrages mensuels corrélés comme indépendants~:
       optimiste. À ne jamais citer seul. \\
@@ -263,11 +265,12 @@ rapport de \textbf{3,13}, et les cinq crises dépassent le taux de base.
   \end{tabular}
 \end{table}
 
-\begin{resultatbox}{Le seul résultat statistiquement significatif du projet}
-Même au seuil conservateur, la détection dépasse le seuil de 5~\%
-($p = 0{,}031$). C'est le seul résultat significatif obtenu~: toutes les
-comparaisons de ratio de Sharpe de ce rapport ont des intervalles de confiance
-qui se chevauchent.
+\begin{resultatbox}{Association exploratoire, non preuve de détection}
+Le détecteur est plus souvent dans l'état étiqueté « baissier » pendant les cinq
+fenêtres étudiées. Le test des signes donne $p = 0{,}031$, mais cet indicateur
+reste exploratoire~: l'échantillon contient cinq événements et « baissier » est
+défini par le rendement moyen faible de l'état. Il ne doit pas être présenté comme
+un résultat confirmatoire, ni comme une preuve de valeur économique.
 \end{resultatbox}
 
 \paragraph{La réserve qui doit accompagner ce résultat.} Le régime « baissier »
@@ -278,10 +281,10 @@ et en temps réel}, et qu'elle ne se déclenche pas en permanence — le taux ho
 crise reste à 29~\%, non à 80~\%. Le modèle ne crie pas au loup.
 
 \begin{remarquebox}
-Deux affirmations distinctes, à ne jamais confondre et à formuler dans des
-phrases séparées~: le détecteur \textbf{voit} démonstrativement ce qu'il prétend
-voir~; le fait d'\textbf{agir} sur cette détection reste, lui, statistiquement
-indiscernable des approches classiques.
+Deux affirmations distinctes, à ne jamais confondre~: le détecteur produit une
+lecture causale de l'état de marché, associée aux cinq fenêtres étudiées~; le fait
+d'\textbf{agir} sur cette lecture n'a pas établi d'avantage économique robuste
+face aux approches classiques.
 \end{remarquebox}
 
 % =============================================================================
@@ -450,22 +453,22 @@ versionnés et ne réentraîne jamais de modèle à la demande.
 Deux points de conception méritent d'être signalés. D'une part, le point d'entrée
 \texttt{/compare} renvoie toujours l'intervalle de confiance \emph{avec} l'écart
 de performance~: un client ne peut pas récupérer le gain sans son incertitude.
-D'autre part, \texttt{/crisis} applique la même règle au résultat significatif, en
-y attachant sa réserve d'attribution.
+D'autre part, \texttt{/crisis} expose l'analyse exploratoire avec sa réserve
+d'attribution et ses limites d'inférence.
 
 % =============================================================================
 \section*{Synthèse du chapitre}
 \addcontentsline{toc}{section}{Synthèse du chapitre}
 
 \begin{itemize}
-  \item \textbf{Démontré} — le détecteur de régime non supervisé identifie les
-        cinq crises étudiées, à trois fois son taux de base et sans fausse alerte
-        permanente ($p = 0{,}031$). Seul résultat significatif du projet.
-  \item \textbf{Observé, non démontré} — le système ML dépasse le Markowitz
+  \item \textbf{Exploré} — le détecteur de régime est plus souvent dans l'état
+        « baissier » durant les cinq fenêtres étudiées. Le diagnostic $p = 0{,}031$
+        est rapporté comme exploratoire, non confirmatoire.
+  \item \textbf{Observé, non démontré} — le système à régimes dépasse le Markowitz
         classique de $6{,}2$~\% sur le portefeuille EURAFRIC et lui est inférieur
-        de $1{,}6$~\% sur l'univers ETF. Les intervalles de confiance se
-        chevauchent~; le classement dépend du protocole d'évaluation et de la
-        mesure retenue.
+        de $1{,}6$~\% sur l'univers ETF. Les intervalles sont marginaux et le
+        classement dépend du protocole d'évaluation et de la mesure retenue ;
+        aucun test pairé ne conclut à une supériorité.
   \item \textbf{Observé, robuste} — l'optimisation sous contrainte protège
         systématiquement mieux que la diversification naïve pendant les cinq
         crises, avec un délai de récupération environ deux fois plus court. Ce
