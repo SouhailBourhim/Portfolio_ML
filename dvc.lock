@@ -854,14 +854,18 @@ stages:
       hash: md5
       md5: 4834fa365383830fc0b40b12bf17a9bd
       size: 13086
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
     - path: src/ml_signals.py
       hash: md5
       md5: 071188029a135edb3603331ced677f09
       size: 39005
     - path: src/regime.py
       hash: md5
-      md5: b1abea29e57dd53a302f7635cdc1d8b0
-      size: 10321
+      md5: 23cba30454ec306ceea5c08dde3c7299
+      size: 10504
     - path: src/strategies.py
       hash: md5
       md5: e14c05a35b6727c01bac51b66afcef58
@@ -869,5 +873,5 @@ stages:
     outs:
     - path: data/smoke/smoke_results.json
       hash: md5
-      md5: 00db09b792eff1f2a12e52d218db76c8
-      size: 1206
+      md5: 47cdd73ed6f648e84fbb982694ca5a12
+      size: 1205
