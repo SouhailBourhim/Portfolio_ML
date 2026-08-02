@@ -404,6 +404,13 @@ Régénérer le manifeste après une reconstruction — **depuis un arbre propre
 > dépôt Git. Un relecteur externe a besoin soit d'un remote DVC approuvé, soit d'une archive
 > de release fournie séparément. Les données de marché ne sont pas republiées ici (licences).
 
+> **Angle mort connu du graphe DVC.** `src/memo.py` (le cache adressé par contenu utilisé par
+> `ml_signals` et `dcc_garch`) n'est **pas** déclaré comme dépendance des étapes de recherche :
+> en modifier la logique ne marquerait donc pas le pipeline comme périmé. Cela n'affecte pas
+> les chiffres publiés — le cache n'a pas changé depuis leur production — mais c'est un trou
+> d'intégrité à combler. Correction planifiée, avec la reconstruction complète qu'elle impose :
+> [`docs/PHASE1_FOLLOWUPS.md`](docs/PHASE1_FOLLOWUPS.md).
+
 ## Docker (environnement reproductible)
 
 Alternative à l'installation locale : l'image fige l'OS, la version de Python et toutes les
