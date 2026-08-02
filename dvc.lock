@@ -188,6 +188,10 @@ stages:
       hash: md5
       md5: 4834fa365383830fc0b40b12bf17a9bd
       size: 13086
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
     - path: src/metrics.py
       hash: md5
       md5: 92bceb3c13b280f3bfa490709595f2ca
@@ -245,14 +249,18 @@ stages:
       hash: md5
       md5: 8f0ad8884c3143e88beedf421130529e
       size: 9352
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
     - path: src/metrics.py
       hash: md5
       md5: 92bceb3c13b280f3bfa490709595f2ca
       size: 13978
     - path: src/regime.py
       hash: md5
-      md5: b1abea29e57dd53a302f7635cdc1d8b0
-      size: 10321
+      md5: 23cba30454ec306ceea5c08dde3c7299
+      size: 10504
     - path: src/run_phase4.py
       hash: md5
       md5: 76f45b09b4bf39097ea9c3346b8941b9
@@ -323,6 +331,10 @@ stages:
       hash: md5
       md5: 8f0ad8884c3143e88beedf421130529e
       size: 9352
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
     - path: src/metrics.py
       hash: md5
       md5: 92bceb3c13b280f3bfa490709595f2ca
@@ -333,8 +345,8 @@ stages:
       size: 39005
     - path: src/regime.py
       hash: md5
-      md5: b1abea29e57dd53a302f7635cdc1d8b0
-      size: 10321
+      md5: 23cba30454ec306ceea5c08dde3c7299
+      size: 10504
     - path: src/run_phase4.py
       hash: md5
       md5: 76f45b09b4bf39097ea9c3346b8941b9
@@ -423,6 +435,10 @@ stages:
       hash: md5
       md5: 4834fa365383830fc0b40b12bf17a9bd
       size: 13086
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
     - path: src/metrics.py
       hash: md5
       md5: 92bceb3c13b280f3bfa490709595f2ca
@@ -441,8 +457,8 @@ stages:
       size: 6679
     - path: src/regime.py
       hash: md5
-      md5: b1abea29e57dd53a302f7635cdc1d8b0
-      size: 10321
+      md5: 23cba30454ec306ceea5c08dde3c7299
+      size: 10504
     - path: src/run_phase4.py
       hash: md5
       md5: 76f45b09b4bf39097ea9c3346b8941b9
@@ -558,14 +574,18 @@ stages:
       hash: md5
       md5: 4834fa365383830fc0b40b12bf17a9bd
       size: 13086
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
     - path: src/metrics.py
       hash: md5
       md5: 92bceb3c13b280f3bfa490709595f2ca
       size: 13978
     - path: src/regime.py
       hash: md5
-      md5: b1abea29e57dd53a302f7635cdc1d8b0
-      size: 10321
+      md5: 23cba30454ec306ceea5c08dde3c7299
+      size: 10504
     - path: src/run_dashboard_data.py
       hash: md5
       md5: a22853657dbd8ff3795ee1705a456132
@@ -644,6 +664,10 @@ stages:
       hash: md5
       md5: 8f0ad8884c3143e88beedf421130529e
       size: 9352
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
     - path: src/metrics.py
       hash: md5
       md5: 92bceb3c13b280f3bfa490709595f2ca
@@ -654,8 +678,8 @@ stages:
       size: 39005
     - path: src/regime.py
       hash: md5
-      md5: b1abea29e57dd53a302f7635cdc1d8b0
-      size: 10321
+      md5: 23cba30454ec306ceea5c08dde3c7299
+      size: 10504
     - path: src/run_phase4.py
       hash: md5
       md5: 76f45b09b4bf39097ea9c3346b8941b9
