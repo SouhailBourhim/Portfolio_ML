@@ -826,16 +826,48 @@ stages:
       hash: md5
       md5: bb1c32f778afba2936f1441762da70f3
       size: 9251
+    - path: requirements.lock.txt
+      hash: md5
+      md5: ab5a746d0bd42b36a086c3ca7636bb95
+      size: 5950
     - path: requirements.txt
       hash: md5
       md5: 7e34d130357c3ae870d20d912f39b27d
       size: 3554
     - path: src/snapshot.py
       hash: md5
-      md5: b2e1d9ae287db67b07b5bc3cfb667d2c
-      size: 6845
+      md5: 82491e6845f1deefc0a7ba308ef4f0a4
+      size: 10508
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: a1f786b1528fdebe267999694e324421
-      size: 6959
+      md5: 605f51ed017981538af4079034a90f48
+      size: 7338
+  smoke:
+    cmd: python scripts/smoke_pipeline.py
+    deps:
+    - path: scripts/smoke_pipeline.py
+      hash: md5
+      md5: 90fc7f912b76ee3abc7261e014d1b08a
+      size: 6776
+    - path: src/backtest.py
+      hash: md5
+      md5: 4834fa365383830fc0b40b12bf17a9bd
+      size: 13086
+    - path: src/ml_signals.py
+      hash: md5
+      md5: 071188029a135edb3603331ced677f09
+      size: 39005
+    - path: src/regime.py
+      hash: md5
+      md5: b1abea29e57dd53a302f7635cdc1d8b0
+      size: 10321
+    - path: src/strategies.py
+      hash: md5
+      md5: e14c05a35b6727c01bac51b66afcef58
+      size: 32414
+    outs:
+    - path: data/smoke/smoke_results.json
+      hash: md5
+      md5: 00db09b792eff1f2a12e52d218db76c8
+      size: 1206
