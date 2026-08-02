@@ -349,7 +349,7 @@ politique « un seul worker natif » ; une autre version pourrait modifier les r
 réactiver ce défaut. Le fichier figé fait donc partie des entrées du manifeste de snapshot.
 
 > **Vérification rapide sans configuration :** `pytest` fonctionne immédiatement après
-> l'installation — les 411 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
+> l'installation — les 417 tests sont hors-ligne (aucune clé API, aucune donnée requise) —
 > et les notebooks se consultent avec leurs résultats déjà exécutés. En revanche,
 > `python src/pipeline.py` nécessite la clé FRED ci-dessous et un accès internet :
 > le dossier `data/` n'est pas versionné dans git et se génère à la première exécution.
@@ -396,8 +396,16 @@ manifeste en est nécessairement l'enfant, d'où le test d'ascendance plutôt qu
 Régénérer le manifeste après une reconstruction — **depuis un arbre propre** :
 
 ```bash
-./scripts/dvc.sh repro --force snapshot_manifest
+./scripts/dvc.sh repro --single-item --force snapshot_manifest
 ```
+
+> ⚠️ **Les deux options sont nécessaires, et `--force` seul est dangereux.**
+> `--single-item` (`-s`) restreint l'exécution à cette seule étape ; `--force` (`-f`) la
+> réexécute alors que ses dépendances n'ont pas changé (le manifeste doit refléter le
+> nouveau commit, pas de nouvelles données). **`--force` sans `--single-item` réexécute
+> toute la chaîne amont**, y compris `ingest` : cela retélécharge les cours et régénère la
+> couche Gold, invalidant le snapshot que l'on cherchait à publier. C'est arrivé une fois
+> sur ce dépôt ; la récupération s'est faite depuis le cache DVC.
 
 > **Portabilité — limite assumée.** Aucun *remote* DVC n'est configuré : le snapshot est
 > vérifiable localement, mais les données ne peuvent pas être reconstruites à partir du seul
@@ -466,7 +474,7 @@ python src/run_phase5.py    # Évaluation OOS : K-Fold purgé + sélection honn�
 ### Tests
 
 ```bash
-pytest                      # suite complète (390 tests, ~2 min, aucun accès réseau)
+pytest                      # suite complète (417 tests, ~1 min 45, aucun accès réseau)
 pytest -q                   # sortie compacte
 pytest tests/test_clean.py  # un seul module
 pytest -k "forward_fill"    # tests dont le nom correspond au motif

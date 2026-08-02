@@ -133,11 +133,14 @@ def _fit_hmm_uncached(
 ) -> HMMFit:
     """The EM fit itself, unchanged — see `fit_hmm` for the contract.
 
-    Addresses: P2, P3 — split out from `fit_hmm` so the multi-restart EM can
-    be memoized on its inputs without the cache lookup sitting in the middle
-    of the estimation logic. The returned `HMMFit` is treated as immutable by
-    every caller (`predict_regime_posterior*` only reads it), which is what
-    makes sharing one instance between strategies safe.
+    Addresses: P2, P3 — this split exists for READABILITY ONLY. It was
+    introduced so the multi-restart EM could be memoized, and that
+    memoization was then REMOVED once the estimator was shown not to be
+    bit-for-bit reproducible on this runtime: reusing a prior fit would have
+    changed the calculation rather than merely avoided repeating it. The
+    separation is kept so the reason stays recorded next to the code it
+    concerns — see the comment in `fit_hmm` and the "WHAT IS DELIBERATELY
+    *NOT* MEMOIZED" section of `memo`.
     """
     from hmmlearn.hmm import GaussianHMM
 

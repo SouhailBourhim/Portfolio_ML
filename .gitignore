@@ -28,6 +28,12 @@ env/
 # the DVC config directory itself IS tracked (its own .gitignore excludes the cache)
 !.dvc
 
+# ── Generated tool output ────────────────────────────────────────────────────
+# graphify knowledge-graph artifacts (~8 MB: cache/, graph.html, graph.json).
+# Regenerable from the repo at any time, so versioning them would add weight
+# without adding information.
+graphify-out/
+
 # ── MLflow ───────────────────────────────────────────────────────────────────
 mlruns/
 mlflow/mlflow.db
