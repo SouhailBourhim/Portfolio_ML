@@ -90,7 +90,12 @@ def intervalles():
     ax.set_yticklabels([FR[k] for k in keys], fontsize=8)
     ax.invert_yaxis()
     ax.set_xlabel("Ratio de Sharpe net — intervalle de confiance à 90 %")
-    ax.set_title("Les intervalles se chevauchent : aucun écart n'est significatif",
+    # NOT "aucun écart n'est significatif": these are MARGINAL intervals, and
+    # concluding non-significance from their overlap is the same unlicensed
+    # inference as concluding significance from non-overlap. The difference is
+    # tested separately, by the paired bootstrap (tab:paires).
+    ax.set_title("Intervalles marginaux : ils quantifient l'incertitude,\n"
+                 "ils ne testent pas la différence entre stratégies",
                  fontsize=10)
     ax.legend(frameon=False, fontsize=7.6, loc="upper center",
               bbox_to_anchor=(0.5, -0.22), ncol=2)

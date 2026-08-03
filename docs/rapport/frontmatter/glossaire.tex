@@ -94,6 +94,17 @@ non-normalité des rendements.
 \item[Turnover (rotation)] Proportion du portefeuille effectivement échangée lors
 d'un rééquilibrage. Détermine directement les coûts de transaction supportés.
 
+\item[Sélection strictement antérieure] Découpage de validation dans lequel
+l'entraînement précède toujours la fenêtre de validation, séparé d'elle par une
+purge et un embargo. À la différence de la validation croisée purgée en blocs,
+aucune date postérieure à la validation ne peut entrer dans l'entraînement~:
+c'est la seule forme qui simule une décision d'allocation séquentielle.
+
+\item[Test pairé] Comparaison de deux stratégies sur les \emph{mêmes} dates, en
+rééchantillonnant les deux séries avec les mêmes blocs. Teste la
+\emph{différence}, ce que deux intervalles de confiance marginaux ne font pas~:
+ils peuvent se chevaucher alors que la différence est systématiquement positive.
+
 \item[Validation croisée purgée] Variante de la validation croisée adaptée aux
 séries temporelles~: les observations d'entraînement dont l'horizon chevauche le
 bloc de test sont retirées (\emph{purge}), et une bande de journées suivant ce

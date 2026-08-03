@@ -459,9 +459,10 @@ données du projet.
 
 \paragraph{López de Prado (2018), \emph{Advances in Financial Machine Learning}.}
 Ouvrage de référence sur P4. Deux outils en sont directement repris : la
-validation croisée \emph{purgée} — qui retire du jeu d'entraînement les
-observations temporellement voisines du jeu de test — et le \emph{Deflated Sharpe
-Ratio} de Bailey et López de Prado (2014), qui corrige un ratio de Sharpe observé
+\emph{purge} et \emph{embargo} — qui retirent du jeu d'entraînement les
+observations temporellement voisines du jeu de validation, appliqués ici dans un
+découpage strictement antérieur plutôt qu'en blocs (chapitre~\ref{chap:modelisation})
+— et le \emph{Deflated Sharpe Ratio} de Bailey et López de Prado (2014), qui corrige un ratio de Sharpe observé
 du nombre de stratégies essayées pour l'obtenir.
 
 % =============================================================================

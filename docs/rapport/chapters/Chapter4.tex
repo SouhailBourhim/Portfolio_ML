@@ -288,14 +288,21 @@ performance n'est jamais mesurée sur des données ayant servi à décider.
 Reste une fuite plus subtile~: le choix des réglages. Essayer trente
 configurations et publier la meilleure revient à publier un maximum de bruit.
 
-\begin{definitionbox}{Validation croisée purgée et sous embargo}
+\begin{definitionbox}{Purge, embargo, et sélection strictement antérieure}
 En apprentissage classique, on découpe les données en blocs et on teste sur
 chacun à tour de rôle. Sur des séries temporelles financières, c'est fautif~: les
 observations voisines se ressemblent, et la variable à prédire d'une journée
 recouvre les journées suivantes. Le bloc de test « touche » donc son propre
 entraînement. La \emph{purge} retire les observations d'entraînement dont
-l'horizon chevauche le bloc de test~; l'\emph{embargo} écarte en outre une bande
-de journées juste après ce bloc.
+l'horizon chevauche le bloc de validation~; l'\emph{embargo} écarte en outre une
+bande de journées juste après ce bloc.
+
+Ces deux mécanismes ne suffisent pas. La validation croisée purgée classique
+entraîne le modèle sur \emph{toutes} les dates hors de la bande — y compris
+\textbf{postérieures} à la validation. La \emph{sélection strictement antérieure}
+ajoute la contrainte manquante~: l'entraînement précède toujours la validation,
+et chaque pli vérifie
+$\text{fin\_entraînement} < \text{début\_embargo} \le \text{début\_validation}$.
 \end{definitionbox}
 
 \begin{figure}[htbp]
@@ -410,10 +417,12 @@ méthode.
         modèle unique entraîné sur tous les actifs, une posture défensive en cas
         de doute.
   \item L'évaluation traite le problème P4 comme un problème à part entière~:
-        rejeu du temps, sélection des réglages par validation croisée purgée et
-        sous embargo, segment de test gelé, intervalles de confiance par
-        bootstrap à blocs, et correction pour le nombre de configurations
-        essayées — ce dernier compté automatiquement, non déclaré.
+        rejeu du temps, sélection des réglages \textbf{strictement antérieure}
+        (purge et embargo à la frontière, l'entraînement précédant toujours la
+        validation), segment de test gelé, \textbf{comparaisons pairées} par
+        bootstrap à blocs — le test de la \emph{différence}, que des intervalles
+        marginaux ne fournissent pas — et correction pour le nombre de
+        configurations essayées, compté automatiquement et non déclaré.
   \item Les issues des expériences sont écrites avant leur exécution, plusieurs
         comportent un contrôle délibérément inversé, et tout durcissement de
         critère est consigné. Ces règles n'ajoutent aucune performance~: elles

@@ -27,9 +27,9 @@ trois niveaux, validée à l'écriture~; un moteur de simulation temporelle dont
 l'absence de vision du futur est vérifiée par des tests plutôt qu'affirmée~;
 quatre familles de modèles ajoutées une à une, du rétrécissement de covariance à
 la détection de régime, de la prédiction de rendement à l'optimisation sensible
-aux coûts~; un protocole d'évaluation comportant validation croisée purgée,
-segment de test gelé, intervalles de confiance et correction pour le nombre
-d'essais~; et deux surfaces d'usage — une application web à deux pages et une
+aux coûts~; un protocole d'évaluation comportant une sélection strictement
+antérieure, un segment de test gelé, des \textbf{comparaisons pairées} et une
+correction pour le nombre d'essais~; et deux surfaces d'usage — une application web à deux pages et une
 interface REST — partageant une couche de données unique. L'ensemble est couvert
 par \textbf{390~tests} exécutés hors ligne en moins de deux minutes.
 
@@ -54,10 +54,26 @@ il ne démontre pas qu'agir sur cette lecture améliore la performance économiq
 de \textbf{6,2~\%} de ratio de Sharpe net sur le portefeuille visé, et de
 $-1{,}6$~\% sur l'univers ETF. Le classement change selon le protocole
 d'évaluation retenu et l'écart provient d'une réduction de volatilité, non d'un
-supplément de rendement. Les intervalles de confiance publiés sont marginaux~:
-ils quantifient l'incertitude, mais sans bootstrap pairé ils ne permettent ni de
-démontrer une supériorité ni de conclure à l'équivalence. Cette réserve est
-affichée dans le rapport, le tableau de bord et l'interface de programmation.
+supplément de rendement.
+
+\paragraph{Testé, non établi.} La réserve précédente n'est plus une réserve~: le
+test manquant a été mené. Sous sélection strictement antérieure — l'entraînement
+ne pouvant plus consulter des dates postérieures à sa fenêtre de validation — les
+\textbf{huit} comparaisons pairées effectuées sur la fenêtre de test gelée ont un
+intervalle contenant zéro ($p$ compris entre 0,066 et 0,939). \textbf{Aucune
+surperformance n'est établie}, ni pour les modèles de signal contre la stratégie à
+régimes, ni contre l'équipondéré, sur aucun des deux univers.
+
+Un cas résume l'intérêt de la démarche. Sur \texttt{full\_2021}, le signal XGB
+calibré obtient 1,308 contre 1,213 pour la stratégie à régimes~: en estimation
+ponctuelle il « bat » la référence, et l'artefact l'enregistre ainsi. Le test
+pairé donne $p = 0{,}361$. Le classement ponctuel, celui qu'on aurait rapporté
+sans ce test, n'est pas soutenu par les données.
+
+Ce n'est pas pour autant une preuve d'équivalence~: ne pas rejeter n'est pas
+accepter l'hypothèse nulle. L'établir demanderait un test d'équivalence contre une
+marge fixée à l'avance, qui n'a pas été mené. Ces réserves sont affichées dans le
+rapport, le tableau de bord et l'interface de programmation.
 
 \paragraph{Observé, robuste.} Pendant les cinq crises, l'optimisation sous
 contrainte a systématiquement mieux protégé le capital que la diversification
