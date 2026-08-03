@@ -37,6 +37,14 @@ from pathlib import Path
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 
+from api.contracts import (
+    ApiVersionResponse,
+    ExplanationResponse,
+    ModelCardResponse,
+    PublishedAllocationResponse,
+    SnapshotProvenance,
+)
+
 ROOT = Path(__file__).resolve().parents[2]
 GOLD = ROOT / "data" / "gold"
 
@@ -47,7 +55,7 @@ app = FastAPI(
         "(EURAFRIC / INPT). Sert les artefacts Gold versionnés produits par "
         "`src/run_dashboard_data.py`. Ni conseil d'investissement, ni exécution."
     ),
-    version="1.0.0",
+    version="1.1.0",
 )
 
 
@@ -113,6 +121,57 @@ def _crisis() -> dict | None:
     return _fresh(GOLD / "crisis_windows.json", required=False)
 
 
+def _explanations() -> dict:
+    """Load the DVC-produced decision explanations; never reconstruct in-request."""
+    return _fresh(GOLD / "model_explanations.json")
+
+
+def _provenance() -> SnapshotProvenance:
+    """Return the release identity without pretending an absent manifest is valid.
+
+    Full checksum verification remains an explicit release gate
+    (``python src/snapshot.py verify``).  The API exposes whether the manifest
+    is available with every new contract response so a client cannot mistake a
+    loose local artifact directory for a verified release.
+    """
+    manifest = _fresh(GOLD / "snapshot_manifest.json", required=False)
+    if manifest is None:
+        return SnapshotProvenance(
+            status="unavailable",
+            note=(
+                "No snapshot manifest is available for this artifact directory. "
+                "This response is suitable only for local research inspection."
+            ),
+        )
+    # A manifest written from a dirty tree names a revision that does NOT
+    # contain the code that produced these artifacts, which is why
+    # `snapshot.py verify` rejects it outright. Reporting `producer_commit`
+    # without that flag would hand a client a commit hash it cannot trust and
+    # no way to tell — the same silent-staleness class this module's cache
+    # comment already documents three instances of.
+    dirty = bool(manifest.get("git_dirty"))
+    return SnapshotProvenance(
+        status="manifest_dirty_tree" if dirty else "manifest_present",
+        manifest_path="data/gold/snapshot_manifest.json",
+        producer_commit=manifest.get("git_commit"),
+        producer_tree_dirty=dirty,
+        generated_at_utc=manifest.get("generated_at_utc"),
+        files_hashed=len(manifest.get("files", {})),
+        note=(
+            (
+                "Manifest was generated from a DIRTY working tree, so producer_commit "
+                "does not identify the code that produced these artifacts. "
+                "`python src/snapshot.py verify` will reject this release."
+            )
+            if dirty
+            else (
+                "Manifest metadata is present. Verify the release checksums with "
+                "`python src/snapshot.py verify` before relying on this artifact."
+            )
+        ),
+    )
+
+
 def _check_universe(universe: str) -> dict:
     universes = _showcase()["universes"]
     if universe not in universes:
@@ -144,6 +203,18 @@ def health() -> dict:
         ) if not p.exists()
     ]
     return {"status": "ok" if not missing else "degraded", "missing_artifacts": missing}
+
+
+@app.get("/version", response_model=ApiVersionResponse, tags=["meta"])
+def version() -> ApiVersionResponse:
+    """Service and release identity for machine consumers and audit logs."""
+    return ApiVersionResponse(
+        api_version=app.version,
+        service_kind="read_only_research_artifact_api",
+        research_only=True,
+        order_execution_supported=False,
+        provenance=_provenance(),
+    )
 
 
 @app.get("/strategies", tags=["catalogue"])
@@ -253,6 +324,99 @@ def weights(
             r.asset: round(float(r.weight), 6) for r in group.itertuples()
         }
     return {"universe": universe, "strategy": strategy, "history": history}
+
+
+@app.get(
+    "/published-allocation",
+    response_model=PublishedAllocationResponse,
+    tags=["publication"],
+)
+def published_allocation(
+    universe: str = Query(..., description="etf_2017 | full_2021"),
+    strategy: str = Query("regime_conditional"),
+) -> PublishedAllocationResponse:
+    """Typed contract for the latest published research allocation.
+
+    This endpoint deliberately does not accept a custom date, capital amount,
+    client profile, or market data.  It exposes an existing Gold artifact only.
+    """
+    u = _check_universe(universe)
+    _check_strategy(u, strategy)
+    df = _weights()
+    rows = df[(df["universe"] == universe) & (df["strategy"] == strategy)]
+    if rows.empty:
+        raise HTTPException(status_code=404, detail="Aucune allocation publiée trouvée.")
+    last = rows["Date"].max()
+    latest = rows[rows["Date"] == last].sort_values("weight", ascending=False)
+    return PublishedAllocationResponse(
+        contract="published_research_allocation/v1",
+        universe=universe,
+        strategy=strategy,
+        as_of=last.strftime("%Y-%m-%d"),
+        weights={r.asset: round(float(r.weight), 6) for r in latest.itertuples()},
+        research_only=True,
+        order_execution_supported=False,
+        provenance=_provenance(),
+        caveat=(
+            "Published historical research allocation only; not investment advice, "
+            "not a client-specific recommendation, and not an order instruction."
+        ),
+    )
+
+
+@app.get(
+    "/explanations/{universe}",
+    response_model=ExplanationResponse,
+    tags=["publication"],
+)
+def explanation(universe: str) -> ExplanationResponse:
+    """Return the versioned trace for the final published decision in a universe."""
+    payload = _explanations()
+    entry = payload.get("universes", {}).get(universe)
+    if entry is None:
+        available = sorted(payload.get("universes", {}))
+        raise HTTPException(
+            status_code=404,
+            detail=f"Univers inconnu ou non expliqué : '{universe}'. Disponibles : {available}.",
+        )
+    return ExplanationResponse(
+        contract="published_decision_explanation/v1",
+        universe=universe,
+        decision_date=entry["decision_date"],
+        explanation=entry,
+        provenance=_provenance(),
+        caveat=(
+            "Explanation describes a published final-rebalance research decision. "
+            "Feature attribution is not causal and this endpoint never refits a model."
+        ),
+    )
+
+
+_MODEL_CARDS = {
+    "regime_conditional": "MODEL_CARD_REGIME_CONDITIONAL.md",
+    "rf_challenger": "MODEL_CARD_RF_CHALLENGER.md",
+    "xgb_challenger": "MODEL_CARD_XGB_CHALLENGER.md",
+}
+
+
+@app.get("/model-card/{system}", response_model=ModelCardResponse, tags=["publication"])
+def model_card(system: str) -> ModelCardResponse:
+    """Return the generated model card for the reference system or a challenger."""
+    filename = _MODEL_CARDS.get(system)
+    if filename is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Système inconnu : '{system}'. Disponibles : {sorted(_MODEL_CARDS)}.",
+        )
+    path = ROOT / "docs" / filename
+    if not path.exists():
+        raise ArtifactsMissing(filename)
+    return ModelCardResponse(
+        contract="model_card/v1",
+        system=system,
+        markdown=path.read_text(encoding="utf-8"),
+        provenance=_provenance(),
+    )
 
 
 @app.get("/crisis", tags=["résultats"])

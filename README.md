@@ -283,9 +283,11 @@ uvicorn api.main:app --app-dir src
   Aucun écart n'est présenté comme une supériorité statistiquement démontrée.
 - **🛠️ Explorateur de stratégies** — comparaison de stratégies, métriques nettes de coûts,
   allocations historiques et export CSV, réservée à l'analyse de recherche.
-- **API REST** (`src/api/`) — `/strategies`, `/metrics`, `/equity`, `/weights`, `/compare`. Sert
-  les mêmes artefacts Gold versionnés ; `/compare` renvoie toujours l'intervalle de confiance et
-  la mise en garde avec l'écart de performance.
+- **API REST** (`src/api/`) — `/strategies`, `/metrics`, `/equity`, `/weights`, `/compare` et les
+  contrats publiés `/version`, `/published-allocation`, `/explanations/{universe}`, `/model-card/{system}`.
+  Elle sert les mêmes artefacts Gold versionnés, ne réentraîne jamais un modèle en requête et ne
+  fournit ni conseil, ni recommandation client, ni exécution. Les contrats publiés incluent la
+  provenance du snapshot ; voir [`docs/INFERENCE_CONTRACT.md`](docs/INFERENCE_CONTRACT.md).
 
 **Garde-fou d'intégrité :** aucun chiffre n'est codé en dur. `tests/test_run_dashboard_data.py`
 vérifie que chaque chiffre affiché découle bien des artefacts Gold produits par le même passage

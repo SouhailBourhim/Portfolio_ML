@@ -103,6 +103,24 @@ def client(tmp_path, monkeypatch):
         }},
     }))
 
+    # A minimal, versioned explanation artifact. The API must serve this
+    # artifact verbatim; it must never re-fit a strategy while handling a
+    # request.
+    (gold / "model_explanations.json").write_text(json.dumps({
+        "universes": {
+            "etf_2017": {
+                "decision_date": "2023-03-24",
+                "primary": {"decision": {"selected_regime": "bear"}},
+                "challengers": {},
+            },
+            "full_2021": {
+                "decision_date": "2023-03-24",
+                "primary": {"decision": {"selected_regime": "bull"}},
+                "challengers": {},
+            },
+        },
+    }))
+
     monkeypatch.setattr(api_main, "GOLD", gold)
     # Caching moved down a layer: the loaders are plain functions now and the
     # cache lives on the (path, mtime)-keyed readers, so a regenerated artifact
@@ -131,6 +149,79 @@ class TestCatalogue:
         # the results assume a 25% cap and real transaction costs.
         assert body["backtest_context"]["max_weight"] == 0.25
         assert body["backtest_context"]["cost_bps"]["bvc"] == 30
+
+    def test_version_labels_a_manifestless_tmp_snapshot_as_unverified(self, client):
+        body = client.get("/version").json()
+        assert body["api_version"] == "1.1.0"
+        assert body["service_kind"] == "read_only_research_artifact_api"
+        assert body["research_only"] is True
+        assert body["order_execution_supported"] is False
+        assert body["provenance"]["status"] == "unavailable"
+
+    def test_version_exposes_manifest_identity_without_claiming_checksum_verification(self, client):
+        import api.main as api_main
+
+        (api_main.GOLD / "snapshot_manifest.json").write_text(json.dumps({
+            "git_commit": "producing-commit",
+            "generated_at_utc": "2026-08-03T00:00:00+00:00",
+            "files": {"data/gold/dashboard_showcase.json": {"sha256": "abc"}},
+        }))
+        body = client.get("/version").json()
+        assert body["provenance"] == {
+            "status": "manifest_present",
+            "manifest_path": "data/gold/snapshot_manifest.json",
+            "producer_commit": "producing-commit",
+            "generated_at_utc": "2026-08-03T00:00:00+00:00",
+            "files_hashed": 1,
+            "producer_tree_dirty": False,
+            "note": (
+                "Manifest metadata is present. Verify the release checksums with "
+                "`python src/snapshot.py verify` before relying on this artifact."
+            ),
+        }
+
+    def test_version_flags_a_manifest_written_from_a_dirty_tree(self, client):
+        """A dirty manifest must not be served as if its commit were meaningful.
+
+        `snapshot.py verify` rejects such a manifest outright, because
+        `git_commit` names a revision whose tree does NOT contain the code that
+        produced the artifacts. A client reading only `producer_commit` would
+        have no way to tell, so the flag travels with the response.
+        """
+        import api.main as api_main
+
+        (api_main.GOLD / "snapshot_manifest.json").write_text(json.dumps({
+            "git_commit": "commit-plus-uncommitted-edits",
+            "git_dirty": True,
+            "git_dirty_paths": ["src/strategies.py"],
+            "generated_at_utc": "2026-08-03T00:00:00+00:00",
+            "files": {"data/gold/dashboard_showcase.json": {"sha256": "abc"}},
+        }))
+        provenance = client.get("/version").json()["provenance"]
+        assert provenance["status"] == "manifest_dirty_tree"
+        assert provenance["producer_tree_dirty"] is True
+        assert "DIRTY" in provenance["note"]
+
+    def test_every_declarable_provenance_status_is_reachable(self):
+        """No dead values in the contract.
+
+        An advertised status nothing can emit is worse than a missing one: a
+        client branches on it, the branch is unreachable, and the contract
+        implies a capability (checksum verification) the service does not have.
+        """
+        import inspect
+        from typing import get_args
+
+        from api.contracts import SnapshotProvenance
+        import api.main as api_main
+
+        declared = set(get_args(SnapshotProvenance.model_fields["status"].annotation))
+        emitted = {
+            literal
+            for literal in declared
+            if f'"{literal}"' in inspect.getsource(api_main._provenance)
+        }
+        assert declared == emitted, f"unreachable provenance status: {declared - emitted}"
 
 
 class TestResults:
@@ -170,6 +261,27 @@ class TestResults:
                                               "strategy": "max_sharpe",
                                               "latest_only": False}).json()
         assert "history" in body and body["history"]
+
+    def test_published_allocation_has_a_typed_non_advisory_contract(self, client):
+        body = client.get("/published-allocation", params={"universe": "full_2021"}).json()
+        assert body["contract"] == "published_research_allocation/v1"
+        assert body["strategy"] == "regime_conditional"
+        assert body["weights"] == {"SPY": 0.6, "QQQ": 0.4}
+        assert body["research_only"] is True
+        assert body["order_execution_supported"] is False
+        assert body["provenance"]["status"] == "unavailable"
+
+    def test_explanation_is_served_from_the_published_artifact(self, client):
+        body = client.get("/explanations/etf_2017").json()
+        assert body["contract"] == "published_decision_explanation/v1"
+        assert body["decision_date"] == "2023-03-24"
+        assert body["explanation"]["primary"]["decision"]["selected_regime"] == "bear"
+        assert "never refits" in body["caveat"]
+
+    def test_model_card_is_available_for_the_primary_system(self, client):
+        body = client.get("/model-card/regime_conditional").json()
+        assert body["contract"] == "model_card/v1"
+        assert "Model card" in body["markdown"]
 
 
 class TestErrors:
