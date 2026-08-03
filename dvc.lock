@@ -883,13 +883,13 @@ stages:
       size: 3554
     - path: src/snapshot.py
       hash: md5
-      md5: 928a2546d595e34cef2eda7e79b4941e
-      size: 11065
+      md5: 92ceb1b9b7b31a1f75b48334d8ca4eec
+      size: 11348
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: f8f08ddedc8ba63d7e7171cce54cc3c9
-      size: 7804
+      md5: c383b60cf501766b76fedc95e807c962
+      size: 7960
   smoke:
     cmd: python scripts/smoke_pipeline.py
     deps:
