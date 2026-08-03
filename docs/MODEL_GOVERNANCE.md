@@ -68,7 +68,17 @@ reproduce a number.
 
 A tag is never moved. If a tagged state proves wrong, a new tag supersedes it
 and the reason is recorded here — a moved tag silently invalidates every
-citation of it.
+citation of it. `phase1-reproducible-v2` is that rule in action: the first
+Phase 1 tag was left in place and a second one cut beside it.
+
+**Recorded exception — `phase3-industrial-ready`, 2026-08-03.** Cut at
+`e354aed`, then re-cut at `afc61b7` a few minutes later to include two commits
+that landed immediately after: the release-gates CI job and the snapshot-
+verification fix it exposed. The tag's own message asserts that the release
+gates pass, so a tag predating the automation of those gates was the weaker
+artifact. Re-cutting was acceptable **only** because nothing had cited the tag
+yet — no report, no deliverable, no external reference. Once a tag has been
+cited, the rule above applies without exception and a `-v2` is the answer.
 
 The snapshot manifest records whether the working tree was clean when it was
 written, and verification **rejects** a manifest produced from a dirty tree:
