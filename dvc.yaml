@@ -403,6 +403,39 @@ stages:
     outs:
       - data/gold/crisis_windows.json
 
+  # ── Phase 3: explanation of the published decision ────────────────────────
+  # Re-fits the ALREADY-SELECTED configurations at one rebalance date purely to
+  # inspect them. No hyperparameter is chosen here and no comparison is made,
+  # so no other artifact can move because of this stage. It is a DVC stage
+  # rather than a script so the explanation cannot drift from the weights it
+  # claims to explain.
+  explainability:
+    cmd: python src/run_explainability.py
+    deps:
+      - src/run_explainability.py
+      - src/explainability.py
+      - src/regime.py
+      - src/strategies.py
+      - src/ml_signals.py
+      - src/memo.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_full.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/phase5_results.json
+    params:
+      - backtest.rebalance_freq
+      - backtest.max_weight
+      - backtest.risk_free_annual
+      - regime.n_states
+      - regime.features
+      - regime.covariance_type
+      - regime.n_restarts
+      - regime.random_state_base
+      - regime.min_regime_train_days
+    outs:
+      - data/gold/model_explanations.json
+
   # ── CI wiring check — SYNTHETIC DATA, NOT A RESULT ────────────────────────
   # Runs the real engine and the real strategy classes over a small seeded
   # synthetic universe in ~15s, so a broken import, a renamed parameter or a

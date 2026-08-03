@@ -883,13 +883,13 @@ stages:
       size: 3554
     - path: src/snapshot.py
       hash: md5
-      md5: 44df9105d0576424d217b422428fde9e
-      size: 10841
+      md5: 928a2546d595e34cef2eda7e79b4941e
+      size: 11065
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: cf305ce5900f8668a1a1b1f13ba61ccd
-      size: 7649
+      md5: a0cf971151ea52bb2e839e946be7fdd8
+      size: 7892
   smoke:
     cmd: python scripts/smoke_pipeline.py
     deps:
@@ -935,3 +935,69 @@ stages:
       md5: f33c41bd81ff15ccfb0876a5dc76f646.dir
       size: 715775
       nfiles: 4
+  explainability:
+    cmd: python src/run_explainability.py
+    deps:
+    - path: data/gold/log_returns.parquet
+      hash: md5
+      md5: bd21b9bc62cc2646edf90cc008ef0a10
+      size: 117723
+    - path: data/gold/log_returns_etf.parquet
+      hash: md5
+      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      size: 317942
+    - path: data/gold/ml_features_etf.parquet
+      hash: md5
+      md5: 97e87574aa4c10ab983b116c8a04d847
+      size: 482732
+    - path: data/gold/ml_features_full.parquet
+      hash: md5
+      md5: cc929d7b138755e25d386463ac5e334f
+      size: 121639
+    - path: data/gold/phase5_results.json
+      hash: md5
+      md5: d1dc093f808c757ed9ad83ff971054e7
+      size: 3908
+    - path: src/explainability.py
+      hash: md5
+      md5: d8a3b64150defee9665f21a0dd2e08f7
+      size: 15954
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
+    - path: src/ml_signals.py
+      hash: md5
+      md5: 071188029a135edb3603331ced677f09
+      size: 39005
+    - path: src/regime.py
+      hash: md5
+      md5: 23cba30454ec306ceea5c08dde3c7299
+      size: 10504
+    - path: src/run_explainability.py
+      hash: md5
+      md5: ab982411029fe1bc397e69384ec36f74
+      size: 9575
+    - path: src/strategies.py
+      hash: md5
+      md5: e14c05a35b6727c01bac51b66afcef58
+      size: 32414
+    params:
+      params.yaml:
+        backtest.max_weight: 0.25
+        backtest.rebalance_freq: ME
+        backtest.risk_free_annual: 0.0
+        regime.covariance_type: diag
+        regime.features:
+        - MARKET_RETURN
+        - MARKET_VOL_SHORT
+        - AVG_PAIRWISE_CORR
+        regime.min_regime_train_days: 252
+        regime.n_restarts: 5
+        regime.n_states: 2
+        regime.random_state_base: 0
+    outs:
+    - path: data/gold/model_explanations.json
+      hash: md5
+      md5: 37eb0f7200aa919a7d4a02f0b676ae13
+      size: 36590

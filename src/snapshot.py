@@ -59,6 +59,10 @@ SNAPSHOT_FILES = (
     # hyperparameters were chosen or whether its differences were tested.
     Path("data/gold/phase5_validation_protocol.json"),
     Path("data/gold/paired_comparison_results.json"),
+    # Phase 3: the explanation of the published decision. Hashed alongside the
+    # results so a reviewer cannot be handed weights and an explanation of a
+    # different run.
+    Path("data/gold/model_explanations.json"),
     Path("data/gold/dashboard_showcase.json"),
     Path("data/gold/dashboard_equity.parquet"),
     Path("data/gold/dashboard_weights.parquet"),

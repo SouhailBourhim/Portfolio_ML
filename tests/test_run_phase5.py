@@ -222,6 +222,7 @@ def test_no_module_level_definitions_sit_below_the_main_guard():
 
     for module in ("run_phase5.py", "run_phase4.py", "run_phase4b.py",
                    "run_phase4c.py", "run_backtest.py", "snapshot.py",
+                   "run_explainability.py",
                    # Not a runner, but DVC invokes it as one: `scrape_dividends`
                    # calls `python src/dividends.py`, so it inherits the trap.
                    "dividends.py"):
