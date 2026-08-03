@@ -71,7 +71,8 @@ committed JSON without holding the training window.
 | Allocation concentration | Is the book concentrating? (HHI, effective N, max weight) | `allocation_concentration` |
 | Turnover | Is trading intensity drifting up? | `turnover_summary` |
 | Cap-binding rate | Does the constraint still leave the optimizer room to act? | `cap_binding_rate` |
-| Fallback rate | Is the system defaulting rather than deciding? | `fallback_rate` |
+| Fallback rate — regime path | Is the regime model defaulting rather than deciding? | `fallback_rate` |
+| Fallback rate — ALL estimator paths | Was a published result produced by a substitute model? | `model_fallback_rates` |
 
 Three of these are unusual choices and are here on purpose:
 
@@ -80,7 +81,14 @@ Three of these are unusual choices and are here on purpose:
   express itself. A *rising* rate means the system has progressively less room
   to act on any view at all. That is a health signal about the system, not the
   market, and it appears in no returns-based metric.
-- **Fallback rate.** A non-converged regime fit is a documented degradation,
+- **Fallback rate, across every path.** `fallback_rate` reads the regime
+  timeline's `converged` column and is blind to DCC-GARCH degrading to
+  Ledoit-Wolf or an ML signal degrading to the naive sample mean;
+  `model_fallback_rates` consumes `fit_reports.parquet` and covers all three.
+  A baseline built on the regime column alone would understate how often a
+  labelled model was not the model that produced the number. An absent
+  artifact reports `not_measured`, never an implied zero.
+- **Fallback rate (regime).** A non-converged regime fit is a documented degradation,
   not an error — the neutral posterior resolves to the defensive sub-strategy.
   But a rising rate means the system increasingly defaults instead of deciding,
   and returns will not show it.
@@ -121,6 +129,18 @@ result, and nothing below changes any published number.
 | `MARKET_VOL_LONG` | 3.333 | alert |
 | `TAUX_DIR_DIFF_L1` | 2.696 | alert |
 | `AVG_PAIRWISE_CORR` | 0.758 | alert |
+
+### Estimator fallback — every path, both windows
+
+| Universe | Reference window | Evaluation window | Shift |
+|---|---:|---:|:---:|
+| `etf_2017` | 0 / 157 rebalances | 0 / 91 | stable |
+| `full_2021` | 0 / 28 rebalances | 0 / 21 | stable |
+
+Covers all four fallback-capable strategies per universe. No estimator was
+substituted in either window, so no published figure is a hybrid on this
+snapshot. See [`MODEL_INTEGRITY.md`](MODEL_INTEGRITY.md) for the release
+statement and `data/gold/fit_reports.parquet` for the per-rebalance source.
 
 ### Prediction distributions (one fixed model, two input windows)
 

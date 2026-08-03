@@ -888,8 +888,8 @@ stages:
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: 7652ba5cc30a6a305e5113dea012949c
-      size: 8581
+      md5: 12a68dba31138993555ecfac93fa2029
+      size: 8702
   smoke:
     cmd: python scripts/smoke_pipeline.py
     deps:
@@ -1030,16 +1030,16 @@ stages:
       size: 17748
     - path: src/run_monitoring_baseline.py
       hash: md5
-      md5: bba078d8745f0ca9d2381aa1f36ec790
-      size: 14087
+      md5: 907e7922513111d1a205abaf348e08a6
+      size: 16520
     params:
       params.yaml:
         backtest.max_weight: 0.25
     outs:
     - path: data/gold/monitoring_baseline.json
       hash: md5
-      md5: fa6134d21a5251c46f5cbaad9a624e87
-      size: 21289
+      md5: 4d94af0530cff995fa8d0423249c45b5
+      size: 24001
   fit_reports:
     cmd: python src/run_fit_reports.py
     deps:

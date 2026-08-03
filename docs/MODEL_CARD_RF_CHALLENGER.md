@@ -11,7 +11,7 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `3f3f9deb22a7` |
+| Code revision (artifacts) | `a914fafed4a0` ⚠️ generated from a DIRTY tree |
 | Python | 3.11.14 |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, 29 files hashed |
 | Card generated from | committed Gold artifacts, not typed |

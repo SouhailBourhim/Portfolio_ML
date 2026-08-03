@@ -72,6 +72,51 @@ def _slice_long(frame: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> 
     return frame[(frame["Date"] >= start) & (frame["Date"] <= end)]
 
 
+def _fit_reports() -> pd.DataFrame | None:
+    """The persisted per-rebalance fit records, or None if not yet built.
+
+    Optional by design: `fit_reports` is a separate DVC stage, and a monitoring
+    baseline built before it has run should degrade to "not measured" rather
+    than fail. It must never degrade to an implied zero — see the
+    `not_measured` status below.
+    """
+    path = GOLD / "fit_reports.parquet"
+    return pd.read_parquet(path) if path.is_file() else None
+
+
+def _fallback_block(reports, universe: str, start, end) -> dict:
+    """Estimator-fallback rates for one universe over one window.
+
+    Addresses: P2, P4 — `monitoring.fallback_rate` reads the regime timeline's
+    `converged` column, which is ONE of the three fallback paths in this
+    system; it is blind to DCC-GARCH degrading to Ledoit-Wolf and to an ML
+    signal degrading to the naive sample mean. Reporting only the regime path
+    would understate how often a labelled model was not the model that
+    produced the number.
+    """
+    if reports is None:
+        return {
+            "status": "not_measured",
+            "note": (
+                "data/gold/fit_reports.parquet is absent — run `dvc repro "
+                "fit_reports`. This is NOT a zero fallback rate; nothing was "
+                "measured."
+            ),
+            "by_strategy": {},
+        }
+    block = reports[reports["universe"] == universe]
+    rates = monitoring.model_fallback_rates(block, start=start, end=end)
+    return {
+        "status": "measured",
+        "note": (
+            "Covers every estimator fallback path (DCC-GARCH -> Ledoit-Wolf, "
+            "ML signal -> naive sample mean, regime -> defensive branch), not "
+            "only the regime timeline's `converged` column."
+        ),
+        "by_strategy": rates,
+    }
+
+
 def _universe_slices(universe: str, start: pd.Timestamp, end: pd.Timestamp) -> dict:
     """Every input the metrics need, restricted to one window."""
     files = UNIVERSES[universe]
@@ -208,6 +253,8 @@ def build_baseline() -> dict:
         "universes": {},
     }
 
+    reports = _fit_reports()
+
     for universe in UNIVERSES:
         ref_start, ref_end, test_start, test_end = _windows(universe)
         slices = _universe_slices(universe, ref_start, ref_end)
@@ -227,6 +274,7 @@ def build_baseline() -> dict:
                 for column in features.columns
             },
             "metrics": _metrics(slices, max_weight),
+            "model_fallback": _fallback_block(reports, universe, ref_start, ref_end),
             "prediction_reference": {
                 name: monitoring.summarize_reference(values)
                 for name, values in _predictions_in_window(
@@ -255,6 +303,8 @@ def evaluate_against_baseline(baseline: dict | None = None) -> dict:
         "operational_note": baseline["operational_note"],
         "universes": {},
     }
+
+    reports = _fit_reports()
 
     for universe, stored in baseline["universes"].items():
         window = stored["evaluation_window_available"]
@@ -291,6 +341,13 @@ def evaluate_against_baseline(baseline: dict | None = None) -> dict:
                     "psi": psi, "interpretation": monitoring.interpret_psi(psi)
                 }
 
+        fallback_now = _fallback_block(reports, universe, start, end)
+        stored_fallback = (stored.get("model_fallback") or {}).get("by_strategy", {})
+        fallback_shift = (
+            monitoring.fallback_rate_shift(stored_fallback, fallback_now["by_strategy"])
+            if fallback_now["status"] == "measured" and stored_fallback else {}
+        )
+
         regime_shift = monitoring.categorical_shift(
             _regime_labels(universe, stored["reference_window"]),
             slices["regime"]["regime"].tolist(),
@@ -301,6 +358,8 @@ def evaluate_against_baseline(baseline: dict | None = None) -> dict:
             "evaluation_rows": int(len(features)),
             "feature_psi": feature_psi,
             "prediction_psi": prediction_psi,
+            "model_fallback": fallback_now,
+            "model_fallback_shift": fallback_shift,
             "regime_shift": regime_shift,
             "metrics": _metrics(slices, max_weight),
             "reference_metrics": stored["metrics"],

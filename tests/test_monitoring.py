@@ -231,3 +231,76 @@ class TestOperationalPosture:
                 f"only: it emits warnings and never alters model behaviour or "
                 f"artifacts (docs/MODEL_GOVERNANCE.md §8)."
             )
+
+
+class TestFallbackMonitoringCoversEveryPath:
+    """The gap this closes: monitoring saw one of three fallback paths.
+
+    `fallback_rate` reads the regime timeline's `converged` column. It is blind
+    to DCC-GARCH degrading to Ledoit-Wolf and to an ML signal degrading to the
+    naive sample mean, so a baseline built on it alone would understate how
+    often a labelled model was not the model that produced the number.
+    """
+
+    @staticmethod
+    def _reports() -> pd.DataFrame:
+        return pd.DataFrame({
+            "universe": ["u"] * 6,
+            "strategy": ["dcc_garch"] * 3 + ["rf_signal"] * 3,
+            "Date": pd.to_datetime(["2024-01-31", "2024-02-29", "2024-03-31"] * 2),
+            "fit_status": ["ok", "fallback", "ok", "ok", "ok", "fallback"],
+            "model_effective": [
+                "dcc_garch", "dcc_garch [via ledoit_wolf]", "dcc_garch",
+                "rf_signal", "rf_signal", "rf_signal [via naive_sample_mean]",
+            ],
+            "fallback_reason": [None, "GARCH non-convergence", None,
+                                None, None, "thin panel"],
+        })
+
+    def test_rates_are_computed_per_strategy_not_pooled(self):
+        rates = monitoring.model_fallback_rates(self._reports())
+        assert set(rates) == {"u/dcc_garch", "u/rf_signal"}
+        assert rates["u/dcc_garch"]["fallback_rate"] == pytest.approx(1 / 3)
+
+    def test_the_effective_model_histogram_names_the_substitute(self):
+        """'dcc_garch fell back' is far less useful than what it fell back TO."""
+        rates = monitoring.model_fallback_rates(self._reports())
+        assert "dcc_garch [via ledoit_wolf]" in rates["u/dcc_garch"]["models_effective"]
+
+    def test_a_window_restricts_the_rows_considered(self):
+        rates = monitoring.model_fallback_rates(
+            self._reports(), start="2024-03-01", end="2024-03-31"
+        )
+        assert rates["u/dcc_garch"]["rebalances"] == 1
+        assert rates["u/dcc_garch"]["fallback_rate"] == 0.0
+
+    def test_a_rising_rate_is_flagged_a_falling_one_is_not(self):
+        """A rise means the estimator fails more on newer data — model validity."""
+        rising = monitoring.fallback_rate_shift(
+            {"u/dcc_garch": {"fallback_rate": 0.05}},
+            {"u/dcc_garch": {"fallback_rate": 0.40}},
+        )
+        assert rising["u/dcc_garch"]["interpretation"] == "significant_shift"
+
+        falling = monitoring.fallback_rate_shift(
+            {"u/dcc_garch": {"fallback_rate": 0.40}},
+            {"u/dcc_garch": {"fallback_rate": 0.05}},
+        )
+        assert falling["u/dcc_garch"]["interpretation"] == "stable"
+
+    def test_a_strategy_missing_from_one_window_is_not_comparable(self):
+        """Silently treating an absent strategy as 0.0 would invent a result."""
+        shift = monitoring.fallback_rate_shift(
+            {"u/dcc_garch": {"fallback_rate": 0.1}}, {"u/rf_signal": {"fallback_rate": 0.1}}
+        )
+        assert shift["u/dcc_garch"]["interpretation"] == "not_comparable"
+        assert shift["u/dcc_garch"]["delta"] is None
+
+    def test_an_absent_artifact_reports_not_measured_never_zero(self):
+        """The distinction that matters: 'nothing ran' vs 'nothing fell back'."""
+        import run_monitoring_baseline as runner
+
+        block = runner._fallback_block(None, "u", None, None)
+        assert block["status"] == "not_measured"
+        assert block["by_strategy"] == {}
+        assert "NOT a zero fallback rate" in block["note"]
