@@ -11,7 +11,7 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `a914fafed4a0` ⚠️ generated from a DIRTY tree |
+| Code revision (artifacts) | `14ef39c847d4` |
 | Python | 3.11.14 |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, 29 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
@@ -199,7 +199,7 @@ a strategy that wins gross and loses net is treated as a finding.
 ## Reproducibility
 
 ```bash
-git checkout a914fafed4a0
+git checkout 14ef39c847d4
 ./scripts/dvc.sh pull
 ./.venv/bin/python src/snapshot.py verify
 ```
