@@ -1,0 +1,6 @@
+[core]
+    remote = origin
+['remote "origin"']
+    url = s3://portfolio-ml-data
+    region = auto
+    endpointurl = https://4947ec4d6576591e765b74c1a9d68f63.r2.cloudflarestorage.com
