@@ -187,6 +187,11 @@ Until then the honest description is *monitoring-ready*, not *monitored*.
 
 ## 9. Data governance
 
+> Full detail — per-source provenance and licensing, the Law 09-08 and GDPR
+> assumptions with the condition under which they hold, the audit-log format
+> and its prohibited fields — is in
+> [`DATA_GOVERNANCE.md`](DATA_GOVERNANCE.md). Summary below.
+
 | Question | Answer |
 |---|---|
 | Personal data processed | **None.** Public market prices, published macro series, and public issuer dividend disclosures only |

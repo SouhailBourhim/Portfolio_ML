@@ -60,6 +60,9 @@ jobs:
       - name: Gate — monitoring drift metrics
         run: python -m pytest tests/test_monitoring.py -q
 
+      - name: Gate — data governance (no PII, no caller content in logs)
+        run: python -m pytest tests/test_data_governance.py -q
+
       - name: Gate — no-lookahead suite
         run: python -m pytest tests/ -q -k "lookahead or future_corruption or leak"
 
