@@ -63,6 +63,10 @@ SNAPSHOT_FILES = (
     # results so a reviewer cannot be handed weights and an explanation of a
     # different run.
     Path("data/gold/model_explanations.json"),
+    # Phase 3: the reference distributions any drift check is measured against.
+    # Versioned deliberately — comparing against an untracked moving baseline
+    # makes a slow shift undetectable, because the baseline moves with it.
+    Path("data/gold/monitoring_baseline.json"),
     Path("data/gold/dashboard_showcase.json"),
     Path("data/gold/dashboard_equity.parquet"),
     Path("data/gold/dashboard_weights.parquet"),

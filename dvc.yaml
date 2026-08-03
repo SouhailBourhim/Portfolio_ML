@@ -436,6 +436,30 @@ stages:
     outs:
       - data/gold/model_explanations.json
 
+  # ── Phase 3: offline monitoring reference ─────────────────────────────────
+  # Pins the reference distributions a future drift check measures against.
+  # The reference is the Phase 5 train+validation segment ONLY — including the
+  # frozen test segment would compare that window against itself and report
+  # stability by construction.
+  #
+  # This stage WRITES A REFERENCE. It does not monitor anything: there is no
+  # schedule, no alerting path and no trigger. `--evaluate` is a human running
+  # a command (docs/MONITORING_RUNBOOK.md).
+  monitoring_baseline:
+    cmd: python src/run_monitoring_baseline.py
+    deps:
+      - src/run_monitoring_baseline.py
+      - src/monitoring.py
+      - data/gold/ml_features_full.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/dashboard_weights.parquet
+      - data/gold/dashboard_regime.parquet
+      - data/gold/phase5_results.json
+    params:
+      - backtest.max_weight
+    outs:
+      - data/gold/monitoring_baseline.json
+
   # ── CI wiring check — SYNTHETIC DATA, NOT A RESULT ────────────────────────
   # Runs the real engine and the real strategy classes over a small seeded
   # synthetic universe in ~15s, so a broken import, a renamed parameter or a

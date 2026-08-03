@@ -1001,3 +1001,42 @@ stages:
       hash: md5
       md5: 37eb0f7200aa919a7d4a02f0b676ae13
       size: 36590
+  monitoring_baseline:
+    cmd: python src/run_monitoring_baseline.py
+    deps:
+    - path: data/gold/dashboard_regime.parquet
+      hash: md5
+      md5: 32de85c8bc584bd08f4aba3363c42a50
+      size: 12063
+    - path: data/gold/dashboard_weights.parquet
+      hash: md5
+      md5: 35df5d1cef889227bf6b2b5f2e5dcb69
+      size: 17762
+    - path: data/gold/ml_features_etf.parquet
+      hash: md5
+      md5: 97e87574aa4c10ab983b116c8a04d847
+      size: 482732
+    - path: data/gold/ml_features_full.parquet
+      hash: md5
+      md5: cc929d7b138755e25d386463ac5e334f
+      size: 121639
+    - path: data/gold/phase5_results.json
+      hash: md5
+      md5: d1dc093f808c757ed9ad83ff971054e7
+      size: 3908
+    - path: src/monitoring.py
+      hash: md5
+      md5: fbec0a68b075e90df0489c541d9678ee
+      size: 14207
+    - path: src/run_monitoring_baseline.py
+      hash: md5
+      md5: bba078d8745f0ca9d2381aa1f36ec790
+      size: 14087
+    params:
+      params.yaml:
+        backtest.max_weight: 0.25
+    outs:
+    - path: data/gold/monitoring_baseline.json
+      hash: md5
+      md5: fa6134d21a5251c46f5cbaad9a624e87
+      size: 21289
