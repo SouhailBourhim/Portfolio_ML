@@ -1,5 +1,9 @@
 # Secrets — never in the image
 .env
+# DVC remote credentials (R2 access key + secret). Git never sees this file
+# because .dvc/.gitignore excludes it, but Docker COPY reads the filesystem,
+# not the index — so gitignoring a secret does NOT keep it out of an image.
+.dvc/config.local
 
 # Virtualenv, caches
 .venv/
