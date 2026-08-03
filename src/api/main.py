@@ -59,6 +59,17 @@ app = FastAPI(
 )
 
 
+# Every portfolio figure this service returns embeds it, so it travels with the
+# figures rather than living in one page's footer.
+CURRENCY_CAVEAT = (
+    "Exposition de change USD/MAD NON COUVERTE : les actifs BVC sont libellés en "
+    "dirhams, les ETF en dollars. Les rendements étant sans unité, l'arithmétique "
+    "de portefeuille reste valide, mais tout résultat rapporté incorpore cette "
+    "exposition — c'est un risque économique matériel, pas une réserve de forme. "
+    "Aucune couverture de change n'est modélisée (hors périmètre)."
+)
+
+
 class ArtifactsMissing(HTTPException):
     def __init__(self, name: str) -> None:
         super().__init__(
@@ -357,6 +368,7 @@ def published_allocation(
         research_only=True,
         order_execution_supported=False,
         provenance=_provenance(),
+        currency_exposure=CURRENCY_CAVEAT,
         caveat=(
             "Published historical research allocation only; not investment advice, "
             "not a client-specific recommendation, and not an order instruction."
@@ -481,4 +493,9 @@ def compare(universe: str = Query(...)) -> dict:
             "test pairé de différence. Ne pas présenter comme une supériorité "
             "statistiquement démontrée."
         ),
+        # Shipped WITH the number, for the same reason the CI and the caveat are:
+        # quoting the lift dishonestly should require actively discarding a field.
+        # This is a material economic exposure carried by every portfolio figure
+        # the API serves, not a footnote.
+        "currency_exposure": CURRENCY_CAVEAT,
     }

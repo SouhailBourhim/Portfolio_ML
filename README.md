@@ -25,6 +25,21 @@ d'investissement, ni recommandation client, ni exécution automatique d'ordres**
 doit pas être présenté comme un système de production ou comme une preuve que le ML
 surperforme les méthodes classiques.
 
+> ### ⚠️ Deux réserves qui accompagnent CHAQUE chiffre de portefeuille
+>
+> **1. Exposition de change USD/MAD non couverte.** Les actifs BVC sont libellés en
+> dirhams, les ETF en dollars. Les rendements étant sans unité, l'arithmétique de
+> portefeuille reste valide, mais **tout résultat publié incorpore cette exposition
+> de change** — un risque économique matériel, pas une réserve de forme. Aucune
+> couverture n'est modélisée : le sujet est hors périmètre et le reste.
+>
+> **2. Étiquette de modèle et modèle effectif.** Plusieurs estimateurs se dégradent
+> au lieu d'échouer (DCC-GARCH → Ledoit-Wolf, signaux ML → moyenne empirique,
+> régimes → branche défensive). Sur l'instantané publié, **0 des 1 188 ajustements
+> n'a utilisé de repli** : chaque résultat provient du modèle que son étiquette
+> désigne. Mesuré, pas supposé — voir [`docs/MODEL_INTEGRITY.md`](docs/MODEL_INTEGRITY.md)
+> et l'artefact `data/gold/fit_report_summary.json`.
+
 ## Univers d'actifs
 
 - **Actions BVC :** IAM.CS (Maroc Telecom), ATW.CS (Attijariwafa Bank), CIH.CS (CIH Bank), BCP.CS (Banque Centrale Populaire)

@@ -158,3 +158,59 @@ class TestCredentialHygiene:
             f"Literal credential assignment(s) found: {offenders}. Secrets come from "
             f"the environment (FRED_API_KEY) or from .dvc/config.local, never source."
         )
+
+
+class TestCurrencyExposureTravelsWithEveryPortfolioFigure:
+    """An unhedged FX exposure is economic risk, not a formality.
+
+    Every portfolio number this project publishes embeds an unhedged USD/MAD
+    position — BVC assets are MAD-denominated, the ETFs USD. It previously
+    appeared in exactly one place: a bullet near the bottom of one dashboard
+    page. These tests keep it beside the headline on every surface, so a reader
+    who sees a Sharpe also sees what it is exposed to.
+    """
+
+    def test_the_readme_states_it_where_the_scope_is_set(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        assert "USD/MAD" in readme
+        assert "risque économique matériel" in readme, (
+            "the README must call it a material economic risk, not a footnote"
+        )
+
+    def test_the_report_executive_summary_states_it(self):
+        for name in ("resume.tex",):
+            path = ROOT / "docs" / "rapport" / "frontmatter" / name
+            if not path.is_file():
+                pytest.skip(f"{name} not present.")
+            text = path.read_text(encoding="utf-8")
+            assert "USD/MAD" in text, f"{name} omits the currency exposure"
+
+    def test_the_api_ships_it_with_the_headline_comparison(self):
+        main_py = (ROOT / "src" / "api" / "main.py").read_text(encoding="utf-8")
+        assert "CURRENCY_CAVEAT" in main_py
+        assert '"currency_exposure": CURRENCY_CAVEAT' in main_py, (
+            "/compare must return the exposure alongside the lift, so quoting the "
+            "lift without it requires actively discarding a field"
+        )
+
+    def test_the_published_allocation_contract_requires_it(self):
+        contracts = (ROOT / "src" / "api" / "contracts.py").read_text(encoding="utf-8")
+        assert "currency_exposure: str" in contracts, (
+            "an allocation quoted without the exposure omits a material risk; the "
+            "field must be required, not optional"
+        )
+
+    def test_the_stakeholder_page_shows_it_above_the_results(self):
+        page = ROOT / "dashboard" / "pages" / "1_Histoire_de_valeur.py"
+        if not page.is_file():
+            pytest.skip("dashboard page not present.")
+        source = page.read_text(encoding="utf-8")
+        headline = source.index("st.title(")
+        first_metric = source.find("st.metric(")
+        exposure = source.index("Exposition de change USD/MAD non couverte")
+        assert headline < exposure, "the exposure must follow the title"
+        if first_metric != -1:
+            assert exposure < first_metric, (
+                "the exposure must appear BEFORE the first performance figure, not "
+                "in a caveat list below it"
+            )

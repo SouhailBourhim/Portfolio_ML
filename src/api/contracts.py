@@ -53,6 +53,9 @@ class PublishedAllocationResponse(BaseModel):
     research_only: Literal[True]
     order_execution_supported: Literal[False]
     provenance: SnapshotProvenance
+    # Required, not optional: an allocation quoted without it omits a material
+    # economic exposure that every weight in this project carries.
+    currency_exposure: str
     caveat: str
 
 

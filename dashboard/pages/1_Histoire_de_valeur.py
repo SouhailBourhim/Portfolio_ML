@@ -76,6 +76,16 @@ st.warning(
     "présente des résultats historiques de backtesting ; elle ne fournit ni conseil "
     "d'investissement, ni recommandation client, ni exécution d'ordres."
 )
+# Promoted from the caveat list at the bottom of the page. It is a material
+# economic exposure carried by EVERY figure above and below, not one reservation
+# among several, so it sits beside the headline rather than after it.
+st.error(
+    "**Exposition de change USD/MAD non couverte.** Les actifs de la Bourse de "
+    "Casablanca sont libellés en dirhams, les ETF en dollars. Les rendements étant "
+    "sans unité, l'arithmétique de portefeuille reste valide — mais **tous les "
+    "chiffres de cette page incorporent cette exposition de change**, qui est un "
+    "risque économique matériel. Aucune couverture n'est modélisée (hors périmètre)."
+)
 st.markdown(
     f"""
     **Le problème.** Répartir un capital entre {len(showcase['assets_per_universe'][HEADLINE_UNIVERSE])}

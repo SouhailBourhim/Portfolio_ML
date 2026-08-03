@@ -161,7 +161,111 @@ def _performance_split(result, risk_free_annual: float) -> dict:
     }
 
 
-def _summarize(result, universe: str, strategy: str, risk_free_annual: float) -> dict:
+COST_MULTIPLIERS = (0.5, 1.0, 1.5, 2.0)
+
+
+def _cost_sensitivity(result, risk_free_annual: float) -> dict:
+    """Net performance under 0.5x / 1x / 1.5x / 2x transaction costs.
+
+    Addresses: P4 — a net Sharpe is a statement about an assumed cost model as
+    much as about a strategy, and this project's cost assumptions (10 bps ETF,
+    30 bps BVC) are judgement calls. A result that survives 2x costs is a
+    different claim from one that does not.
+
+    Derived EXACTLY, not re-simulated. The engine deducts the cost drag from
+    gross on the day after each rebalance, so `gross - net` is precisely the
+    1x drag per day and it scales linearly in the cost multiplier:
+
+        net(m) = gross - m * (gross - net)
+
+    Re-running the backtest per multiplier would produce identical weights —
+    costs never enter the optimizer for these strategies — at four times the
+    compute, and any tiny difference would be a bug rather than a finding.
+    """
+    gross, net = result.gross_returns, result.net_returns
+    drag = gross - net
+
+    scenarios = {}
+    for multiplier in COST_MULTIPLIERS:
+        scaled = gross - multiplier * drag
+        scenarios[f"{multiplier:g}x"] = {
+            "cost_multiplier": multiplier,
+            "net_sharpe": round(float(metrics.annualized_sharpe(scaled, risk_free_annual)), 4),
+            "annualized_return": round(float(metrics.annualized_return(scaled)), 4),
+            "total_cost_drag_annualized": round(
+                float(metrics.annualized_return(gross) - metrics.annualized_return(scaled)), 4
+            ),
+            # Reported per scenario BECAUSE it must not be inferred. See the note.
+            "fallback_rate_rebalances": round(float(result.fallback_rate), 4),
+        }
+
+    # Where does the strategy stop paying for itself? Scanned rather than
+    # solved: annualized return is not linear in the multiplier even though the
+    # drag is, so a closed form would be wrong in the third decimal.
+    break_even = None
+    for step in range(1, 401):
+        multiplier = step * 0.05
+        if metrics.annualized_return(gross - multiplier * drag) <= 0:
+            break_even = round(multiplier, 2)
+            break
+
+    return {
+        "scenarios": scenarios,
+        "break_even_cost_multiplier": break_even,
+        "break_even_note": (
+            "Multiplier at which the annualized NET return reaches zero. None means "
+            "it survives 20x the assumed costs."
+        ),
+        "fallback_invariance_note": (
+            "The fallback rate is identical across every cost scenario, and this is "
+            "true BY CONSTRUCTION rather than by measurement: transaction costs enter "
+            "only the net-return accounting, never the optimizer, so scaling them "
+            "cannot change a weight, a turnover, or whether an estimator converged. "
+            "It is reported per scenario so a reader can see that it did not move, "
+            "instead of having to deduce it. A turnover-PENALIZED strategy (Phase 4C, "
+            "lambda in objective units) would NOT have this invariance, because there "
+            "the cost of trading does reach the objective."
+        ),
+    }
+
+
+def _execution_profile(result, max_weight: float, rebalance_freq: str) -> dict:
+    """Turnover, concentration, cap binding and holding period.
+
+    Addresses: P1/P3 realism — the levers a manager would actually argue about.
+    A strategy whose edge needs monthly full-portfolio replacement is a
+    different proposition from one that holds for a quarter, even at identical
+    Sharpe.
+    """
+    weights = result.target_weights
+    turnover = result.turnover
+    at_cap = (weights >= max_weight - 1e-6)
+    oos_days = len(result.net_returns)
+    n_rebalances = max(len(result.rebalance_dates), 1)
+
+    return {
+        "rebalance_frequency": rebalance_freq,
+        "avg_holding_days": round(oos_days / n_rebalances, 1),
+        "avg_turnover": round(float(turnover.mean()), 4),
+        "median_turnover": round(float(turnover.median()), 4),
+        "max_turnover": round(float(turnover.max()), 4),
+        "avg_cost_drag_bps": round(float(result.costs.mean()) * 10_000, 2),
+        "max_allocation_observed": round(float(weights.to_numpy().max()), 4),
+        "max_allocation_permitted": float(max_weight),
+        "cap_binding_position_rate": round(float(at_cap.to_numpy().mean()), 4),
+        "cap_binding_date_rate": round(float(at_cap.any(axis=1).mean()), 4),
+        "liquidity_caveat": (
+            "Costs are modelled as a fixed per-asset rate on realised turnover, with "
+            "no market-impact or capacity term. The BVC names carry standing "
+            "illiquidity flags and CIH.CS/BCP.CS show multi-day zero-return runs, so "
+            "at a size where market impact matters these figures are optimistic. No "
+            "capacity limit has been estimated."
+        ),
+    }
+
+
+def _summarize(result, universe: str, strategy: str, risk_free_annual: float,
+               max_weight: float, rebalance_freq: str) -> dict:
     reports = result.fit_reports
     mask = result.fallback_mask()
     fallback_rows = reports[reports["fit_status"] == telemetry.STATUS_FALLBACK]
@@ -185,6 +289,8 @@ def _summarize(result, universe: str, strategy: str, risk_free_annual: float) ->
         "fallback_reasons": {str(k): int(v) for k, v in reasons.items()},
         "min_training_rows": int(reports["n_training_rows"].min()) if len(reports) else 0,
         "performance": _performance_split(result, risk_free_annual),
+        "cost_sensitivity": _cost_sensitivity(result, risk_free_annual),
+        "execution_profile": _execution_profile(result, max_weight, rebalance_freq),
     }
 
 
@@ -218,7 +324,10 @@ def run(universes: list[str] | None = None) -> tuple[Path, Path]:
             frame.index.name = "Date"
             long_rows.append(frame.reset_index())
 
-            summary = _summarize(result, universe, name, bt["risk_free_annual"])
+            summary = _summarize(
+                result, universe, name, bt["risk_free_annual"],
+                bt["max_weight"], bt["rebalance_freq"],
+            )
             summary["runtime_seconds"] = round(time.time() - started, 1)
             summaries.append(summary)
             log.info(

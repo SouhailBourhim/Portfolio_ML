@@ -152,3 +152,76 @@ class TestDaysAndRebalancesAreBothReported:
         for entry in _summary()["results"]:
             if entry["fallback_rebalances"] == 0:
                 assert entry["fallback_days"] == 0
+
+
+class TestCostSensitivity:
+    """A net Sharpe is a claim about an assumed cost model as much as a strategy."""
+
+    def test_every_strategy_reports_all_four_multipliers(self):
+        for entry in _summary()["results"]:
+            scenarios = entry["cost_sensitivity"]["scenarios"]
+            assert set(scenarios) == {"0.5x", "1x", "1.5x", "2x"}
+
+    def test_the_one_x_scenario_equals_the_published_full_period_figure(self):
+        """The scenarios are derived from the run, not a separate simulation."""
+        for entry in _summary()["results"]:
+            base = entry["cost_sensitivity"]["scenarios"]["1x"]["net_sharpe"]
+            published = entry["performance"]["full_period_hybrid"]["net_sharpe"]
+            assert base == pytest.approx(published, abs=5e-4), (
+                f"{entry['universe']}/{entry['strategy_requested']}: the 1x cost "
+                f"scenario must reproduce the headline figure exactly."
+            )
+
+    def test_higher_costs_never_improve_net_performance(self):
+        """Monotonicity is the sanity check that the derivation is right."""
+        for entry in _summary()["results"]:
+            scenarios = entry["cost_sensitivity"]["scenarios"]
+            sharpes = [scenarios[k]["net_sharpe"] for k in ("0.5x", "1x", "1.5x", "2x")]
+            assert sharpes == sorted(sharpes, reverse=True), (
+                f"{entry['universe']}/{entry['strategy_requested']}: net Sharpe rose "
+                f"with costs — {sharpes}"
+            )
+
+    def test_the_fallback_rate_is_reported_per_scenario_not_hidden(self):
+        """It must be visible per scenario, and it must not move.
+
+        Invariance here is BY CONSTRUCTION — costs never reach the optimizer —
+        so a scenario whose rate differed would mean the derivation had
+        silently changed the weights.
+        """
+        for entry in _summary()["results"]:
+            rates = {
+                s["fallback_rate_rebalances"]
+                for s in entry["cost_sensitivity"]["scenarios"].values()
+            }
+            assert len(rates) == 1, (
+                f"{entry['universe']}/{entry['strategy_requested']}: fallback rate "
+                f"varied across cost scenarios ({rates}) — costs must not reach "
+                f"the optimizer for these strategies."
+            )
+            assert rates.pop() == entry["fallback_rate_rebalances"]
+
+    def test_the_invariance_is_explained_not_merely_shown(self):
+        for entry in _summary()["results"]:
+            note = entry["cost_sensitivity"]["fallback_invariance_note"]
+            assert "BY CONSTRUCTION" in note and "turnover-PENALIZED" in note
+
+
+class TestExecutionProfile:
+    def test_realism_levers_are_reported(self):
+        for entry in _summary()["results"]:
+            profile = entry["execution_profile"]
+            for field in ("avg_turnover", "max_allocation_observed",
+                          "max_allocation_permitted", "avg_holding_days",
+                          "cap_binding_position_rate", "rebalance_frequency"):
+                assert field in profile, f"{field} missing from execution_profile"
+
+    def test_no_observed_allocation_exceeds_the_permitted_cap(self):
+        for entry in _summary()["results"]:
+            profile = entry["execution_profile"]
+            assert profile["max_allocation_observed"] <= profile["max_allocation_permitted"] + 1e-6
+
+    def test_the_liquidity_caveat_admits_the_missing_market_impact_term(self):
+        for entry in _summary()["results"]:
+            caveat = entry["execution_profile"]["liquidity_caveat"]
+            assert "market-impact" in caveat and "optimistic" in caveat
