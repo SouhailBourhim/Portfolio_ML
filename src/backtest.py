@@ -28,6 +28,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+import telemetry
 from schemas import BVC_ASSETS, ETF_ASSETS
 from strategies import Strategy
 
@@ -69,6 +70,45 @@ class BacktestResult:
     # cost math is convention-independent.)
     turnover: pd.Series
     costs: pd.Series                # per rebalance: Σᵢ cᵢ·|Δwᵢ|, as fraction of NAV
+    # Per-rebalance record of what the model ACTUALLY did: model_requested,
+    # model_effective, fit_status, fallback_reason, n_training_rows,
+    # convergence_warning. Indexed by rebalance date.
+    #
+    # This exists because a strategy labelled `dcc_garch` that fell back to
+    # Ledoit-Wolf on some rebalances is, on those dates, a Ledoit-Wolf result
+    # under a DCC-GARCH label. The fallbacks were always logged at WARNING —
+    # unread on an unattended run, and absent from every committed artifact.
+    # The invariant: no model label may hide degraded or fallback behaviour.
+    fit_reports: pd.DataFrame
+
+    @property
+    def fallback_rate(self) -> float:
+        """Share of rebalances where a substitute produced the number."""
+        if self.fit_reports.empty:
+            return 0.0
+        return float((self.fit_reports["fit_status"] == telemetry.STATUS_FALLBACK).mean())
+
+    def fallback_mask(self) -> pd.Series:
+        """Boolean per OOS DAY: was the weight in force set by a fallback fit?
+
+        A rebalance's fit governs every day until the next rebalance, so
+        attributing performance to fallback periods means propagating the
+        rebalance-level flag forward — not intersecting on rebalance dates,
+        which would attribute one day's return to a month's degraded weights.
+        """
+        if self.fit_reports.empty:
+            return pd.Series(False, index=self.net_returns.index)
+        # float, not bool, through the reindex: an object-dtype ffill is
+        # deprecated in pandas and silently downcasts. Cast back at the end.
+        flags = (self.fit_reports["fit_status"] == telemetry.STATUS_FALLBACK).astype(float)
+        combined = self.net_returns.index.union(flags.index)
+        return (
+            flags.reindex(combined)
+            .ffill()
+            .reindex(self.net_returns.index)
+            .fillna(0.0)
+            .astype(bool)
+        )
 
 
 def build_cost_vector(
@@ -226,6 +266,7 @@ def run_backtest(
     target_rows: list[pd.Series] = []
     drifted_rows: list[pd.Series] = []
     turnover_vals: list[float] = []
+    fit_report_rows: list[pd.Series] = []
     cost_vals: list[float] = []
     gross_out: dict[pd.Timestamp, float] = {}
     net_out: dict[pd.Timestamp, float] = {}
@@ -243,9 +284,19 @@ def run_backtest(
             extras_slice[CURRENT_WEIGHTS_KEY] = pd.DataFrame(
                 [w_current], index=pd.DatetimeIndex([tau]), columns=assets
             )
-        w_target = _validate_weights(
-            strategy.fit(train, extras_slice), assets, strategy.name, max_weight
-        ).to_numpy()
+        # One recording window per rebalance. Whatever estimators run inside
+        # this fit — a DCC covariance, an ML signal, both — report what they
+        # actually did, several frames below without threading a return value
+        # back up through every signature.
+        with telemetry.collect() as fit_records:
+            w_target = _validate_weights(
+                strategy.fit(train, extras_slice), assets, strategy.name, max_weight
+            ).to_numpy()
+        fit_report_rows.append(
+            pd.Series(
+                telemetry.summarize(fit_records, strategy.name, len(train)), name=tau
+            )
+        )
 
         w_drifted = w_current.copy()
         turnover = float(np.abs(w_target - w_drifted).sum())
@@ -283,6 +334,7 @@ def run_backtest(
         net_returns=pd.Series(net_out, name="net"),
         turnover=pd.Series(turnover_vals, index=rebalance_dates, name="turnover"),
         costs=pd.Series(cost_vals, index=rebalance_dates, name="cost"),
+        fit_reports=pd.DataFrame(fit_report_rows),
     )
     log.info(
         "Backtest %s/%s: %d rebalances, OOS %s → %s (%d days), avg turnover %.3f",

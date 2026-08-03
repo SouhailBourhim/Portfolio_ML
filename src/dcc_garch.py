@@ -52,6 +52,7 @@ import pandas as pd
 from scipy.optimize import minimize
 from sklearn.covariance import LedoitWolf
 
+import telemetry
 from memo import ContentCache, content_key
 
 log = logging.getLogger("dcc_garch")
@@ -180,12 +181,20 @@ def dcc_covariance(
         "dcc_covariance", train_returns,
         garch_p, garch_q, dcc_a_init, dcc_b_init, rescale_factor,
     )
-    return _DCC_CACHE.get_or_compute(
+    # The cache stores (covariance, FitRecord) rather than the covariance
+    # alone. A cache hit does not re-run the estimator, so without the stored
+    # record a fallback would be counted once and then vanish — the measured
+    # fallback RATE would fall as the cache warmed, which is precisely the
+    # failure a fallback-rate metric must not have. Re-emitting on every hit
+    # keeps the count equal to the number of rebalances, warm or cold.
+    covariance, fit_record = _DCC_CACHE.get_or_compute(
         key,
         lambda: _dcc_covariance_uncached(
             train_returns, garch_p, garch_q, dcc_a_init, dcc_b_init, rescale_factor
         ),
-    ).copy()
+    )
+    telemetry.record(fit_record)
+    return covariance.copy()
 
 
 def _dcc_covariance_uncached(
@@ -195,7 +204,7 @@ def _dcc_covariance_uncached(
     dcc_a_init: float,
     dcc_b_init: float,
     rescale_factor: float,
-) -> np.ndarray:
+) -> tuple[np.ndarray, telemetry.FitRecord]:
     """The two-stage estimation itself — see `dcc_covariance` for the contract.
 
     Addresses: P1, P2, P3 — split out from `dcc_covariance` so the fit can be
@@ -228,7 +237,12 @@ def _dcc_covariance_uncached(
 
         if not np.all(np.isfinite(cov_annual)):
             raise DCCGarchNonConvergence("Final covariance matrix contains non-finite values")
-        return cov_annual
+        return cov_annual, telemetry.FitRecord(
+            model_requested="dcc_garch",
+            model_effective="dcc_garch",
+            fit_status=telemetry.STATUS_OK,
+            n_training_rows=n_obs,
+        )
 
     except (DCCGarchNonConvergence, np.linalg.LinAlgError, ValueError) as exc:
         log.warning(
@@ -237,4 +251,11 @@ def _dcc_covariance_uncached(
             n_assets, n_obs, exc,
         )
         lw = LedoitWolf().fit(train_returns.to_numpy())
-        return lw.covariance_ * TRADING_DAYS_PER_YEAR
+        return lw.covariance_ * TRADING_DAYS_PER_YEAR, telemetry.FitRecord(
+            model_requested="dcc_garch",
+            model_effective="ledoit_wolf",
+            fit_status=telemetry.STATUS_FALLBACK,
+            n_training_rows=n_obs,
+            fallback_reason=f"{type(exc).__name__}: {exc}",
+            convergence_warning=str(exc),
+        )

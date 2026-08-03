@@ -123,18 +123,22 @@ class TestEstimatorsAreDeterministic:
             {"n_estimators": 25, "max_depth": 4}, 100, 21, 63, [5, 21], True,
             2, 5, 0, "diag", 252, fallback,
         )
-        first, flag_a = _predict_expected_returns_uncached(*args)
-        second, flag_b = _predict_expected_returns_uncached(*args)
+        # Three-tuple since the telemetry work: the FitRecord travels WITH
+        # the cached value so a cache hit still reports the fallback.
+        first, flag_a, record_a = _predict_expected_returns_uncached(*args)
+        second, flag_b, record_b = _predict_expected_returns_uncached(*args)
         assert flag_a == flag_b
+        assert record_a == record_b, "the fit record must be deterministic too"
         pd.testing.assert_series_equal(first, second)
 
     def test_dcc_covariance_is_deterministic(self, returns_window):
         from dcc_garch import _dcc_covariance_uncached
 
         window = returns_window.iloc[-300:]
-        first = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0)
-        second = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0)
+        first, record_a = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0)
+        second, record_b = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0)
         np.testing.assert_array_equal(first, second)
+        assert record_a == record_b, "the fit record must be deterministic too"
 
 
 # ── Caching must not change a single produced number ────────────────────────
@@ -148,7 +152,7 @@ class TestCachingDoesNotChangeResults:
         extras = {"features": market_features}
         fallback = returns_window.mean() * 252
 
-        direct, used_fallback = _predict_expected_returns_uncached(
+        direct, used_fallback, _ = _predict_expected_returns_uncached(
             returns_window, extras, "random_forest", model_params, 100, 21, 63,
             [5, 21], True, 2, 5, 0, "diag", 252, fallback,
         )
@@ -164,9 +168,8 @@ class TestCachingDoesNotChangeResults:
         from dcc_garch import _dcc_covariance_uncached
 
         window = returns_window.iloc[-300:]
-        np.testing.assert_array_equal(
-            dcc_covariance(window), _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0)
-        )
+        uncached, _ = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0)
+        np.testing.assert_array_equal(dcc_covariance(window), uncached)
 
     def test_mutating_a_returned_value_cannot_poison_the_cache(self, returns_window):
         """`_MLSignalStrategy.fit` takes a zero-copy `.to_numpy()` view."""

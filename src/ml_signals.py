@@ -48,6 +48,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+import telemetry
 from memo import ContentCache, content_key
 
 log = logging.getLogger("ml_signals")
@@ -613,7 +614,12 @@ def fit_predict_expected_returns(
         tuple(momentum_windows), condition_on_regime, n_states, n_restarts,
         random_state_base, covariance_type, min_regime_train_days,
     )
-    predicted, used_fallback = _PREDICTION_CACHE.get_or_compute(
+    # The cache stores the FitRecord alongside the prediction, and it is
+    # re-emitted on every hit. Without that, a fallback would be recorded once
+    # and then vanish behind the cache, so the measured fallback RATE would
+    # fall as the cache warmed — the one failure a fallback-rate metric must
+    # not have. `tests/test_telemetry.py` pins warm == cold.
+    predicted, used_fallback, fit_record = _PREDICTION_CACHE.get_or_compute(
         key,
         lambda: _predict_expected_returns_uncached(
             train_returns, extras, model_type, model_params, min_train_rows,
@@ -626,6 +632,7 @@ def fit_predict_expected_returns(
     # zero-copy `.to_numpy()` view of it, as `_MLSignalStrategy.fit` does —
     # cannot corrupt the cached entry for every later strategy.
     predicted = predicted.copy()
+    telemetry.record(fit_record)
 
     # Every fallback path returns the naive mean unchanged, exactly as before:
     # a transform of the naive estimate toward itself is a no-op for
@@ -634,6 +641,23 @@ def fit_predict_expected_returns(
     if used_fallback:
         return predicted
     return apply_mu_transform(predicted, fallback, mu_transform, shrinkage_weight)
+
+
+def _fallback_record(model_type: str, n_rows: int, reason: str) -> telemetry.FitRecord:
+    """A record for a rebalance where the naive sample mean produced the number.
+
+    Addresses: P4 — every early return in the predictor below is a rebalance
+    on which an "ML signal" result is arithmetically a sample-mean result. The
+    reason travels with it so a reader can tell a thin window apart from a
+    crashed estimator; they call for different responses.
+    """
+    return telemetry.FitRecord(
+        model_requested=model_type,
+        model_effective="naive_sample_mean",
+        fit_status=telemetry.STATUS_FALLBACK,
+        n_training_rows=int(n_rows),
+        fallback_reason=reason,
+    )
 
 
 def _predict_expected_returns_uncached(
@@ -652,7 +676,7 @@ def _predict_expected_returns_uncached(
     covariance_type: str,
     min_regime_train_days: int,
     fallback: pd.Series,
-) -> tuple[pd.Series, bool]:
+) -> tuple[pd.Series, bool, telemetry.FitRecord]:
     """The panel fit/predict itself, with no `mu` transform applied.
 
     Addresses: P1, P2, P3 — this is the body `fit_predict_expected_returns`
@@ -668,7 +692,10 @@ def _predict_expected_returns_uncached(
             "'xgboost') — falling back to the naive sample mean for this rebalance.",
             model_type,
         )
-        return fallback, True
+        return fallback, True, _fallback_record(
+            model_type, len(train_returns),
+            f"unknown model_type {model_type!r} (expected 'random_forest' or 'xgboost')",
+        )
 
     wide = build_asset_features(
         train_returns,
@@ -706,7 +733,10 @@ def _predict_expected_returns_uncached(
             "falling back to the naive sample mean for this rebalance.",
             model_type, len(X), min_train_rows,
         )
-        return fallback, True
+        return fallback, True, _fallback_record(
+            model_type, len(X),
+            f"only {len(X)} pooled training rows (< min_train_rows={min_train_rows})",
+        )
 
     X_predict_ordered = X_predict.reindex(columns=X.columns)
     if X_predict_ordered.isna().any().any():
@@ -715,7 +745,9 @@ def _predict_expected_returns_uncached(
             "falling back to the naive sample mean for this rebalance.",
             model_type,
         )
-        return fallback, True
+        return fallback, True, _fallback_record(
+            model_type, len(X), "NaN feature(s) in the row to score",
+        )
 
     # Both estimators are stochastic (bootstrap sampling / feature subsampling)
     # and default to an UNSEEDED random_state — two fit() calls on identical
@@ -748,7 +780,9 @@ def _predict_expected_returns_uncached(
             "falling back to the naive sample mean for this rebalance.",
             model_type, exc,
         )
-        return fallback, True
+        return fallback, True, _fallback_record(
+            model_type, len(X), f"{type(exc).__name__}: {exc}",
+        )
 
     predicted = pd.Series(
         raw_predictions, index=X_predict.index.get_level_values("ASSET")
@@ -761,9 +795,16 @@ def _predict_expected_returns_uncached(
             "falling back to the naive sample mean for this rebalance.",
             model_type,
         )
-        return fallback, True
+        return fallback, True, _fallback_record(
+            model_type, len(X), "prediction missing for at least one asset",
+        )
 
-    return result, False
+    return result, False, telemetry.FitRecord(
+        model_requested=model_type,
+        model_effective=model_type,
+        fit_status=telemetry.STATUS_OK,
+        n_training_rows=len(X),
+    )
 
 
 def run_ml_signal_features(
