@@ -11,7 +11,7 @@ strategies tried, the core mechanism of backtest overfitting.
 
 import logging
 import warnings
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -288,31 +288,70 @@ def block_bootstrap_sharpe_ci(
 
 class DSRTrialLedger:
     """
-    Persistent pool of per-period trial Sharpes, per universe, for honest DSR.
+    Auditable record of every configuration a search evaluated, per universe.
 
-    Addresses: P4 — the N-accumulation policy (see `deflated_sharpe_ratio`'s
-    docstring). The Deflated Sharpe Ratio only deflates correctly if N counts
-    EVERY configuration the search evaluated, not just the handful compared in
-    the final table. A hyperparameter sweep that quietly tried 200 configs and
-    reported the best one is exactly the overfitting DSR exists to penalize;
-    this ledger makes that count auditable and durable across a run.
+    Addresses: P4 — the N-accumulation policy (see `deflated_sharpe_ratio`).
+    DSR only deflates correctly if N counts EVERY configuration the search
+    evaluated. A sweep that quietly tried 200 configs and reported the best is
+    exactly the overfitting DSR exists to penalise.
 
-    Not a database — a small JSON file (`data/gold/dsr_trial_ledger.json`)
-    keyed by universe, holding the per-period (daily, NON-annualized) Sharpe of
-    every trial. `record()` appends; `pool()` returns a universe's full list to
-    hand to `deflated_sharpe_ratio`. Deliberately simple and inspectable, same
-    spirit as the other Gold JSON artifacts.
+    SCHEMA 2 — what changed and why. Schema 1 stored a bare list of per-period
+    Sharpes. Two defects were found in the Phase 2 audit and both mattered:
+
+      1. It recorded ONLY the portfolio-lever grid. The ML hyperparameter grid
+         (6 RF + 9 XGB configurations per universe) never reached it, so the
+         recorded N understated the real search by 15 per universe — biasing
+         the deflation OPTIMISTICALLY, in the project's own favour.
+      2. It stored a scalar per trial and discarded the return series. A
+         multiple-testing correction of the White Reality Check / Hansen SPA
+         family bootstraps over the candidates' RETURN SERIES; from scalars
+         alone, no such correction is constructible. The ledger could not
+         support the very claim it existed to license.
+
+    Schema 2 stores, per trial: a human label, a `kind`, the parameters, the
+    score in that kind's own units, and the return series where one exists.
+
+    HETEROGENEITY IS EXPLICIT, NOT SMOOTHED OVER. The two kinds are not
+    commensurable and are deliberately not merged:
+
+      kind="ml_grid"  scored by INFORMATION COEFFICIENT on validation folds.
+                      It has no portfolio return series, because a
+                      hyperparameter configuration is not a portfolio.
+      kind="lever"    scored by per-period Sharpe of a real walk-forward
+                      backtest, and carries that return series.
+
+    So `n_trials()` (the honest size of the search) and `pool()` (the Sharpe
+    sample DSR's variance term needs) intentionally differ. Reporting one as
+    the other is the mistake schema 1 made; `summary()` returns both.
+
+    Backwards compatible: a schema-1 file still loads, and the legacy
+    `record(universe, returns)` call still works.
     """
+
+    SCHEMA_VERSION = 2
 
     def __init__(self, path=None) -> None:
         from pathlib import Path
 
         self.path = Path(path) if path is not None else None
-        self._trials: dict[str, list[float]] = {}
+        self._trials: dict[str, list[dict]] = {}
         if self.path is not None and self.path.exists():
             import json
 
-            self._trials = {k: list(v) for k, v in json.loads(self.path.read_text()).items()}
+            raw = json.loads(self.path.read_text())
+            if isinstance(raw, dict) and raw.get("schema_version") == self.SCHEMA_VERSION:
+                self._trials = {k: list(v) for k, v in raw.get("trials", {}).items()}
+            else:
+                # Schema 1: {universe: [sharpe, ...]} — lift into schema 2 so an
+                # older artifact is readable rather than silently ignored.
+                self._trials = {
+                    universe: [
+                        {"label": f"legacy_{i}", "kind": "lever", "params": {},
+                         "per_period_sharpe": float(v), "returns": None}
+                        for i, v in enumerate(values)
+                    ]
+                    for universe, values in raw.items()
+                }
 
     @staticmethod
     def per_period_sharpe(returns: pd.Series) -> float:
@@ -322,16 +361,112 @@ class DSRTrialLedger:
             return 0.0
         return float(r.mean() / r.std())
 
-    def record(self, universe: str, returns: pd.Series) -> None:
-        """Append one trial's per-period Sharpe to `universe`'s pool."""
-        self._trials.setdefault(universe, []).append(self.per_period_sharpe(returns))
+    def record(
+        self,
+        universe: str,
+        returns: pd.Series | None = None,
+        *,
+        label: str = "",
+        kind: str = "lever",
+        params: Mapping | None = None,
+        score: float | None = None,
+        keep_series: bool = True,
+    ) -> None:
+        """Append one evaluated configuration to `universe`'s search record.
+
+        Args:
+            universe: Ledger key.
+            returns: The trial's net-return series, when it has one.
+            label: Human-readable identifier, e.g. "rf__max_depth=3".
+            kind: "lever" (Sharpe-scored, has a series) or "ml_grid"
+                (IC-scored, has none). Any other value is accepted and simply
+                excluded from the Sharpe pool.
+            params: The configuration evaluated.
+            score: The score in this kind's own units — IC for "ml_grid".
+                Ignored for "lever", where the Sharpe is computed from
+                `returns` so it cannot disagree with the series.
+            keep_series: Store the return series. Only turned off by callers
+                that would otherwise write a very large artifact.
+        """
+        entry: dict = {
+            "label": label,
+            "kind": kind,
+            "params": {k: (float(v) if isinstance(v, (int, float)) else str(v))
+                       for k, v in dict(params or {}).items()},
+        }
+        if returns is not None and len(returns) > 0:
+            entry["per_period_sharpe"] = self.per_period_sharpe(returns)
+            if keep_series:
+                clean = returns.dropna()
+                # Dated in production; the unit tests use a positional index,
+                # and a ledger that only accepts one of those would be brittle
+                # for no benefit. Serialise whatever index it has.
+                entry["returns"] = {
+                    "dates": [
+                        d.date().isoformat() if hasattr(d, "date") else str(d)
+                        for d in clean.index
+                    ],
+                    "values": [round(float(v), 10) for v in clean.to_numpy()],
+                }
+            else:
+                entry["returns"] = None
+        else:
+            entry["per_period_sharpe"] = None
+            entry["returns"] = None
+            entry["score"] = None if score is None else float(score)
+        if score is not None and "score" not in entry:
+            entry["score"] = float(score)
+        self._trials.setdefault(universe, []).append(entry)
 
     def pool(self, universe: str) -> list[float]:
-        """Every trial Sharpe recorded for `universe` (empty list if none)."""
-        return list(self._trials.get(universe, []))
+        """Per-period Sharpes of trials that HAVE one (the DSR variance sample).
+
+        Deliberately not every trial: an IC-scored hyperparameter config has no
+        Sharpe, and inventing one for it would corrupt the variance term.
+        """
+        return [
+            t["per_period_sharpe"] for t in self._trials.get(universe, [])
+            if t.get("per_period_sharpe") is not None
+        ]
 
     def n_trials(self, universe: str) -> int:
+        """Total configurations evaluated — the honest size of the search."""
         return len(self._trials.get(universe, []))
+
+    def candidate_series(self, universe: str) -> dict[str, pd.Series]:
+        """Label → return series, for trials that stored one.
+
+        Addresses: P4 — this is what a White Reality Check / Hansen SPA would
+        consume. It exists so that whether such a correction is CONSTRUCTIBLE
+        is a question about the data, answerable by inspection, rather than an
+        assumption.
+        """
+        out: dict[str, pd.Series] = {}
+        for i, t in enumerate(self._trials.get(universe, [])):
+            r = t.get("returns")
+            if not r:
+                continue
+            try:
+                # ISO8601 explicitly: a positional index serialises as "0",
+                # "1", ... which dateutil would otherwise coerce with a warning.
+                index = pd.DatetimeIndex(pd.to_datetime(r["dates"], format="ISO8601"))
+            except (ValueError, TypeError):
+                index = pd.Index(r["dates"])
+            out[t.get("label") or f"trial_{i}"] = pd.Series(r["values"], index=index)
+        return out
+
+    def summary(self, universe: str) -> dict:
+        """Counts by kind — so a reader can see what N is actually made of."""
+        trials = self._trials.get(universe, [])
+        by_kind: dict[str, int] = {}
+        for t in trials:
+            by_kind[t.get("kind", "unknown")] = by_kind.get(t.get("kind", "unknown"), 0) + 1
+        return {
+            "n_trials_total": len(trials),
+            "n_by_kind": by_kind,
+            "n_with_sharpe": len(self.pool(universe)),
+            "n_with_return_series": len(self.candidate_series(universe)),
+        }
 
     def save(self) -> None:
         """Persist to `self.path` (no-op if constructed without a path)."""
@@ -340,4 +475,150 @@ class DSRTrialLedger:
         import json
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(self._trials, indent=2))
+        self.path.write_text(json.dumps(
+            {"schema_version": self.SCHEMA_VERSION, "trials": self._trials}, indent=2
+        ))
+
+
+def paired_block_bootstrap(
+    candidate: pd.Series,
+    benchmark: pd.Series,
+    candidate_turnover: pd.Series | None = None,
+    benchmark_turnover: pd.Series | None = None,
+    candidate_cost: pd.Series | None = None,
+    benchmark_cost: pd.Series | None = None,
+    block_len: int = 21,
+    n_boot: int = 2000,
+    alpha: float = 0.10,
+    risk_free_annual: float = 0.0,
+    seed: int = 0,
+) -> dict:
+    """Paired moving-block bootstrap of the DIFFERENCE between two strategies.
+
+    Addresses: P4 — this is the instrument the project was missing. Marginal
+    per-strategy confidence intervals answer "how uncertain is this Sharpe",
+    which is NOT the question "do these two strategies differ". Two intervals
+    can overlap substantially while the paired difference is consistently
+    positive, because the strategies share the same market days and their
+    errors are strongly correlated; and non-overlap does not establish a
+    difference either. Every "indistinguishable"/"superior" claim previously
+    made from overlapping marginal CIs was unlicensed in one direction or the
+    other. This function tests the difference directly.
+
+    PAIRED is the operative word: both series are resampled with the SAME
+    block indices, so each draw keeps the two strategies on the same calendar
+    days. That preserves the serial dependence within a strategy AND the
+    same-day cross-correlation between them — the variance reduction that
+    makes a paired test more powerful than comparing two marginal intervals.
+
+    NULL-CENTRED p-value. The p-value is NOT the raw fraction of draws below
+    zero: that is a descriptive statement about the observed difference, not a
+    tail probability under a null. Following the standard bootstrap
+    hypothesis-test construction, the resampled differences are recentred on
+    zero to simulate the null of no outperformance, and the p-value is the
+    share of that null distribution at or beyond the OBSERVED difference
+    (one-sided, H1: candidate > benchmark). `prob_sharpe_diff_positive` is
+    reported separately and labelled, because it is a useful number that must
+    not be mistaken for a p-value.
+
+    Args:
+        candidate, benchmark: Daily NET return series on identical dates.
+        candidate_turnover, benchmark_turnover: Optional per-rebalance
+            turnover, for the economic-impact fields.
+        candidate_cost, benchmark_cost: Optional per-rebalance cost fractions.
+        block_len: Block length in days (~one trading month by default).
+        n_boot, alpha, seed: Resample count, CI level, RNG seed.
+
+    Returns:
+        Observed differences, the paired CI, the null p-value, prob_positive,
+        and the turnover/cost deltas.
+
+    Raises:
+        ValueError: if the indexes are not identical, if either series holds
+            NaN, or if there is too little data for one block. Aligning
+            silently would change WHICH days are compared, so a mismatch is a
+            caller error rather than something to repair here.
+    """
+    if not candidate.index.equals(benchmark.index):
+        only_c = candidate.index.difference(benchmark.index)
+        only_b = benchmark.index.difference(candidate.index)
+        raise ValueError(
+            "paired_block_bootstrap requires identical date indexes; refusing to "
+            f"align silently. {len(only_c)} date(s) only in candidate, "
+            f"{len(only_b)} only in benchmark. Slice both to the same test window "
+            "before comparing."
+        )
+    if candidate.isna().any() or benchmark.isna().any():
+        raise ValueError("paired_block_bootstrap requires NaN-free return series.")
+
+    n = len(candidate)
+    if n < 2 or n < block_len:
+        raise ValueError(
+            f"Not enough observations for a paired block bootstrap: n={n}, "
+            f"block_len={block_len}. Need at least one full block."
+        )
+
+    c = candidate.to_numpy(dtype=float)
+    b = benchmark.to_numpy(dtype=float)
+
+    def _stats(ci: np.ndarray, bi: np.ndarray) -> tuple[float, float]:
+        """(annualized return difference, annualized Sharpe difference)."""
+        ann_c = float(np.mean(ci)) * TRADING_DAYS_PER_YEAR
+        ann_b = float(np.mean(bi)) * TRADING_DAYS_PER_YEAR
+        sc, sb = float(np.std(ci, ddof=1)), float(np.std(bi, ddof=1))
+        sharpe_c = ((ann_c - risk_free_annual) / (sc * np.sqrt(TRADING_DAYS_PER_YEAR))
+                    if sc > 1e-15 else 0.0)
+        sharpe_b = ((ann_b - risk_free_annual) / (sb * np.sqrt(TRADING_DAYS_PER_YEAR))
+                    if sb > 1e-15 else 0.0)
+        return ann_c - ann_b, sharpe_c - sharpe_b
+
+    obs_ret_diff, obs_sharpe_diff = _stats(c, b)
+
+    rng = np.random.default_rng(seed)
+    n_blocks = int(np.ceil(n / block_len))
+    boot_ret = np.empty(n_boot)
+    boot_sharpe = np.empty(n_boot)
+    for i in range(n_boot):
+        starts = rng.integers(0, n, size=n_blocks)
+        idx = np.concatenate([(np.arange(s, s + block_len) % n) for s in starts])[:n]
+        boot_ret[i], boot_sharpe[i] = _stats(c[idx], b[idx])   # SAME idx = paired
+
+    lo_q, hi_q = 100 * alpha / 2.0, 100 * (1.0 - alpha / 2.0)
+
+    def _null_p(boot: np.ndarray, observed: float) -> float:
+        """One-sided p under H0: no outperformance, via a recentred null."""
+        null = boot - float(np.mean(boot))
+        # +1 smoothing: a bootstrap p-value should never be exactly 0, which
+        # would assert a certainty the resample count cannot support.
+        return float((np.sum(null >= observed) + 1) / (len(null) + 1))
+
+    out = {
+        "n_observations": int(n),
+        "test_start": str(candidate.index.min().date()),
+        "test_end": str(candidate.index.max().date()),
+        "block_len": int(block_len),
+        "n_boot": int(n_boot),
+        "seed": int(seed),
+        "ann_return_diff": round(obs_ret_diff, 6),
+        "sharpe_diff": round(obs_sharpe_diff, 6),
+        "sharpe_diff_ci": [
+            round(float(np.percentile(boot_sharpe, lo_q)), 6),
+            round(float(np.percentile(boot_sharpe, hi_q)), 6),
+        ],
+        "ann_return_diff_ci": [
+            round(float(np.percentile(boot_ret, lo_q)), 6),
+            round(float(np.percentile(boot_ret, hi_q)), 6),
+        ],
+        "p_value_no_outperformance": round(_null_p(boot_sharpe, obs_sharpe_diff), 6),
+        "prob_sharpe_diff_positive": round(float(np.mean(boot_sharpe > 0.0)), 6),
+        "ci_alpha": alpha,
+    }
+
+    def _mean_delta(a, bb):
+        if a is None or bb is None or len(a) == 0 or len(bb) == 0:
+            return None
+        return round(float(a.mean()) - float(bb.mean()), 6)
+
+    out["avg_turnover_diff"] = _mean_delta(candidate_turnover, benchmark_turnover)
+    out["avg_cost_diff"] = _mean_delta(candidate_cost, benchmark_cost)
+    return out

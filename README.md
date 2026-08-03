@@ -18,7 +18,7 @@ portefeuille (MPT) de Markowitz :
 | P1 | Estimation bruitée de la covariance | Régularisation et covariance dynamique (Ledoit-Wolf → EWMA → DCC-GARCH) |
 | P2 | Non-stationnarité des rendements | Hidden Markov Models (régimes de marché) |
 | P3 | Rupture de la diversification en crise | Contraintes de portefeuille + covariance dynamique + HMM |
-| P4 | Surapprentissage du backtesting | Validation purgée/embargo + backtesting walk-forward |
+| P4 | Surapprentissage du backtesting | Sélection strictement antérieure (purge + embargo) + backtesting walk-forward + comparaisons pairées |
 
 Le livrable est une aide à l'analyse et à la recherche : il **ne fournit ni conseil
 d'investissement, ni recommandation client, ni exécution automatique d'ordres**. Il ne
@@ -256,7 +256,7 @@ n'améliore pas significativement la ligne de base régime + covariance dynamiqu
 | Phase 4 | Modèles ML (HMM + covariance dynamique) | ✅ Terminée |
 | Phase 4B | Modèles de signal ML adaptatifs (F7 : RandomForest + XGBoost) | ✅ Terminée |
 | Phase 4C | Optimisation sensible aux coûts + régularisation de μ | ✅ Terminée |
-| Phase 5 | Évaluation out-of-sample (K-Fold purgé, sélection honnête, IC bootstrap) | ✅ Terminée |
+| Phase 5 | Évaluation out-of-sample (sélection strictement antérieure, test gelé, comparaisons pairées) | ✅ Terminée |
 | Phase 6+7 | Suite Portfolio ML — dashboard Streamlit + API REST FastAPI | ✅ Terminée |
 
 ## Suite Portfolio ML (dashboard + API)
@@ -364,6 +364,88 @@ FRED_API_KEY=votre_clé_ici
 > ⚠️ **macOS :** ne pas placer le projet sous `~/Desktop`, `~/Documents` ou `~/Downloads` —
 > la protection TCC de macOS empêche les processus lancés par launchd (Dagster) d'y accéder.
 
+## Protocole de validation et preuve statistique (Phase 2)
+
+### Sélection strictement antérieure (forward-only)
+
+La sélection des hyperparamètres ML n'utilise plus la validation croisée purgée
+en K blocs. Celle-ci entraînait le modèle sur **toutes** les dates hors de la bande
+de purge, y compris **postérieures** au bloc de validation : défendable pour des
+labels chevauchants, mais ce n'est pas une simulation de décisions séquentielles
+d'allocation. Noter un pli de 2018 avec un modèle ajusté en partie sur 2019-2024
+répond à une question qu'aucun gérant ne peut poser en direct.
+
+`PurgedWalkForwardSplit` (`src/purged_kfold.py`) impose, sur chaque pli :
+
+```
+train_start <= train_end < embargo_start <= val_start <= val_end < test_start
+```
+
+- fenêtre **expansible** par défaut (elle reproduit le réentraînement du backtest) ;
+- **purge** = horizon du label, **embargo** = tampon distinct de corrélation sérielle ;
+- regroupement **par date** : une date n'est jamais coupée entre train et validation ;
+- `InsufficientHistory` est **levée** si l'historique ne permet pas la géométrie
+  configurée — un protocole silencieusement dégradé produirait quand même des
+  hyperparamètres « choisis », sans que rien en aval ne puisse le détecter.
+
+`PurgedKFold` est **conservée et toujours testée** : elle n'a pas changé de sens,
+c'est l'appelant qui a changé d'outil. La géométrie réellement appliquée est
+publiée dans [`data/gold/phase5_validation_protocol.json`](data/gold/) — dates de
+train/embargo/validation, effectifs, et **IC par pli** (pas seulement sa moyenne :
+une moyenne de 0,02 sur cinq plis stables et une moyenne de 0,02 tirée par un seul
+pli à 0,12 sont le même nombre et deux preuves très différentes).
+
+**La fenêtre de test gelée n'est pas touchée** : la sélection ne voit que le segment
+train+validation, donc `val_end < test_start` par construction.
+
+### Comparaison pairée — la preuve exigée pour toute affirmation de supériorité
+
+Un intervalle de confiance marginal décrit l'incertitude **d'une** stratégie ; il ne
+teste **pas** si deux stratégies diffèrent. Deux intervalles peuvent se chevaucher
+largement alors que la différence pairée est systématiquement positive, parce que les
+stratégies partagent les mêmes journées de marché et que leurs erreurs sont corrélées.
+L'inverse est vrai aussi : un non-chevauchement n'établit pas une différence.
+
+`metrics.paired_block_bootstrap` teste la différence directement, sur les **mêmes
+dates** de la fenêtre gelée, **nette de coûts** : les deux séries sont rééchantillonnées
+avec les **mêmes indices de blocs**, ce qui préserve la dépendance sérielle de chaque
+stratégie et la corrélation intra-journalière entre elles.
+
+La **p-value est centrée sous l'hypothèse nulle** : les différences rééchantillonnées
+sont recentrées sur zéro pour simuler « aucune surperformance », puis on mesure la
+part de cette distribution au-delà de la différence **observée**. Ce n'est **pas** la
+fraction brute de tirages positifs — celle-ci est rapportée séparément sous
+`prob_sharpe_diff_positive` et ne doit jamais être présentée comme une p-value.
+
+Résultats : [`data/gold/paired_comparison_results.json`](data/gold/), une ligne par
+(univers, candidat, référence), avec différence de rendement annualisé, différence de
+Sharpe net, intervalle pairé, p-value, probabilité de différence positive, écarts de
+turnover et de coûts, et une **interprétation économique générée à partir des chiffres**
+plutôt que rédigée à la main.
+
+### Correction pour tests multiples — statut : non établie
+
+Un White Reality Check ou un Hansen SPA correct rééchantillonne le **maximum** sur les
+séries de rendement de **tous** les candidats explorés, sur un index commun. La
+recherche de la Phase 5 ne le permet pas : la fenêtre gelée n'est évaluée que pour les
+configurations finalement retenues, les essais de leviers portent des séries de la
+fenêtre de **validation**, et les essais de grille ML sont notés par IC et **n'ont
+aucune série de portefeuille** — une configuration d'hyperparamètres n'est pas un
+portefeuille.
+
+Appliquer un Reality Check au seul sous-ensemble disponible sous-estimerait la
+recherche et produirait une **fausse réassurance**. Le statut est donc déclaré
+`not_established` dans l'artefact, avec l'expérience qui l'établirait (réévaluer la
+fenêtre gelée pour **chaque** configuration explorée). Ce qui est rapporté à la place :
+le ratio de Sharpe déflaté — désormais calculé sur un registre qui **inclut la grille
+d'hyperparamètres**, absente du schéma 1, ce qui sous-comptait la recherche de 15
+configurations par univers, **en faveur du projet**.
+
+**Formulation autorisée.** « Aucune preuve de surperformance », ou « écart
+économiquement positif mais statistiquement non concluant ». Jamais « équivalent » sur
+la seule base d'une p-value non significative : cela demanderait un test d'équivalence
+contre une marge fixée à l'avance, qui n'a pas été mené.
+
 ## Comment vérifier qu'un résultat est à jour
 
 **Ne pas se fier à la date de modification des fichiers.** DVC restaure les sorties depuis son
@@ -468,7 +550,7 @@ python src/run_backtest.py  # Backtest walk-forward + haie Phase 4 (Phase 2)
 python src/run_phase4.py    # HMM régime + covariance dynamique vs. haie (Phase 4)
 python src/run_phase4b.py   # Signaux ML adaptatifs (RF/XGBoost) vs. haie Phase 4 (Phase 4B)
 python src/run_phase4c.py   # Optimisation sensible aux coûts + régularisation μ (Phase 4C)
-python src/run_phase5.py    # Évaluation OOS : K-Fold purgé + sélection honnête + IC bootstrap (Phase 5)
+python src/run_phase5.py    # Évaluation OOS : sélection forward-only + test gelé + comparaisons pairées (Phase 5)
 ```
 
 ### Tests
@@ -563,7 +645,7 @@ jupyter notebook notebooks/phase3_features.ipynb            # validation des fea
 jupyter notebook notebooks/phase4_regime_covariance.ipynb   # régime HMM + covariance dynamique
 jupyter notebook notebooks/phase4b_adaptive_ml_signals.ipynb # signaux ML adaptatifs (RF/XGBoost, F7)
 jupyter notebook notebooks/phase4c_cost_aware.ipynb          # optimisation sensible aux coûts + régularisation μ
-jupyter notebook notebooks/phase5_oos_evaluation.ipynb       # évaluation OOS : K-Fold purgé + IC bootstrap
+jupyter notebook notebooks/phase5_oos_evaluation.ipynb       # évaluation OOS (notebook antérieur au protocole forward-only)
 ```
 
 ## Références principales

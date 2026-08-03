@@ -116,9 +116,24 @@ Un écart de $+6{,}2$~\% mesuré sur une période unique ne dit rien tant qu'on
 ignore sa marge d'erreur. Deux protocoles ont été appliqués pour l'établir.
 
 \paragraph{Le test gelé.} Les derniers 35~\% de chaque univers ont été mis de
-côté avant toute calibration. Les hyperparamètres des modèles ont été choisis par
-validation croisée purgée sur la partie restante, puis \emph{figés} ; le verdict
-n'a été mesuré qu'une fois, sur ce segment jamais vu.
+côté avant toute calibration. Les hyperparamètres des modèles ont été choisis sur
+la partie restante par \textbf{validation strictement antérieure}
+(\emph{forward-only}), puis \emph{figés} ; le verdict n'a été mesuré qu'une fois,
+sur ce segment jamais vu.
+
+Le mot « strictement » est le correctif apporté à ce protocole. La version
+précédente employait une validation croisée purgée en blocs, qui entraîne le
+modèle sur \emph{toutes} les dates hors de la bande de purge — y compris
+\textbf{postérieures} au bloc de validation. C'est la construction canonique de
+López de Prado, défendable lorsque les labels se chevauchent, mais elle note un
+pli de 2018 avec un modèle ajusté en partie sur 2019--2024 : une question
+qu'aucun gérant ne peut poser en direct. Chaque pli respecte désormais
+\[
+\text{fin\_entraînement} < \text{début\_embargo} \le \text{début\_validation}
+\le \text{fin\_validation} < \text{début\_test}
+\]
+et la géométrie réellement appliquée — dates, effectifs, IC par pli — est publiée
+dans \texttt{phase5\_validation\_protocol.json} plutôt qu'affirmée ici.
 
 \paragraph{Le walk-forward imbriqué.} La fenêtre de test unique du protocole
 précédent ne représente que 455~jours sur le portefeuille EURAFRIC, ce qui produit
@@ -139,13 +154,65 @@ fenêtre d'évaluation.
   \label{fig:intervalles}
 \end{figure}
 
+\paragraph{Le test pairé — la preuve qui manquait.} Les intervalles ci-dessus
+sont \emph{marginaux} : ils décrivent l'incertitude de \emph{chaque} stratégie
+prise isolément. Ils ne testent pas si deux stratégies diffèrent, et les lire
+ainsi est une erreur dans les deux sens — deux intervalles peuvent se chevaucher
+largement alors que la différence pairée est systématiquement positive (les
+stratégies partagent les mêmes journées de marché et leurs erreurs sont
+corrélées), et un non-chevauchement n'établirait pas davantage une différence.
+
+Ce rapport dispose désormais de l'instrument manquant : un \textbf{bootstrap par
+blocs pairé} sur les mêmes dates de la fenêtre gelée, net de coûts. Les deux
+séries sont rééchantillonnées avec les \emph{mêmes} indices de blocs, ce qui
+préserve à la fois la dépendance sérielle de chaque stratégie et la corrélation
+intra-journalière entre elles. La p-value est \emph{centrée sous l'hypothèse
+nulle} — les différences rééchantillonnées sont recentrées sur zéro, puis on
+mesure la part de cette distribution au-delà de l'écart observé. Ce n'est pas la
+fraction brute de tirages positifs, rapportée séparément et jamais présentée
+comme une p-value.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption[Comparaisons pairées]{Comparaisons pairées sur la fenêtre de test
+  gelée, nettes de coûts (bootstrap par blocs, 2\,000 rééchantillons).
+  \emph{Aucune} des huit comparaisons n'établit de surperformance.}
+  \label{tab:paires}
+  \begin{tabular}{@{}llrrr@{}}
+    \toprule
+    Univers & Comparaison & $\Delta$Sharpe & IC 90~\% & $p$ \\
+    \midrule
+    \multirow{4}{*}{\texttt{etf\_2017}}
+      & RF vs régimes        & $+0{,}009$ & $[-0{,}025;\ +0{,}041]$ & 0,326 \\
+      & RF vs 1/N            & $+0{,}120$ & $[-0{,}013;\ +0{,}247]$ & 0,066 \\
+      & XGB vs régimes       & $-0{,}149$ & $[-0{,}308;\ +0{,}010]$ & 0,939 \\
+      & XGB vs 1/N           & $-0{,}038$ & $[-0{,}177;\ +0{,}096]$ & 0,671 \\
+    \addlinespace
+    \multirow{4}{*}{\texttt{full\_2021}}
+      & RF vs régimes        & $-0{,}212$ & $[-0{,}551;\ +0{,}151]$ & 0,850 \\
+      & RF vs 1/N            & $-0{,}002$ & $[-0{,}374;\ +0{,}360]$ & 0,512 \\
+      & XGB vs régimes       & $+0{,}096$ & $[-0{,}315;\ +0{,}541]$ & 0,361 \\
+      & XGB vs 1/N           & $+0{,}306$ & $[-0{,}158;\ +0{,}784]$ & 0,147 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \begin{resultatbox}{Le verdict honnête}
-Hors échantillon, sur données gelées et avec des barres d'erreur, les écarts
-observés entre le système à régimes et les approches classiques restent petits
-face à l'incertitude. Les intervalles de confiance sont marginaux et couvrent
-environ 1,5 à 2,3 points de Sharpe, pour des écarts de l'ordre de 0,07. Ils ne
-permettent ni de démontrer une supériorité, ni de conclure à l'équivalence~: un
-bootstrap pairé sur les écarts de rendements serait nécessaire.
+\textbf{Aucune preuve de surperformance.} Sur les huit comparaisons pairées, tous
+les intervalles contiennent zéro et toutes les p-values dépassent 0,05 ; la plus
+proche du seuil est RF contre l'équipondéré sur l'univers ETF ($p = 0{,}066$).
+
+Un cas mérite d'être isolé, car il est exactement ce que ce test sert à révéler.
+Sur \texttt{full\_2021}, le signal XGB calibré obtient 1,308 contre 1,213 pour la
+stratégie à régimes : en \emph{estimation ponctuelle}, il « bat » la référence, et
+l'artefact l'enregistre comme tel. Le test pairé donne pourtant
+$\Delta = +0{,}096$, IC $[-0{,}315;\ +0{,}541]$, $p = 0{,}361$. Le classement
+ponctuel n'est pas soutenu par les données.
+
+Ce n'est pas non plus une démonstration d'équivalence : ne pas rejeter n'est pas
+accepter l'hypothèse nulle. L'établir demanderait un test d'équivalence contre une
+marge fixée à l'avance, qui n'a pas été mené.
 \end{resultatbox}
 
 Trois éléments confirment ce diagnostic plutôt qu'ils ne l'affaiblissent.
@@ -466,9 +533,15 @@ d'attribution et ses limites d'inférence.
         est rapporté comme exploratoire, non confirmatoire.
   \item \textbf{Observé, non démontré} — le système à régimes dépasse le Markowitz
         classique de $6{,}2$~\% sur le portefeuille EURAFRIC et lui est inférieur
-        de $1{,}6$~\% sur l'univers ETF. Les intervalles sont marginaux et le
-        classement dépend du protocole d'évaluation et de la mesure retenue ;
-        aucun test pairé ne conclut à une supériorité.
+        de $1{,}6$~\% sur l'univers ETF. Le classement dépend du protocole
+        d'évaluation et de la mesure retenue.
+  \item \textbf{Testé, non établi} — sous validation strictement antérieure, les
+        \textbf{huit} comparaisons pairées sur la fenêtre gelée ont un intervalle
+        contenant zéro ($p$ de 0,066 à 0,939). Aucun modèle de signal n'établit de
+        surperformance, ni contre la stratégie à régimes ni contre l'équipondéré,
+        sur aucun des deux univers. C'est le résultat le mieux étayé du chapitre,
+        parce que c'est le seul qui repose sur un test de la \emph{différence}
+        plutôt que sur des intervalles marginaux.
   \item \textbf{Observé, robuste} — l'optimisation sous contrainte protège
         systématiquement mieux que la diversification naïve pendant les cinq
         crises, avec un délai de récupération environ deux fois plus court. Ce

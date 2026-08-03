@@ -326,8 +326,11 @@ niveau. En prévision financière, un coefficient de quelques centièmes est dé
 considéré comme exploitable~; c'est un domaine où le signal est ténu par nature.
 \end{definitionbox}
 
-Les \emph{hyperparamètres des modèles} sont donc choisis par validation croisée
-purgée, au coefficient d'information. Les \emph{leviers de portefeuille}
+Les \emph{hyperparamètres des modèles} sont donc choisis par \textbf{validation
+strictement antérieure} (folds \emph{forward-only} : l'entraînement précède
+toujours la validation, séparé d'une purge et d'un embargo), au coefficient
+d'information — rapporté \emph{par pli} et non seulement en moyenne, une moyenne
+identique pouvant recouvrir cinq plis stables ou un seul pli dominant. Les \emph{leviers de portefeuille}
 (rétrécissement, pénalité de rotation) sont choisis autrement~: sur un segment de
 validation distinct, au ratio de Sharpe net, à travers le moteur réel — car ce
 sont des paramètres de construction, pas de prédiction, et les juger au

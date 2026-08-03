@@ -129,6 +129,7 @@ def select_ml_hyperparameters(
     momentum_windows: Sequence[int] = (5, 21, 63),
     condition_on_regime: bool = True,
     regime_kwargs: Mapping | None = None,
+    splitter=None,
 ) -> tuple[dict, pd.DataFrame]:
     """
     Purged-CV selection of RF/XGB hyperparameters, scored by mean fold IC.
@@ -157,7 +158,12 @@ def select_ml_hyperparameters(
         train_returns, features, short_window, long_window, momentum_windows,
         condition_on_regime, regime_kwargs or {},
     )
-    cv = PurgedKFold(n_splits=n_splits, embargo_frac=embargo_frac, label_horizon=1)
+    # `splitter` is how Phase 5 injects PurgedWalkForwardSplit. The PurgedKFold
+    # default is kept so existing callers and tests keep their exact behaviour:
+    # this function did not silently change meaning, the CALLER chose to.
+    cv = splitter if splitter is not None else PurgedKFold(
+        n_splits=n_splits, embargo_frac=embargo_frac, label_horizon=1
+    )
     splits = list(cv.split(X))
 
     rows = []
@@ -173,6 +179,11 @@ def select_ml_hyperparameters(
             "mean_ic": float(np.mean(fold_ics)),
             "std_ic": float(np.std(fold_ics)),
             "n_folds": len(fold_ics),
+            # Per-fold IC, not just its mean. A mean of [0.12, -0.01, -0.02,
+            # 0.01, 0.00] and a mean of five 0.02s are the same number and very
+            # different evidence; publishing only the mean hides which one this
+            # is. Carried into the audit artifact so a reader can see the spread.
+            "fold_ics": [round(float(v), 6) for v in fold_ics],
         })
 
     cv_table = pd.DataFrame(rows).sort_values("mean_ic", ascending=False).reset_index(drop=True)
@@ -278,3 +289,34 @@ def select_portfolio_levers(
     log.info("select_portfolio_levers(%s): best %s (val Sharpe %.4f)",
              model_type, best, table.iloc[0]["val_sharpe_net"])
     return best, table
+
+
+def build_fold_audit(
+    train_returns: pd.DataFrame,
+    features: pd.DataFrame | None,
+    splitter,
+    short_window: int = 21,
+    long_window: int = 63,
+    momentum_windows: Sequence[int] = (5, 21, 63),
+    condition_on_regime: bool = True,
+    regime_kwargs: Mapping | None = None,
+) -> list[dict]:
+    """Realised fold geometry for the panel `select_ml_hyperparameters` scores.
+
+    Addresses: P4 — the forward-only claim is only checkable if the ACTUAL
+    windows are published. This rebuilds the same panel the selector builds
+    (cheap: ~0.3-0.4s, the model fits are the cost) and asks the splitter to
+    describe the folds it would produce on it, so the audit artifact reports
+    the geometry that was really used rather than the configured intent.
+
+    Note the panel is shorter than `train_returns`: feature warm-up and the
+    one-period label both consume leading/trailing dates. Reporting the panel's
+    geometry rather than the raw window is the honest choice — those are the
+    dates the model actually saw.
+    """
+    X, _ = _build_panel_xy(
+        train_returns, features, short_window, long_window, momentum_windows,
+        condition_on_regime, regime_kwargs or {},
+    )
+    return splitter.describe(X)
+

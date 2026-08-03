@@ -57,6 +57,9 @@ CLAUDE.md
 CLAUDE.v2.md
 .claude/
 
+# ── Codex ──────────────────────────────────────────────────────────────
+AGENTS.md
+
 # ── Misc generated files ─────────────────────────────────────────────────────
 mlflow.db
 .pytest_cache/

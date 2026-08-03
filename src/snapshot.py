@@ -54,6 +54,11 @@ SNAPSHOT_FILES = (
     Path("data/gold/phase4c_results.json"),
     Path("data/gold/phase5_results.json"),
     Path("data/gold/dsr_trial_ledger.json"),
+    # Phase 2: the validation protocol actually applied, and the paired
+    # comparisons. A results file without these cannot be audited for how its
+    # hyperparameters were chosen or whether its differences were tested.
+    Path("data/gold/phase5_validation_protocol.json"),
+    Path("data/gold/paired_comparison_results.json"),
     Path("data/gold/dashboard_showcase.json"),
     Path("data/gold/dashboard_equity.parquet"),
     Path("data/gold/dashboard_weights.parquet"),

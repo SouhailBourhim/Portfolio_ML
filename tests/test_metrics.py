@@ -18,6 +18,7 @@ from metrics import (
     deflated_sharpe_ratio,
     information_ratio,
     max_drawdown,
+    paired_block_bootstrap,
     summarize,
 )
 
@@ -226,3 +227,129 @@ class TestDSRTrialLedger:
         reloaded = DSRTrialLedger(path=path)
         assert reloaded.n_trials("full_2021") == 1
         assert reloaded.pool("full_2021") == led.pool("full_2021")
+
+
+class TestPairedBlockBootstrap:
+    """The Phase 2.2 comparison gate.
+
+    Marginal CIs describe one strategy's uncertainty; they do not test whether
+    two differ. These lock in the properties that make the paired test usable
+    as evidence for (or against) a superiority claim.
+    """
+
+    @staticmethod
+    def _pair(n=400, edge=0.0, seed=0):
+        idx = pd.bdate_range("2024-01-02", periods=n)
+        rng = np.random.default_rng(seed)
+        bench = pd.Series(rng.normal(0.0003, 0.01, n), index=idx)
+        cand = bench + rng.normal(edge, 0.002, n)
+        return cand, bench
+
+    def test_identical_series_give_a_zero_difference(self):
+        _, bench = self._pair()
+        out = paired_block_bootstrap(bench, bench, n_boot=200)
+        assert out["sharpe_diff"] == 0.0
+        assert out["ann_return_diff"] == 0.0
+        assert out["p_value_no_outperformance"] == pytest.approx(1.0, abs=0.01)
+
+    def test_misaligned_indexes_are_rejected_not_silently_aligned(self):
+        """Dropping or aligning rows would change WHICH days are compared."""
+        cand, bench = self._pair()
+        with pytest.raises(ValueError, match="identical date indexes"):
+            paired_block_bootstrap(cand, bench.iloc[5:], n_boot=50)
+
+    def test_reordered_index_is_also_rejected(self):
+        cand, bench = self._pair(n=60)
+        with pytest.raises(ValueError, match="identical date indexes"):
+            paired_block_bootstrap(cand, bench.iloc[::-1], n_boot=50)
+
+    def test_nan_input_is_rejected(self):
+        cand, bench = self._pair(n=60)
+        cand.iloc[3] = np.nan
+        with pytest.raises(ValueError, match="NaN-free"):
+            paired_block_bootstrap(cand, bench, n_boot=50)
+
+    def test_too_little_data_for_one_block_is_rejected(self):
+        cand, bench = self._pair(n=10)
+        with pytest.raises(ValueError, match="Not enough observations"):
+            paired_block_bootstrap(cand, bench, block_len=21, n_boot=50)
+
+    def test_same_seed_gives_byte_identical_results(self):
+        cand, bench = self._pair(edge=0.0002)
+        a = paired_block_bootstrap(cand, bench, n_boot=300, seed=11)
+        b = paired_block_bootstrap(cand, bench, n_boot=300, seed=11)
+        assert a == b
+
+    def test_a_real_edge_is_detected(self):
+        cand, bench = self._pair(edge=0.0006, seed=3)
+        out = paired_block_bootstrap(cand, bench, n_boot=800, seed=0)
+        assert out["sharpe_diff"] > 0
+        assert out["p_value_no_outperformance"] < 0.10
+        assert out["sharpe_diff_ci"][0] > 0, "CI should exclude zero for a clear edge"
+
+    def test_p_value_is_not_the_raw_fraction_above_zero(self):
+        """The two are different quantities and must not be conflated — the
+        exact error this function was written to avoid."""
+        cand, bench = self._pair(edge=0.0004, seed=5)
+        out = paired_block_bootstrap(cand, bench, n_boot=800, seed=0)
+        p = out["p_value_no_outperformance"]
+        frac = out["prob_sharpe_diff_positive"]
+        assert p != pytest.approx(1.0 - frac, abs=1e-9)
+
+    def test_p_value_is_never_exactly_zero(self):
+        """A bootstrap p-value of 0 asserts certainty the resample count
+        cannot support; the +1 smoothing prevents it."""
+        cand, bench = self._pair(edge=0.01, seed=9)
+        out = paired_block_bootstrap(cand, bench, n_boot=200, seed=0)
+        assert out["p_value_no_outperformance"] > 0.0
+
+    def test_turnover_and_cost_deltas_are_reported_when_supplied(self):
+        cand, bench = self._pair()
+        t_c = pd.Series([0.4, 0.5, 0.6]); t_b = pd.Series([0.1, 0.1, 0.1])
+        out = paired_block_bootstrap(cand, bench, candidate_turnover=t_c,
+                                     benchmark_turnover=t_b, n_boot=100)
+        assert out["avg_turnover_diff"] == pytest.approx(0.4, abs=1e-9)
+        assert out["avg_cost_diff"] is None       # not supplied → not invented
+
+
+class TestLedgerSchema2:
+    """The ledger must support the claim it licenses (Phase 2 audit)."""
+
+    def test_ml_grid_trials_count_toward_the_search_size(self):
+        """Schema 1 omitted them, understating N in the project's own favour."""
+        led = DSRTrialLedger()
+        r = pd.Series(np.random.default_rng(0).normal(0.0004, 0.01, 100))
+        led.record("u", r, label="lever_a", kind="lever")
+        for i in range(9):
+            led.record("u", None, label=f"rf_{i}", kind="ml_grid", score=0.02)
+        assert led.n_trials("u") == 10
+        assert led.summary("u")["n_by_kind"] == {"lever": 1, "ml_grid": 9}
+
+    def test_the_sharpe_pool_excludes_trials_that_have_no_sharpe(self):
+        """An IC-scored config has no Sharpe; inventing one would corrupt the
+        DSR variance term."""
+        led = DSRTrialLedger()
+        r = pd.Series(np.random.default_rng(0).normal(0.0004, 0.01, 100))
+        led.record("u", r, label="lever_a", kind="lever")
+        led.record("u", None, label="rf_0", kind="ml_grid", score=0.02)
+        assert len(led.pool("u")) == 1
+        assert led.n_trials("u") == 2
+
+    def test_return_series_are_retained_for_trials_that_have_them(self):
+        """Needed for any Reality-Check-family correction to be constructible."""
+        led = DSRTrialLedger()
+        idx = pd.bdate_range("2024-01-02", periods=50)
+        r = pd.Series(np.random.default_rng(0).normal(0.0004, 0.01, 50), index=idx)
+        led.record("u", r, label="lever_a", kind="lever")
+        series = led.candidate_series("u")
+        assert "lever_a" in series
+        pd.testing.assert_series_equal(series["lever_a"], r, check_names=False,
+                                       check_freq=False, atol=1e-9)
+
+    def test_a_schema_1_file_still_loads(self, tmp_path):
+        import json
+        p = tmp_path / "legacy.json"
+        p.write_text(json.dumps({"u": [0.01, 0.02, 0.03]}))
+        led = DSRTrialLedger(path=p)
+        assert led.n_trials("u") == 3
+        assert led.pool("u") == [0.01, 0.02, 0.03]

@@ -126,6 +126,25 @@ purged_cv:
   n_splits: 5
   embargo_frac: 0.02          # fraction of unique dates embargoed after each fold
 
+# ── Forward-only model selection (Phase 2.1) ────────────────────────────────
+# Replaces purged K-Fold for Phase 5 hyperparameter selection. K-Fold trains on
+# every date outside the purge band INCLUDING dates after the validation fold,
+# which is defensible for overlapping-label classification but is not a
+# simulation of sequential portfolio decisions. These folds are strictly
+# forward: train_end < embargo_start <= val_start <= val_end < test_start.
+#
+# Windows are expressed in UNIQUE DATES, not rows, because the panel holds one
+# row per (date, asset) and a boundary must never split a date.
+# `purged_cv` above is retained: PurgedKFold still exists and is still tested.
+walk_forward_cv:
+  min_train_dates: 378        # ~1.5 trading years before the first fold
+  val_dates: 63               # ~1 trading quarter validated per fold
+  n_splits: 5
+  embargo_dates: 5            # serial-correlation buffer, on top of the purge
+  label_horizon: 1            # F7 labels are one period ahead (purge width)
+  mode: "expanding"           # "expanding" mirrors how the backtest retrains
+  step_dates: null            # null => contiguous, non-overlapping validation
+
 # ── Fundamentals experiment — F7 features beyond price history ──────────────
 # Phase 5 established that the F7 signal, tuned honestly on prices alone, is
 # statistically INDISTINGUISHABLE from regime_conditional out-of-sample. The

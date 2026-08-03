@@ -142,3 +142,201 @@ class PurgedKFold(BaseCrossValidator):
                 )
                 continue
             yield train_idx, test_idx
+
+
+class InsufficientHistory(ValueError):
+    """A universe cannot supply the configured walk-forward fold geometry.
+
+    Addresses: P4 — raised loudly rather than silently yielding fewer folds
+    (or none). A selection run that quietly degrades to two folds, or to
+    zero, would still produce "chosen" hyperparameters, and nothing
+    downstream could tell that the protocol had not actually been applied.
+    """
+
+
+class PurgedWalkForwardSplit(BaseCrossValidator):
+    """Strictly forward-only (rolling-origin) splits with purge + embargo.
+
+    Addresses: P4 — `PurgedKFold` above trains on every date outside the
+    purge/embargo band, INCLUDING dates after the validation fold. That is
+    the textbook López de Prado construction and is defensible when labels
+    overlap and the question is "does this feature carry signal". It is NOT a
+    simulation of sequential portfolio decisions: scoring 2018 with a model
+    fitted partly on 2019-2024 answers a question no live allocator can ask.
+
+    This splitter answers the sequential question instead. Every fold
+    satisfies, by construction and by assertion:
+
+        train_start <= train_end < embargo_start <= val_start <= val_end
+        and val_end < final_test_start   (enforced by the caller's split)
+
+    Geometry. Validation windows tile the date axis forward from the first
+    date at which `min_train_dates` of history exist. Fold i validates on
+    `val_dates` dates; training is every date up to `train_end`, where
+
+        train_end = val_start - 1 - embargo_dates - label_horizon
+
+    The `label_horizon` term is the purge: a training date t whose label
+    spans [t, t + horizon] must not reach into validation. The
+    `embargo_dates` term is the separate serial-correlation buffer.
+
+    Mode. `expanding` (default) grows training from the first available date,
+    which matches how the production backtest actually retrains. `rolling`
+    keeps a fixed-length training window, which is the right choice when
+    older regimes are believed harmful; it is offered because that belief is
+    testable, not because it is assumed.
+
+    Panel convention. Identical to `PurgedKFold`: grouping is BY DATE, so all
+    assets sharing a date always land on the same side of a boundary.
+
+    Args:
+        min_train_dates: Unique dates required before the first fold.
+        val_dates: Unique dates in each validation window.
+        n_splits: Maximum folds to emit. Fewer are emitted only if the date
+            axis runs out, which raises rather than degrading silently.
+        embargo_dates: Dates dropped between train end and validation start,
+            on top of the purge.
+        label_horizon: Forward span of a label, in dates. 1 for F7.
+        mode: "expanding" or "rolling".
+        step_dates: Advance between consecutive validation starts. Defaults
+            to `val_dates` (contiguous, non-overlapping validation windows).
+    """
+
+    def __init__(
+        self,
+        min_train_dates: int = 504,
+        val_dates: int = 126,
+        n_splits: int = 5,
+        embargo_dates: int = 5,
+        label_horizon: int = 1,
+        mode: str = "expanding",
+        step_dates: int | None = None,
+    ) -> None:
+        if min_train_dates < 1:
+            raise ValueError(f"min_train_dates must be >= 1, got {min_train_dates}.")
+        if val_dates < 1:
+            raise ValueError(f"val_dates must be >= 1, got {val_dates}.")
+        if n_splits < 1:
+            raise ValueError(f"n_splits must be >= 1, got {n_splits}.")
+        if embargo_dates < 0:
+            raise ValueError(f"embargo_dates must be >= 0, got {embargo_dates}.")
+        if label_horizon < 0:
+            raise ValueError(f"label_horizon must be >= 0, got {label_horizon}.")
+        if mode not in ("expanding", "rolling"):
+            raise ValueError(f"mode must be 'expanding' or 'rolling', got {mode!r}.")
+        self.min_train_dates = min_train_dates
+        self.val_dates = val_dates
+        self.n_splits = n_splits
+        self.embargo_dates = embargo_dates
+        self.label_horizon = label_horizon
+        self.mode = mode
+        self.step_dates = step_dates if step_dates is not None else val_dates
+
+    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+        return self.n_splits
+
+    def _fold_geometry(self, n_dates: int) -> list[tuple[int, int, int, int]]:
+        """Return (train_lo, train_hi, val_lo, val_hi) date positions per fold.
+
+        Separated from `split` so the audit artifact and the tests can inspect
+        the geometry without materialising row indices.
+        """
+        gap = self.embargo_dates + self.label_horizon
+        first_val = self.min_train_dates + gap
+        if first_val + self.val_dates > n_dates:
+            raise InsufficientHistory(
+                f"Need at least {first_val + self.val_dates} unique dates for one fold "
+                f"(min_train_dates={self.min_train_dates} + embargo={self.embargo_dates} "
+                f"+ label_horizon={self.label_horizon} + val_dates={self.val_dates}), "
+                f"but only {n_dates} are available. Reduce the windows or supply more "
+                f"history — this run would otherwise select hyperparameters under a "
+                f"protocol that was never actually applied."
+            )
+
+        folds: list[tuple[int, int, int, int]] = []
+        val_lo = first_val
+        while len(folds) < self.n_splits and val_lo + self.val_dates <= n_dates:
+            val_hi = val_lo + self.val_dates - 1
+            train_hi = val_lo - gap - 1
+            train_lo = 0 if self.mode == "expanding" else max(
+                0, train_hi - self.min_train_dates + 1
+            )
+            if train_hi >= train_lo:
+                folds.append((train_lo, train_hi, val_lo, val_hi))
+            val_lo += self.step_dates
+
+        if not folds:
+            raise InsufficientHistory(
+                f"No forward fold could be built from {n_dates} unique dates."
+            )
+        if len(folds) < self.n_splits:
+            log.warning(
+                "PurgedWalkForwardSplit: %d of %d requested folds fit in %d dates; "
+                "the rest would run past the end of the selection window.",
+                len(folds), self.n_splits, n_dates,
+            )
+        return folds
+
+    def split(self, X, y=None, groups=None):
+        """Yield (train_idx, val_idx) integer positions, forward-only."""
+        dates = _sample_dates(X)
+        unique = pd.DatetimeIndex(np.sort(dates.unique()))
+        values = dates.values
+        positions = np.arange(len(dates))
+
+        for train_lo, train_hi, val_lo, val_hi in self._fold_geometry(len(unique)):
+            train_mask = (values >= unique[train_lo].to_datetime64()) & (
+                values <= unique[train_hi].to_datetime64()
+            )
+            val_mask = (values >= unique[val_lo].to_datetime64()) & (
+                values <= unique[val_hi].to_datetime64()
+            )
+            train_idx, val_idx = positions[train_mask], positions[val_mask]
+            if len(train_idx) == 0 or len(val_idx) == 0:
+                raise InsufficientHistory(
+                    f"Fold [{unique[val_lo].date()}..{unique[val_hi].date()}] has "
+                    f"train={len(train_idx)} val={len(val_idx)} rows."
+                )
+            # The invariant this class exists for, asserted rather than assumed:
+            # nothing in train may be dated at or after validation starts.
+            assert dates[train_idx].max() < dates[val_idx].min(), (
+                "forward-only violated: a training date is not strictly before "
+                "the validation window"
+            )
+            yield train_idx, val_idx
+
+    def describe(self, X) -> list[dict]:
+        """Fold geometry as plain dicts, for the audit artifact.
+
+        Addresses: P4 — the protocol claim ("training never post-dates
+        validation") is only credible if the realised windows are published
+        alongside the results, not merely asserted in a docstring.
+        """
+        dates = _sample_dates(X)
+        unique = pd.DatetimeIndex(np.sort(dates.unique()))
+        values = dates.values
+        out = []
+        for i, (t_lo, t_hi, v_lo, v_hi) in enumerate(self._fold_geometry(len(unique)), start=1):
+            train_mask = (values >= unique[t_lo].to_datetime64()) & (
+                values <= unique[t_hi].to_datetime64()
+            )
+            val_mask = (values >= unique[v_lo].to_datetime64()) & (
+                values <= unique[v_hi].to_datetime64()
+            )
+            out.append({
+                "fold": i,
+                "mode": self.mode,
+                "train_start": str(unique[t_lo].date()),
+                "train_end": str(unique[t_hi].date()),
+                "embargo_start": str(unique[min(t_hi + 1, len(unique) - 1)].date()),
+                "embargo_end": str(unique[max(v_lo - 1, 0)].date()),
+                "val_start": str(unique[v_lo].date()),
+                "val_end": str(unique[v_hi].date()),
+                "n_train_rows": int(train_mask.sum()),
+                "n_val_rows": int(val_mask.sum()),
+                "n_train_dates": int(t_hi - t_lo + 1),
+                "n_val_dates": int(v_hi - v_lo + 1),
+                "embargo_dates": self.embargo_dates,
+                "label_horizon": self.label_horizon,
+            })
+        return out

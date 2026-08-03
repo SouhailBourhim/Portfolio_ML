@@ -290,6 +290,10 @@ stages:
     outs:
       - data/gold/phase5_results.json
       - data/gold/dsr_trial_ledger.json
+      # Phase 2 evidence artifacts: the realised forward-only fold geometry,
+      # and the paired comparisons that a superiority claim would require.
+      - data/gold/phase5_validation_protocol.json
+      - data/gold/paired_comparison_results.json
     params:
       - params.yaml:
           - backtest.rebalance_freq
@@ -312,6 +316,13 @@ stages:
           - ml_signals.condition_on_regime
           - purged_cv.n_splits
           - purged_cv.embargo_frac
+          - walk_forward_cv.min_train_dates
+          - walk_forward_cv.val_dates
+          - walk_forward_cv.n_splits
+          - walk_forward_cv.embargo_dates
+          - walk_forward_cv.label_horizon
+          - walk_forward_cv.mode
+          - walk_forward_cv.step_dates
           - phase5.test_frac
           - phase5.rf_grid
           - phase5.xgb_grid
@@ -414,6 +425,8 @@ stages:
       - data/gold/phase4c_results.json
       - data/gold/phase5_results.json
       - data/gold/dsr_trial_ledger.json
+      - data/gold/phase5_validation_protocol.json
+      - data/gold/paired_comparison_results.json
       - data/gold/dashboard_showcase.json
       - data/gold/dashboard_equity.parquet
       - data/gold/dashboard_weights.parquet

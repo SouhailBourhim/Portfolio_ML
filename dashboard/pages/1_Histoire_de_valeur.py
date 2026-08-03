@@ -318,9 +318,15 @@ st.info(
     """
     **Lecture honnête de ce graphique.** Sur cette fenêtre de test, la stratégie à
     régimes devance la diversification naïve (1/N) en estimation ponctuelle. Les
-    intervalles affichés sont toutefois marginaux : leur chevauchement ne constitue
-    pas un test pairé de la différence entre stratégies. Cette visualisation quantifie
-    l'incertitude, mais n'établit pas une supériorité statistique.
+    intervalles affichés sont toutefois **marginaux** : ils décrivent l'incertitude de
+    chaque stratégie prise isolément, et leur chevauchement ne constitue pas un test de
+    la différence.
+
+    Ce test a désormais été mené. Sous sélection strictement antérieure, les **huit
+    comparaisons pairées** (bootstrap par blocs sur les mêmes dates, net de coûts) ont
+    toutes un intervalle contenant zéro : **aucune surperformance n'est établie**, ni
+    contre la stratégie à régimes ni contre l'équipondéré, sur aucun des deux univers.
+    Ce n'est pas non plus une preuve d'équivalence.
     """,
     icon="ℹ️",
 )
@@ -363,8 +369,11 @@ st.markdown(
       contrainte, et non le modèle, détermine l'essentiel de l'allocation. À 25 % la
       variance minimale ne produit qu'**une seule** allocation sur 248 rééquilibrages ;
       à 30 %, elle en produit 169. L'univers à 9 actifs n'est pas concerné.
-    - **Aucun test pairé n'établit une supériorité statistique.** Les intervalles de
-      confiance marginaux sont larges et la fenêtre de test hors échantillon est courte.
+    - **Le test pairé a été mené, et n'établit aucune supériorité.** Les huit
+      comparaisons sur la fenêtre gelée ont un intervalle contenant zéro (p de 0,066 à
+      0,939). Sur `full_2021`, le signal XGB « bat » la stratégie à régimes en
+      estimation ponctuelle (1,308 contre 1,213) mais le test pairé donne p = 0,361 :
+      le classement ponctuel n'est pas soutenu par les données.
     - **La couche de prédiction de rendement (F7) n'a pas établi d'avantage robuste de
       portefeuille.** Quatre évaluations indépendantes vont dans ce sens : calibration
       honnête (Phase 5), historique marocain profond sur 20 ans, ajout de données

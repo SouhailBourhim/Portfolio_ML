@@ -27,9 +27,11 @@ vérifiée par des tests, puis quatre familles de modèles ajoutées une à une 
 rétrécissement de la matrice de covariance, détection non supervisée de régimes
 de marché par modèle de Markov caché, prédiction de rendement par ensembles
 d'arbres, et optimisation tenant compte des coûts de transaction. L'évaluation
-est traitée comme un objet d'ingénierie à part entière~: validation croisée
-purgée et sous embargo, segment de test gelé, intervalles de confiance par
-bootstrap à blocs et correction pour le nombre de configurations essayées.
+est traitée comme un objet d'ingénierie à part entière~: sélection strictement
+antérieure (l'entraînement précède toujours la validation, purge et embargo à la
+frontière), segment de test gelé, et \textbf{comparaisons pairées} par bootstrap
+à blocs — le test de la \emph{différence} entre deux stratégies, que des
+intervalles marginaux ne fournissent pas.
 
 Les résultats sont rapportés selon leur force probante. Sur cinq fenêtres de
 crise externes, le détecteur de régime est plus souvent dans son état « baissier »
@@ -37,8 +39,11 @@ qu'en dehors des fenêtres~; cette association est présentée comme exploratoir
 car cinq événements et une définition de l'état par le rendement ne permettent
 pas une conclusion confirmatoire. Le système complet présente un écart observé de
 6,2~\% de ratio de Sharpe net sur le portefeuille visé et de $-1{,}6$~\% sur
-l'univers international. Les intervalles publiés sont marginaux et aucun test
-pairé n'établit une supériorité entre stratégies. Cinq pistes indépendantes ont
+l'univers international. Sous validation strictement antérieure, les huit
+comparaisons pairées menées sur la fenêtre de test gelée ont toutes un intervalle
+contenant zéro~: \textbf{aucune surperformance n'est établie}, ni pour les
+modèles de signal contre la stratégie à régimes, ni contre l'équipondéré. Ce
+n'est pas davantage une preuve d'équivalence, faute de test dédié. Cinq pistes indépendantes ont
 été explorées et fermées, établissant notamment que précision de prédiction et
 performance de portefeuille sont deux objectifs distincts. Enfin, le plafond de
 position imposé comme règle métier s'est révélé le régulariseur le plus efficace
@@ -69,9 +74,10 @@ future is enforced by tests rather than asserted, and four model families added
 one at a time — covariance shrinkage, unsupervised market-regime detection via a
 hidden Markov model, return prediction with tree ensembles, and
 transaction-cost-aware optimisation. Evaluation is treated as an engineering
-artefact in its own right: purged and embargoed cross-validation, a frozen test
-segment, block-bootstrap confidence intervals, and a deflation correcting for the
-number of configurations tried.
+artefact in its own right: strictly forward-only selection (training always
+precedes validation, with a purge and an embargo at the boundary), a frozen test
+segment, and \textbf{paired} block-bootstrap comparisons — a test of the
+\emph{difference} between two strategies, which marginal intervals do not provide.
 
 Results are reported by strength of evidence. Across five external crisis
 windows, the regime detector is more often in its ``bear'' state than outside
@@ -79,7 +85,10 @@ those windows; this association is reported as exploratory because five events
 and a return-based state definition cannot support a confirmatory conclusion.
 The full system has an observed 6.2\% net-Sharpe difference on the target
 portfolio and a $-1.6$\% difference on the international universe. Published
-intervals are marginal, and no paired test establishes strategy superiority.
+under forward-only selection, all eight paired comparisons on the frozen test
+window have intervals containing zero: \textbf{no outperformance is established},
+for either signal model against either the regime strategy or equal weighting.
+Nor is this evidence of equivalence, absent a dedicated test.
 Five independent avenues for improvement were explored and closed, establishing
 among other things that prediction accuracy and portfolio performance are
 distinct objectives. Finally, the position cap imposed as a business rule turned

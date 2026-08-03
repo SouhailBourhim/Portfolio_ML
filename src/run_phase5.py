@@ -44,14 +44,20 @@ import mlflow
 import pandas as pd
 
 from backtest import build_cost_vector, run_backtest
+from purged_kfold import PurgedWalkForwardSplit
 from metrics import (
     DSRTrialLedger,
     annualized_sharpe,
     block_bootstrap_sharpe_ci,
     deflated_sharpe_ratio,
     max_drawdown,
+    paired_block_bootstrap,
 )
-from model_selection import select_ml_hyperparameters, select_portfolio_levers
+from model_selection import (
+    build_fold_audit,
+    select_ml_hyperparameters,
+    select_portfolio_levers,
+)
 from run_phase4 import build_strategies as build_phase4_strategies
 from run_phase4 import load_features, load_universe
 from strategies import RandomForestSignalStrategy, XGBoostSignalStrategy
@@ -123,6 +129,7 @@ def run_phase5() -> dict:
     sp = params["ml_signals"]
     p5 = params["phase5"]
     cv = params["purged_cv"]
+    wf = params["walk_forward_cv"]
     boot = p5["bootstrap"]
     max_weight = bp["max_weight"]
     rf = bp["risk_free_annual"]
@@ -147,6 +154,8 @@ def run_phase5() -> dict:
     configure_mlflow()
     mlflow.set_experiment("phase5_oos_evaluation")
     output: dict[str, dict] = {}
+    fold_audit: dict[str, dict] = {}
+    paired_rows: list[dict] = []
 
     with mlflow.start_run(run_name="phase5_oos_evaluation"):
         mlflow.log_params({
@@ -190,13 +199,44 @@ def run_phase5() -> dict:
             tuned_series = {}          # display -> test net-return series (reused for DSR)
             for model_type, cls, display in MODELS:
                 grid = p5["rf_grid"] if model_type == "random_forest" else p5["xgb_grid"]
+                # Forward-only folds: training never post-dates validation.
+                splitter = PurgedWalkForwardSplit(
+                    min_train_dates=wf["min_train_dates"], val_dates=wf["val_dates"],
+                    n_splits=wf["n_splits"], embargo_dates=wf["embargo_dates"],
+                    label_horizon=wf["label_horizon"], mode=wf["mode"],
+                    step_dates=wf["step_dates"],
+                )
                 ml_params, cv_table = select_ml_hyperparameters(
                     train_val, tv_features, grid, model_type=model_type,
-                    n_splits=cv["n_splits"], embargo_frac=cv["embargo_frac"],
                     short_window=sp["short_window"], long_window=sp["long_window"],
                     momentum_windows=sp["momentum_windows"],
                     condition_on_regime=sp["condition_on_regime"], regime_kwargs=regime_kwargs,
+                    splitter=splitter,
                 )
+                # Every hyperparameter configuration is part of the search and
+                # must count toward N. Schema 1 omitted these entirely, which
+                # understated the search in the project's own favour.
+                for _, row in cv_table.iterrows():
+                    cfg = {k: row[k] for k in grid}
+                    ledger.record(
+                        universe_name, None,
+                        label=f"{model_type}__" + "_".join(f"{k}={v}" for k, v in cfg.items()),
+                        kind="ml_grid", params=cfg, score=float(row["mean_ic"]),
+                    )
+                if universe_name not in fold_audit:
+                    fold_audit[universe_name] = {}
+                fold_audit[universe_name][model_type] = {
+                    "folds": build_fold_audit(
+                        train_val, tv_features, splitter,
+                        short_window=sp["short_window"], long_window=sp["long_window"],
+                        momentum_windows=sp["momentum_windows"],
+                        condition_on_regime=sp["condition_on_regime"],
+                        regime_kwargs=regime_kwargs,
+                    ),
+                    "selected_hyperparameters": ml_params,
+                    "fold_ics_of_selected": list(cv_table.iloc[0]["fold_ics"]),
+                    "mean_ic_of_selected": round(float(cv_table.iloc[0]["mean_ic"]), 6),
+                }
                 levers, lever_table = select_portfolio_levers(
                     train_val, tv_features, model_type=model_type, ml_params=ml_params,
                     shrink_grid=p5["shrink_grid"], penalty_grid=p5["penalty_grid"],
@@ -242,6 +282,7 @@ def run_phase5() -> dict:
             # Baselines (regime_conditional hurdle + equal_weight) on the SAME test dates.
             baselines = {s.name: s for s in build_phase4_strategies(params)}
             baseline_entries = {}
+            baseline_series = {}
             for name in ("regime_conditional", "equal_weight"):
                 test_net = evaluate_on_test(
                     returns, features, baselines[name], test_start,
@@ -256,6 +297,28 @@ def run_phase5() -> dict:
                     "test_sharpe_net": round(point, 4),
                     "test_sharpe_ci": [round(lo, 4), round(hi, 4)],
                 }
+                baseline_series[name] = test_net
+
+            # ── Paired comparisons: the evidence a superiority claim needs ──
+            # Marginal CIs above describe each strategy's own uncertainty; they
+            # do not test whether two strategies differ. These do, on identical
+            # dates, on NET returns, with a null-centred p-value.
+            for cand_name, cand_series in tuned_series.items():
+                for bench_name, bench_series in baseline_series.items():
+                    cmp_ = paired_block_bootstrap(
+                        cand_series, bench_series,
+                        block_len=boot["block_len"], n_boot=boot["n_boot"],
+                        alpha=boot["alpha"], risk_free_annual=rf, seed=boot["seed"],
+                    )
+                    ci_lo, ci_hi = cmp_["sharpe_diff_ci"]
+                    excludes_zero = ci_lo > 0.0 or ci_hi < 0.0
+                    cmp_.update({
+                        "universe": universe_name,
+                        "candidate": cand_name,
+                        "benchmark": bench_name,
+                        "interpretation": _interpret(cmp_, excludes_zero),
+                    })
+                    paired_rows.append(cmp_)
 
             # Verdict: best tuned F7 vs the re-evaluated hurdle, on the test window.
             best_tuned_name = max(tuned_entries, key=lambda k: tuned_entries[k]["test_sharpe_net"])
@@ -287,6 +350,8 @@ def run_phase5() -> dict:
                 "stored_full_window_hurdle": (
                     stored_hurdle.get(universe_name, {}).get("sharpe_net")
                 ),
+                "search_ledger": ledger.summary(universe_name),
+                "validation_protocol": "purged_walk_forward_expanding",
             }
             log.info(
                 "%s VERDICT: best tuned %s @ %.4f vs hurdle %.4f on test → %s",
@@ -295,6 +360,46 @@ def run_phase5() -> dict:
             )
 
         ledger.save()
+
+        # ── Artifact: the realised fold geometry ──────────────────────────────
+        protocol_path = ROOT / "data" / "gold" / "phase5_validation_protocol.json"
+        protocol_path.parent.mkdir(parents=True, exist_ok=True)
+        protocol_path.write_text(json.dumps({
+            "protocol": "purged_walk_forward",
+            "description": (
+                "Forward-only model selection. Every fold satisfies "
+                "train_end < embargo_start <= val_start <= val_end, and every "
+                "validation window lies strictly inside the train+validation "
+                "segment, so the frozen test segment is untouched by selection."
+            ),
+            "config": dict(wf),
+            "universes": fold_audit,
+        }, indent=2))
+        mlflow.log_artifact(str(protocol_path))
+        log.info("Validation protocol written → %s", protocol_path)
+
+        # ── Artifact: paired comparisons ──────────────────────────────────────
+        paired_path = ROOT / "data" / "gold" / "paired_comparison_results.json"
+        paired_path.write_text(json.dumps({
+            "method": (
+                "Paired moving-block bootstrap on identical frozen-test dates, "
+                "net of transaction costs. Both series are resampled with the SAME "
+                "block indices, preserving serial dependence within each strategy "
+                "and same-day correlation between them."
+            ),
+            "p_value_definition": (
+                "One-sided, H0: no outperformance. The resampled differences are "
+                "recentred on zero to simulate the null; the p-value is the share of "
+                "that null distribution at or beyond the OBSERVED difference. It is "
+                "NOT the fraction of draws above zero — that quantity is reported "
+                "separately as prob_sharpe_diff_positive."
+            ),
+            "multiple_testing": _search_correction_note(ledger, bp["universes"]),
+            "comparisons": paired_rows,
+        }, indent=2))
+        mlflow.log_artifact(str(paired_path))
+        log.info("Paired comparisons written → %s (%d rows)", paired_path, len(paired_rows))
+
         results_path.parent.mkdir(parents=True, exist_ok=True)
         results_path.write_text(json.dumps(output, indent=2))
         mlflow.log_artifact(str(results_path))
@@ -303,6 +408,98 @@ def run_phase5() -> dict:
         log.info("=== Phase 5 complete. `mlflow ui` to inspect. ===")
 
     return output
+
+
+def _interpret(cmp_: dict, excludes_zero: bool) -> str:
+    """Plain-language reading of one paired comparison.
+
+    Addresses: P4 — the wording rule of this project made executable. A
+    non-significant difference is NOT evidence of equivalence (that needs an
+    equivalence test against a pre-specified margin, which this project has
+    not run), and a significant one is not licensed unless the paired interval
+    actually excludes zero. Generating the sentence from the numbers stops a
+    human writing a stronger claim than the artifact supports.
+    """
+    d = cmp_["sharpe_diff"]
+    p = cmp_["p_value_no_outperformance"]
+    direction = "higher" if d > 0 else "lower"
+    economic = (
+        f"observed net-Sharpe difference {d:+.3f} "
+        f"({cmp_['ann_return_diff']:+.2%} annualised return)"
+    )
+    if excludes_zero and p < 0.05:
+        return (
+            f"Candidate is {direction} by {economic}; the paired 90% interval excludes "
+            f"zero and the null-centred p-value is {p:.3f}. This is evidence of a "
+            "difference on this frozen test window, before any correction for the "
+            "number of configurations searched."
+        )
+    if abs(d) < 0.05:
+        return (
+            f"No evidence of outperformance: {economic}, paired interval "
+            f"{cmp_['sharpe_diff_ci']} spans zero (p = {p:.3f}). The difference is "
+            "also economically small. This is NOT a finding of equivalence — no "
+            "equivalence test against a pre-specified margin was run."
+        )
+    return (
+        f"Economically {direction} by {economic}, but statistically inconclusive: "
+        f"the paired interval {cmp_['sharpe_diff_ci']} spans zero (p = {p:.3f}). "
+        "Uplift of this size is worth noting and is not established."
+    )
+
+
+def _search_correction_note(ledger, universes) -> dict:
+    """State honestly what multiple-testing correction the search supports.
+
+    Addresses: P4 — the audit this note reports was the point of enlarging the
+    ledger. A White Reality Check or Hansen SPA bootstraps the MAXIMUM
+    statistic across the candidate return series, so it needs a return series
+    for every searched alternative, all on a common date index.
+
+    Phase 5's search is heterogeneous and only partly satisfies that:
+
+      * portfolio-lever trials are Sharpe-scored and DO carry a return series,
+        but that series lives on the VALIDATION window, not the frozen test
+        window the final claim is made on;
+      * ML hyperparameter trials are IC-scored on validation folds and have no
+        portfolio return series at all, because a hyperparameter configuration
+        is not a portfolio.
+
+    Running a Reality Check over only the subset that happens to have series,
+    on a window other than the one being claimed, would produce a number that
+    LOOKS like a correction and silently under-counts the search — the exact
+    "superficial implementation" that is worse than none, because it converts
+    an admitted gap into a false reassurance.
+
+    So the correction is reported as NOT ESTABLISHED, with the concrete
+    experiment that would establish it named rather than hand-waved. The
+    Deflated Sharpe Ratio still applies and is reported, and now counts the ML
+    grid it previously omitted.
+    """
+    return {
+        "status": "not_established",
+        "reason": (
+            "A correct White Reality Check / Hansen SPA needs the frozen-test "
+            "return series of EVERY searched candidate on a common index. Phase 5 "
+            "evaluates the frozen test only for the finally-selected configurations; "
+            "lever trials carry validation-window series, and ML-grid trials are "
+            "IC-scored and carry none. A Reality Check over the available subset "
+            "would under-count the search and read as a false reassurance."
+        ),
+        "what_would_establish_it": (
+            "Re-run the frozen-test walk-forward for every searched configuration "
+            "(not only the winner), storing each net-return series on the test index, "
+            "then bootstrap the max statistic across them. That is a materially more "
+            "expensive experiment and a change of methodology, so it is deferred "
+            "rather than approximated."
+        ),
+        "what_is_reported_instead": (
+            "Deflated Sharpe Ratio against the recorded trial pool, now including the "
+            "ML hyperparameter grid that schema 1 omitted, plus per-comparison paired "
+            "bootstrap p-values that are NOT corrected for multiplicity."
+        ),
+        "search_size_by_universe": {u: ledger.summary(u) for u in universes},
+    }
 
 
 if __name__ == "__main__":
