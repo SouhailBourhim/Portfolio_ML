@@ -888,8 +888,8 @@ stages:
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: a0cf971151ea52bb2e839e946be7fdd8
-      size: 7892
+      md5: f8f08ddedc8ba63d7e7171cce54cc3c9
+      size: 7804
   smoke:
     cmd: python scripts/smoke_pipeline.py
     deps:
