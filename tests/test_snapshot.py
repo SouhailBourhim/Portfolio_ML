@@ -102,8 +102,42 @@ def test_an_unrelated_revision_is_still_rejected(snapshot_root, monkeypatch):
 
     monkeypatch.setattr(snapshot, "_git_commit", lambda: "zzzzzzz_other_branch")
     monkeypatch.setattr(snapshot, "_commit_is_ancestor_of_head", lambda commit: False)
+    # The commit IS in the clone — so a failed ancestry query really does mean
+    # a different history, and must be reported as such.
+    monkeypatch.setattr(snapshot, "_commit_is_present", lambda commit: True)
     failures = snapshot.verify_snapshot()
     assert any("not an ancestor" in f for f in failures)
+
+
+def test_a_commit_absent_from_the_clone_is_unverifiable_not_a_different_history(
+    snapshot_root, monkeypatch
+):
+    """A shallow clone cannot answer the ancestry question at all.
+
+    `actions/checkout` clones depth-1 by default, so the producing commit is
+    simply not there and `git merge-base --is-ancestor` fails for want of the
+    object. Reporting that as "this is a different history" is a confidently
+    wrong diagnosis — worse than an uncertain one, because it sends the reader
+    hunting for a divergence that does not exist. It cost one CI run to learn.
+    """
+    monkeypatch.setattr(snapshot, "_git_dirty_paths", lambda: [])
+    monkeypatch.setattr(snapshot, "_git_commit", lambda: "aaaaaaa_producing_commit")
+    snapshot.write_snapshot()
+
+    monkeypatch.setattr(snapshot, "_git_commit", lambda: "bbbbbbb_child_commit")
+    monkeypatch.setattr(snapshot, "_commit_is_ancestor_of_head", lambda commit: False)
+    monkeypatch.setattr(snapshot, "_commit_is_present", lambda commit: False)
+    monkeypatch.setattr(snapshot, "_repository_is_shallow", lambda: True)
+
+    failures = snapshot.verify_snapshot()
+    assert any("unverifiable" in f for f in failures)
+    assert any("SHALLOW" in f for f in failures)
+    assert not any("different history" in f for f in failures), (
+        "A truncated clone must not be reported as a diverged history."
+    )
+    assert any("fetch-depth: 0" in f for f in failures), (
+        "The message must name the fix; the reader is standing in a CI log."
+    )
 
 
 def test_the_pinned_environment_is_a_snapshot_input(snapshot_root, monkeypatch):

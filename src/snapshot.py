@@ -115,6 +115,39 @@ def _git_dirty_paths() -> list[str]:
     return sorted(line[3:].strip() for line in output.splitlines() if line.strip())
 
 
+def _commit_is_present(commit: str) -> bool:
+    """Is ``commit`` an object this clone actually holds?
+
+    Addresses: P4 — separates "not an ancestor" from "not here". A shallow
+    clone (``actions/checkout``'s default) holds only the tip, so an ancestry
+    query about any earlier commit fails for want of the object rather than
+    because the history diverged. Without this distinction verification
+    reported "this is a different history" about a history that was merely
+    truncated — a confidently wrong diagnosis, which is worse than an
+    uncertain one.
+    """
+    if commit in ("", "unknown"):
+        return False
+    try:
+        subprocess.check_call(
+            ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
+            cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        return True
+    except (OSError, subprocess.CalledProcessError):
+        return False
+
+
+def _repository_is_shallow() -> bool:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--is-shallow-repository"],
+            cwd=ROOT, text=True, stderr=subprocess.DEVNULL,
+        ).strip() == "true"
+    except (OSError, subprocess.CalledProcessError):
+        return False
+
+
 def _commit_is_ancestor_of_head(commit: str) -> bool:
     """Is ``commit`` reachable from HEAD?
 
@@ -239,11 +272,21 @@ def verify_snapshot() -> list[str]:
 
     recorded = expected.get("git_commit", "unknown")
     if recorded != current["git_commit"] and not _commit_is_ancestor_of_head(recorded):
-        failures.append(
-            f"Snapshot mismatch: recorded revision {recorded} is not an ancestor of the "
-            f"checked-out revision {current['git_commit']} — this is a different history, "
-            "not a later commit of the same one."
-        )
+        if not _commit_is_present(recorded):
+            # Undecidable, not failed. Say which it is.
+            shallow = " The clone is SHALLOW; fetch the full history" if _repository_is_shallow() else ""
+            failures.append(
+                f"Snapshot unverifiable: recorded revision {recorded} is not present in "
+                f"this clone, so its ancestry to {current['git_commit']} cannot be "
+                f"determined.{shallow} (in GitHub Actions, set "
+                "`actions/checkout` `fetch-depth: 0`)."
+            )
+        else:
+            failures.append(
+                f"Snapshot mismatch: recorded revision {recorded} is not an ancestor of the "
+                f"checked-out revision {current['git_commit']} — this is a different history, "
+                "not a later commit of the same one."
+            )
     return failures
 
 

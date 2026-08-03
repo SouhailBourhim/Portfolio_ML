@@ -137,6 +137,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, NOT the default shallow clone. Snapshot verification
+          # asks whether the manifest's producing commit is an ancestor of HEAD,
+          # and `git merge-base --is-ancestor` cannot answer that when the
+          # commit is not in the clone. Shallow, it failed as "different
+          # history" on a history that was simply truncated.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
