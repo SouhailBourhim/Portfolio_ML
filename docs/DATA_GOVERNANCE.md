@@ -50,6 +50,25 @@ Anyone reproducing this work obtains the data from the sources themselves. The
 snapshot manifest lets them verify they got the same bytes without our
 republishing any.
 
+### One deliberate exception: CI transit
+
+The `release-gates` CI job pulls the bundle into a GitHub-hosted runner so
+that snapshot verification, the artifact preflight and the model-card check
+run automatically rather than only on a maintainer's laptop. This is
+**transient use, not publication** — the runner is ephemeral, the data is
+never uploaded as a workflow artifact, and no log prints its contents.
+
+It is recorded here because the private bucket exists precisely to honour the
+no-redistribution terms above, so routing that data through third-party
+infrastructure is a decision rather than an implementation detail. Three
+controls bound it:
+
+- the R2 token is **Object Read only**, scoped to the single bucket;
+- the job **never runs on `pull_request`** — this repository is public, and a
+  fork must not be able to reach the bundle;
+- credentials are passed as environment variables, so no credential file is
+  written; a step asserts none exists on disk afterwards.
+
 ## 3. Legal assumptions
 
 ### Moroccan Law 09-08 (protection des personnes physiques à l'égard du traitement des données à caractère personnel)

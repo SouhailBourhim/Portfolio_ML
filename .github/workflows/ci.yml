@@ -4,13 +4,22 @@
 # it". It caught the phantom `fredapi>=3.1` pin (a version that never existed
 # on PyPI) and it is where the Phase 3 gates live.
 #
-# WHAT CI CAN AND CANNOT CHECK. `data/` is DVC-managed, licence-restricted and
-# not in Git, and no remote credentials are available to a fork's pull request.
-# So CI checks everything that does not need market data — the test suite, the
-# smoke pipeline on synthetic data, the API, whether the model cards still
-# match their generator — and the checks that DO need data are declared here
-# and run locally before a release tag. Pretending otherwise would make a green
-# badge mean less than it does.
+# WHAT CI CAN AND CANNOT CHECK. `data/` is DVC-managed and licence-restricted,
+# so it is not in Git. Most jobs therefore check only what needs no market
+# data: the test suite, the smoke pipeline on synthetic data, the API, and the
+# image.
+#
+# The `release-gates` job is the exception. It pulls the bundle from the
+# private R2 remote using a READ-ONLY, single-bucket token, and runs the three
+# gates that genuinely need data — snapshot verification, the artifact
+# preflight, and whether the model cards still match their artifacts. It never
+# runs on `pull_request`: this repository is public, and market data from
+# sources that prohibit redistribution must not be reachable from an untrusted
+# trigger. See docs/DATA_GOVERNANCE.md §2.
+#
+# The data-dependent steps in `runtime` degrade to a notice rather than
+# duplicating that job; keeping them there documents the dependency at the
+# point where a reader would otherwise assume it was checked.
 
 name: ci
 
@@ -117,6 +126,55 @@ jobs:
             echo "::notice::No snapshot manifest in the checkout (data/ is"
             echo "::notice::DVC-managed). Verified locally before a release tag."
           fi
+
+  release-gates:
+    name: release gates (needs the data bundle)
+    # NEVER on pull_request. GitHub already withholds secrets from fork PRs,
+    # but stating the boundary beats relying on a platform default — and this
+    # repository is PUBLIC, so the job must not even attempt to run there.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install pinned runtime and the S3 backend
+        run: pip install -r requirements.lock.txt 'dvc[s3]'
+
+      - name: Fetch the artifact bundle from R2
+        env:
+          # DVC reads these through boto3's default credential chain, so no
+          # credential file is written and nothing can be committed by accident.
+          # The bucket URL, region and endpoint are in the committed .dvc/config
+          # and are not secrets.
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          if [ -z "${AWS_ACCESS_KEY_ID}" ]; then
+            echo "::error::R2 credentials are not configured; the release gates"
+            echo "::error::cannot run. Set R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY."
+            exit 1
+          fi
+          dvc pull --quiet
+          dvc status
+
+      # The three gates CI previously could not run, plus the two it could.
+      # --skip-tests because the suite has its own job above; running it twice
+      # would double the wall clock to re-prove the same thing.
+      - name: Release gates
+        run: ./scripts/release_gates.sh --skip-tests
+
+      - name: Confirm no credential file was written
+        if: always()
+        run: |
+          # Credentials arrive as env vars precisely so nothing lands on disk.
+          # If a step ever writes .dvc/config.local, it must not survive.
+          test ! -f .dvc/config.local && echo "no credential file on disk"
 
   docker:
     name: image builds and refuses an empty bundle
