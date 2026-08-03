@@ -53,8 +53,8 @@ stages:
       size: 17662
     - path: src/dividends.py
       hash: md5
-      md5: 4a3834c99e50eed26249b084ad6573f5
-      size: 12882
+      md5: 7dd76c483b7d926faaf1379f64625834
+      size: 14360
     - path: src/schemas.py
       hash: md5
       md5: 571dff80d91de09c69a78bf836507ae6
@@ -922,3 +922,16 @@ stages:
       hash: md5
       md5: 47cdd73ed6f648e84fbb982694ca5a12
       size: 1205
+  scrape_dividends:
+    cmd: python src/dividends.py
+    deps:
+    - path: src/dividends.py
+      hash: md5
+      md5: 7dd76c483b7d926faaf1379f64625834
+      size: 14360
+    outs:
+    - path: data/bronze/bvc_dividends
+      hash: md5
+      md5: f33c41bd81ff15ccfb0876a5dc76f646.dir
+      size: 715775
+      nfiles: 4

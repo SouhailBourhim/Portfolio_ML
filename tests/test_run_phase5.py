@@ -221,7 +221,10 @@ def test_no_module_level_definitions_sit_below_the_main_guard():
     from pathlib import Path
 
     for module in ("run_phase5.py", "run_phase4.py", "run_phase4b.py",
-                   "run_phase4c.py", "run_backtest.py", "snapshot.py"):
+                   "run_phase4c.py", "run_backtest.py", "snapshot.py",
+                   # Not a runner, but DVC invokes it as one: `scrape_dividends`
+                   # calls `python src/dividends.py`, so it inherits the trap.
+                   "dividends.py"):
         path = Path(__file__).resolve().parents[1] / "src" / module
         tree = ast.parse(path.read_text(encoding="utf-8"))
         guard_line = None

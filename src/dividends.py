@@ -305,3 +305,37 @@ def dividend_yield_summary(prices: pd.DataFrame, dividends: pd.DataFrame) -> pd.
                 float(in_window["amount"].sum() / years / window.mean() * 100), 2),
         })
     return pd.DataFrame(rows)
+
+
+def refresh_dividend_cache(force: bool = False) -> pd.DataFrame:
+    """Populate `data/bronze/bvc_dividends/` and return the parsed rows.
+
+    Addresses: P1, P4 — this exists so the scrape is a DVC *stage output*
+    rather than only a declared dependency. Listing the cache as a dep of
+    `clean` (CLAUDE.md §17.8) made a refreshed scrape visible to the stage
+    graph, but DVC stores contents for OUTPUTS only: the directory was
+    therefore never pushed, and a fresh clone recovered every result while
+    being unable to re-run the pipeline that produced them.
+
+    An empty parse is raised, not returned. A zero-row result is the exact
+    shape the price-only bug wore the first time — a success costume over a
+    silent ~3-4%/yr understatement of every BVC asset.
+    """
+    frame = load_bvc_dividends(force=force)
+    if frame.empty:
+        raise RuntimeError(
+            "Dividend scrape produced zero rows. Refusing to write an empty "
+            "cache: `clean` would then compute price-only BVC returns, which is "
+            "the bias documented in docs/DIVIDEND_BIAS.md."
+        )
+    log.info(
+        "dividend cache ready: %d rows, %d tickers, %s → %s",
+        len(frame), frame["ticker"].nunique(),
+        frame["ex_date"].min().date(), frame["ex_date"].max().date(),
+    )
+    return frame
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    refresh_dividend_cache()

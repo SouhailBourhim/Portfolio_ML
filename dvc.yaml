@@ -19,6 +19,28 @@ stages:
       - params.yaml:
           - ingest.start_date
 
+  # ── Stage 1b: Bronze — BVC dividend cache ──────────────────────────────────
+  # Exists so the scrape is an OUTPUT, not only a declared dependency of
+  # `clean`. DVC stores contents for outputs alone, so as a bare dep the
+  # directory was tracked but never pushed: a fresh clone recovered every
+  # committed result and still could not re-run the pipeline that made them
+  # (verified against the R2 remote, 2026-08-03).
+  scrape_dividends:
+    cmd: python src/dividends.py
+    deps:
+      - src/dividends.py
+    outs:
+      # persist: true, for the same reason as bvc_prices.parquet above and one
+      # more. DVC deletes an output before re-running its stage; here that
+      # would discard the only local copy of the scraped HTML and re-fetch it
+      # from casablanca-bourse.com. If the site is down, blocking us, or has
+      # been redesigned again (it already broke BVCscrap.getDividend once),
+      # the stage fails with the cache gone and `clean` then refuses to run.
+      # The fetch is cache-first, so with persist the stage is a no-op unless
+      # the cache is actually absent.
+      - data/bronze/bvc_dividends:
+          persist: true
+
   # ── Stage 2: Silver — clean, align, compute log-returns ────────────────────
   clean:
     cmd: python src/clean.py

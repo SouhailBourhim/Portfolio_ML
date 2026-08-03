@@ -489,10 +489,11 @@ Régénérer le manifeste après une reconstruction — **depuis un arbre propre
 > couche Gold, invalidant le snapshot que l'on cherchait à publier. C'est arrivé une fois
 > sur ce dépôt ; la récupération s'est faite depuis le cache DVC.
 
-> **Portabilité — limite assumée.** Aucun *remote* DVC n'est configuré : le snapshot est
-> vérifiable localement, mais les données ne peuvent pas être reconstruites à partir du seul
-> dépôt Git. Un relecteur externe a besoin soit d'un remote DVC approuvé, soit d'une archive
-> de release fournie séparément. Les données de marché ne sont pas republiées ici (licences).
+> **Portabilité.** Un *remote* DVC (Cloudflare R2, bucket privé) est configuré depuis le
+> 2026-08-03 : un clone neuf muni d'identifiants récupère le snapshot par `dvc pull` et
+> retrouve chaque artefact à l'octet près. Les identifiants ne sont pas dans le dépôt
+> (voir « Versionnage des données »), et les données de marché ne sont pas republiées
+> publiquement (licences des sources).
 
 > **Angle mort connu du graphe DVC.** `src/memo.py` (le cache adressé par contenu utilisé par
 > `ml_signals` et `dcc_garch`) n'est **pas** déclaré comme dépendance des étapes de recherche :
@@ -598,17 +599,35 @@ production et le cache local protège ce poste de travail, ce qui est indispensa
 source BVC (medias24) est une fenêtre glissante : les lignes anciennes disparaissent
 définitivement.
 
-> **État actuel : aucun remote DVC partagé n'est configuré dans ce dépôt.** Un clone
-> neuf ne peut donc pas récupérer seul les données ni reproduire les chiffres publiés.
-> Avant une remise ou une revue externe, il faut publier le snapshot dans un remote DVC
-> contrôlé ou fournir une archive de données avec son manifeste et ses checksums.
+**Remote : Cloudflare R2 (bucket privé), configuré le 2026-08-03.** `.dvc/config` porte
+l'URL et le point d'entrée ; les identifiants restent hors du dépôt. Chaque poste les
+renseigne une fois, dans `.dvc/config.local` (exclu par `.dvc/.gitignore`) :
 
 ```bash
+./scripts/dvc.sh remote modify --local origin access_key_id VOTRE_CLE
+```
+```bash
+./scripts/dvc.sh remote modify --local origin secret_access_key VOTRE_SECRET
+```
+
+Deux réglages ne sont pas optionnels face à R2 et figurent déjà dans `.dvc/config` :
+`region auto` (sans quoi boto3 échoue à résoudre la région) et `endpointurl` — écrit
+sans tiret bas, orthographe que DVC refuse.
+
+```bash
+./scripts/dvc.sh pull       # récupérer les données depuis le remote (clone neuf)
+./scripts/dvc.sh push       # publier le cache après toute exécution modifiant data/
 ./scripts/dvc.sh status     # les données correspondent-elles à dvc.lock ?
-./scripts/dvc.sh checkout   # restaurer les données depuis le cache (fichier supprimé/corrompu)
+./scripts/dvc.sh checkout   # restaurer les données depuis le cache local
 ./scripts/dvc.sh repro      # ré-exécuter uniquement les étapes affectées par un changement
 git log -p dvc.lock         # historique des versions de données
 ```
+
+> **Le remote porte l'état courant, pas tout l'historique.** `dvc push --all-commits`
+> échoue à collecter les commits antérieurs à 2026-07 (leur `dvc.yaml` suit une structure
+> à trois étapes que DVC ne sait plus charger). Les versions anciennes n'existent donc que
+> dans le cache local de ce poste : **ne jamais lancer `dvc gc` sur ce dépôt** — la commande
+> économiserait 5 Mo et détruirait la seule copie de cet historique.
 
 Après une exécution DVC, vérifier et figer le snapshot publié :
 
@@ -622,7 +641,14 @@ git add dvc.lock
 `dvc repro` met à jour le cache et `dvc.lock`. `dvc commit` ne sert que lorsqu'un
 output DVC a été produit manuellement hors de DVC. Le manifeste
 `data/gold/snapshot_manifest.json` atteste le commit Git, les fichiers, leurs SHA-256
-et la structure des Parquet ; il ne remplace pas un remote DVC ou une archive contrôlée.
+et la structure des Parquet — il décrit le snapshot, le remote le transporte.
+
+Le cache de dividendes BVC (`data/bronze/bvc_dividends`) est produit par l'étape
+`scrape_dividends` et non plus seulement déclaré comme dépendance de `clean`. La
+distinction est concrète : DVC ne stocke le contenu que des *sorties*, si bien qu'un
+clone neuf récupérait tous les résultats sans pouvoir relancer le pipeline qui les avait
+produits. L'étape est en `persist: true` — le fetch lit le cache d'abord, donc elle ne
+retourne sur le réseau que si le cache manque réellement.
 
 ### Requêtes analytiques sur la couche Gold (DuckDB)
 
