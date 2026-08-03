@@ -242,6 +242,87 @@ def fallback_rate(regime_frame: pd.DataFrame) -> dict[str, float]:
     }
 
 
+def model_fallback_rates(
+    fit_reports: pd.DataFrame, start=None, end=None
+) -> dict[str, dict]:
+    """Per-strategy fallback rate over a window, from the persisted fit reports.
+
+    Addresses: P2, P4 — `fallback_rate` above reads the regime timeline's
+    `converged` column, which covers ONE of the three fallback paths in this
+    system: it knows nothing about DCC-GARCH degrading to Ledoit-Wolf or an ML
+    signal degrading to the naive sample mean. A monitoring artifact that
+    reported only the regime path would understate how often a labelled model
+    was not the model that produced the number.
+
+    A RISING rate is the signal worth acting on: it means the estimator is
+    failing more often on newer data than it did in training, which is a model
+    -validity question rather than a market one.
+    """
+    if fit_reports.empty:
+        return {}
+    frame = fit_reports
+    if "Date" in frame.columns:
+        dates = pd.to_datetime(frame["Date"])
+        if start is not None:
+            frame = frame[dates >= pd.Timestamp(start)]
+        if end is not None:
+            frame = frame[pd.to_datetime(frame["Date"]) <= pd.Timestamp(end)]
+    if frame.empty:
+        return {}
+
+    summary: dict[str, dict] = {}
+    for (universe, strategy), block in frame.groupby(["universe", "strategy"], sort=True):
+        fell_back = block["fit_status"] == "fallback"
+        reasons = block.loc[fell_back, "fallback_reason"].dropna()
+        summary[f"{universe}/{strategy}"] = {
+            "rebalances": int(len(block)),
+            "fallback_rebalances": int(fell_back.sum()),
+            "fallback_rate": float(fell_back.mean()),
+            # Which substitute produced the number, and how often. "dcc_garch
+            # fell back" is far less useful than "dcc_garch was Ledoit-Wolf on
+            # 12 of 40 rebalances".
+            "models_effective": {
+                str(k): int(v) for k, v in block["model_effective"].value_counts().items()
+            },
+            "top_reason": (str(reasons.value_counts().index[0]) if len(reasons) else None),
+        }
+    return summary
+
+
+def fallback_rate_shift(reference: Mapping[str, dict], evaluation: Mapping[str, dict]) -> dict:
+    """Change in fallback rate per strategy between two windows.
+
+    Reported as a plain difference rather than PSI: the quantity is a single
+    proportion, and a two-bin PSI on it would dress an obvious subtraction in
+    machinery that implies more rigour than is present.
+    """
+    report: dict[str, dict] = {}
+    for key in sorted(set(reference) | set(evaluation)):
+        ref_rate = reference.get(key, {}).get("fallback_rate")
+        eval_rate = evaluation.get(key, {}).get("fallback_rate")
+        if ref_rate is None or eval_rate is None:
+            report[key] = {
+                "reference_rate": ref_rate, "evaluation_rate": eval_rate,
+                "delta": None, "interpretation": "not_comparable",
+                "note": "strategy absent from one window",
+            }
+            continue
+        delta = float(eval_rate - ref_rate)
+        report[key] = {
+            "reference_rate": float(ref_rate),
+            "evaluation_rate": float(eval_rate),
+            "delta": delta,
+            # A rate that ROSE materially is the actionable case; a fall is
+            # noted but is not a defect.
+            "interpretation": (
+                "significant_shift" if delta >= 0.20
+                else "moderate_shift" if delta >= 0.05
+                else "stable"
+            ),
+        }
+    return report
+
+
 def compare_distributions(
     reference: Mapping[str, Sequence[float]],
     evaluation: Mapping[str, Sequence[float]],

@@ -186,8 +186,8 @@ stages:
       size: 317942
     - path: src/backtest.py
       hash: md5
-      md5: 4834fa365383830fc0b40b12bf17a9bd
-      size: 13086
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
@@ -243,12 +243,12 @@ stages:
       size: 535
     - path: src/backtest.py
       hash: md5
-      md5: 4834fa365383830fc0b40b12bf17a9bd
-      size: 13086
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
     - path: src/dcc_garch.py
       hash: md5
-      md5: 8f0ad8884c3143e88beedf421130529e
-      size: 9352
+      md5: ab64cd40f12f65314ca5ee643f3e4032
+      size: 10420
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
@@ -325,12 +325,12 @@ stages:
       size: 675
     - path: src/backtest.py
       hash: md5
-      md5: 4834fa365383830fc0b40b12bf17a9bd
-      size: 13086
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
     - path: src/dcc_garch.py
       hash: md5
-      md5: 8f0ad8884c3143e88beedf421130529e
-      size: 9352
+      md5: ab64cd40f12f65314ca5ee643f3e4032
+      size: 10420
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
@@ -341,8 +341,8 @@ stages:
       size: 27027
     - path: src/ml_signals.py
       hash: md5
-      md5: 071188029a135edb3603331ced677f09
-      size: 39005
+      md5: 8deb9470629e15379eff17bdf89b4b71
+      size: 40942
     - path: src/regime.py
       hash: md5
       md5: 23cba30454ec306ceea5c08dde3c7299
@@ -433,8 +433,8 @@ stages:
       size: 675
     - path: src/backtest.py
       hash: md5
-      md5: 4834fa365383830fc0b40b12bf17a9bd
-      size: 13086
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
@@ -445,8 +445,8 @@ stages:
       size: 27027
     - path: src/ml_signals.py
       hash: md5
-      md5: 071188029a135edb3603331ced677f09
-      size: 39005
+      md5: 8deb9470629e15379eff17bdf89b4b71
+      size: 40942
     - path: src/model_selection.py
       hash: md5
       md5: 586e41fc323a71247e125dee54a14634
@@ -587,8 +587,8 @@ stages:
       size: 3908
     - path: src/backtest.py
       hash: md5
-      md5: 4834fa365383830fc0b40b12bf17a9bd
-      size: 13086
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
@@ -673,12 +673,12 @@ stages:
       size: 675
     - path: src/backtest.py
       hash: md5
-      md5: 4834fa365383830fc0b40b12bf17a9bd
-      size: 13086
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
     - path: src/dcc_garch.py
       hash: md5
-      md5: 8f0ad8884c3143e88beedf421130529e
-      size: 9352
+      md5: ab64cd40f12f65314ca5ee643f3e4032
+      size: 10420
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
@@ -689,8 +689,8 @@ stages:
       size: 27027
     - path: src/ml_signals.py
       hash: md5
-      md5: 071188029a135edb3603331ced677f09
-      size: 39005
+      md5: 8deb9470629e15379eff17bdf89b4b71
+      size: 40942
     - path: src/regime.py
       hash: md5
       md5: 23cba30454ec306ceea5c08dde3c7299
@@ -899,16 +899,16 @@ stages:
       size: 6776
     - path: src/backtest.py
       hash: md5
-      md5: 4834fa365383830fc0b40b12bf17a9bd
-      size: 13086
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
       size: 8618
     - path: src/ml_signals.py
       hash: md5
-      md5: 071188029a135edb3603331ced677f09
-      size: 39005
+      md5: 8deb9470629e15379eff17bdf89b4b71
+      size: 40942
     - path: src/regime.py
       hash: md5
       md5: 23cba30454ec306ceea5c08dde3c7299
@@ -968,8 +968,8 @@ stages:
       size: 8618
     - path: src/ml_signals.py
       hash: md5
-      md5: 071188029a135edb3603331ced677f09
-      size: 39005
+      md5: 8deb9470629e15379eff17bdf89b4b71
+      size: 40942
     - path: src/regime.py
       hash: md5
       md5: 23cba30454ec306ceea5c08dde3c7299
@@ -1026,8 +1026,8 @@ stages:
       size: 3908
     - path: src/monitoring.py
       hash: md5
-      md5: fbec0a68b075e90df0489c541d9678ee
-      size: 14207
+      md5: 8700bdaae3cacfc8c169c6019e39d7a6
+      size: 17748
     - path: src/run_monitoring_baseline.py
       hash: md5
       md5: bba078d8745f0ca9d2381aa1f36ec790
@@ -1040,3 +1040,77 @@ stages:
       hash: md5
       md5: fa6134d21a5251c46f5cbaad9a624e87
       size: 21289
+  fit_reports:
+    cmd: python src/run_fit_reports.py
+    deps:
+    - path: data/gold/log_returns.parquet
+      hash: md5
+      md5: bd21b9bc62cc2646edf90cc008ef0a10
+      size: 117723
+    - path: data/gold/log_returns_etf.parquet
+      hash: md5
+      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      size: 317942
+    - path: data/gold/ml_features_etf.parquet
+      hash: md5
+      md5: 97e87574aa4c10ab983b116c8a04d847
+      size: 482732
+    - path: data/gold/ml_features_full.parquet
+      hash: md5
+      md5: cc929d7b138755e25d386463ac5e334f
+      size: 121639
+    - path: src/backtest.py
+      hash: md5
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
+    - path: src/dcc_garch.py
+      hash: md5
+      md5: ab64cd40f12f65314ca5ee643f3e4032
+      size: 10420
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
+    - path: src/ml_signals.py
+      hash: md5
+      md5: 8deb9470629e15379eff17bdf89b4b71
+      size: 40942
+    - path: src/regime.py
+      hash: md5
+      md5: 23cba30454ec306ceea5c08dde3c7299
+      size: 10504
+    - path: src/run_fit_reports.py
+      hash: md5
+      md5: 0d41456a7cd506e6cda926615db2d536
+      size: 11650
+    - path: src/strategies.py
+      hash: md5
+      md5: e14c05a35b6727c01bac51b66afcef58
+      size: 32414
+    - path: src/telemetry.py
+      hash: md5
+      md5: 2ae96f30d72f280cc9695ac90b9f4a72
+      size: 7168
+    params:
+      params.yaml:
+        backtest.costs_bps:
+          etf: 10
+          bvc: 30
+        backtest.max_weight: 0.25
+        backtest.min_train_days: 252
+        backtest.rebalance_freq: ME
+        backtest.risk_free_annual: 0.0
+        regime.covariance_type: diag
+        regime.min_regime_train_days: 252
+        regime.n_restarts: 5
+        regime.n_states: 2
+        regime.random_state_base: 0
+    outs:
+    - path: data/gold/fit_report_summary.json
+      hash: md5
+      md5: 1da6db630506a55cfedd776abaff87e0
+      size: 11231
+    - path: data/gold/fit_reports.parquet
+      hash: md5
+      md5: af575bd110c558260cf45163efcc2c92
+      size: 10599

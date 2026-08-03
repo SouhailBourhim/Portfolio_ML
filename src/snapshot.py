@@ -67,6 +67,11 @@ SNAPSHOT_FILES = (
     # Versioned deliberately — comparing against an untracked moving baseline
     # makes a slow shift undetectable, because the baseline moves with it.
     Path("data/gold/monitoring_baseline.json"),
+    # Phase 4: the per-rebalance record of what each model actually did. A
+    # published Sharpe and the fallback rate behind it must come from the same
+    # snapshot, or the caveat can drift away from the number it qualifies.
+    Path("data/gold/fit_reports.parquet"),
+    Path("data/gold/fit_report_summary.json"),
     Path("data/gold/dashboard_showcase.json"),
     Path("data/gold/dashboard_equity.parquet"),
     Path("data/gold/dashboard_weights.parquet"),

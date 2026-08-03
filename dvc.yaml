@@ -436,6 +436,41 @@ stages:
     outs:
       - data/gold/model_explanations.json
 
+  # ── Phase 4: what each model ACTUALLY did, per rebalance ──────────────────
+  # The raw records, persisted BEFORE any table is drawn from them. A table
+  # without a saved source artifact is neither auditable nor reproducible, and
+  # a fallback rate is precisely the kind of number a reader must be able to
+  # re-derive rather than trust.
+  fit_reports:
+    cmd: python src/run_fit_reports.py
+    deps:
+      - src/run_fit_reports.py
+      - src/telemetry.py
+      - src/backtest.py
+      - src/strategies.py
+      - src/dcc_garch.py
+      - src/ml_signals.py
+      - src/regime.py
+      - src/memo.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_full.parquet
+      - data/gold/ml_features_etf.parquet
+    params:
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - backtest.max_weight
+      - backtest.risk_free_annual
+      - backtest.costs_bps
+      - regime.n_states
+      - regime.n_restarts
+      - regime.random_state_base
+      - regime.covariance_type
+      - regime.min_regime_train_days
+    outs:
+      - data/gold/fit_reports.parquet
+      - data/gold/fit_report_summary.json
+
   # ── Phase 3: offline monitoring reference ─────────────────────────────────
   # Pins the reference distributions a future drift check measures against.
   # The reference is the Phase 5 train+validation segment ONLY — including the
