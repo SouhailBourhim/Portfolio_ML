@@ -1,0 +1,161 @@
+# CI — the release gates, run on every push and pull request.
+#
+# This is the automated version of "clone the repo on a fresh machine and check
+# it". It caught the phantom `fredapi>=3.1` pin (a version that never existed
+# on PyPI) and it is where the Phase 3 gates live.
+#
+# WHAT CI CAN AND CANNOT CHECK. `data/` is DVC-managed, licence-restricted and
+# not in Git, and no remote credentials are available to a fork's pull request.
+# So CI checks everything that does not need market data — the test suite, the
+# smoke pipeline on synthetic data, the API, whether the model cards still
+# match their generator — and the checks that DO need data are declared here
+# and run locally before a release tag. Pretending otherwise would make a green
+# badge mean less than it does.
+
+name: ci
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"   # matches requirements.lock.txt and the snapshot manifest
+
+jobs:
+  tests:
+    name: test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      # The RANGE file, deliberately: this job is the fresh-clone experience,
+      # and it is what would catch an unsatisfiable or withdrawn dependency.
+      # The `runtime` job below installs the lock instead.
+      - name: Install dependencies (fresh-clone experience)
+        run: pip install -r requirements.txt
+
+      - name: Full test suite
+        run: python -m pytest tests/ -q
+
+      # Redundant with the line above, and intentionally so: these are the
+      # named Phase 3 gates, and a failure here should say WHICH gate broke
+      # rather than being one line in a 500-test summary.
+      - name: Gate — API contract tests
+        run: python -m pytest tests/test_api.py -q
+
+      - name: Gate — model cards and governance
+        run: python -m pytest tests/test_model_cards.py -q
+
+      - name: Gate — explainability
+        run: python -m pytest tests/test_explainability.py -q
+
+      - name: Gate — monitoring drift metrics
+        run: python -m pytest tests/test_monitoring.py -q
+
+      - name: Gate — no-lookahead suite
+        run: python -m pytest tests/ -q -k "lookahead or future_corruption or leak"
+
+  runtime:
+    name: pinned runtime + smoke pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      # The LOCK: proves the exact environment the committed results were
+      # produced in still resolves and installs. A range that resolves today
+      # and a lock that resolves today are different claims.
+      - name: Install pinned runtime
+        run: pip install -r requirements.lock.txt
+
+      - name: Gate — smoke pipeline (synthetic data, NOT a result)
+        run: python scripts/smoke_pipeline.py
+
+      - name: Gate — model cards are generated, not typed
+        run: |
+          # Regenerating must be a no-op. If it is not, a card was hand-edited
+          # or an artifact moved without the cards being rebuilt — the exact
+          # drift the generator exists to prevent.
+          if [ -d data/gold ] && [ -f data/gold/dashboard_showcase.json ]; then
+            python scripts/build_model_cards.py
+            git diff --exit-code -- docs/MODEL_CARD_*.md
+          else
+            echo "::notice::Gold artifacts absent (DVC-managed, not in Git) —"
+            echo "::notice::card regeneration is verified locally before a release tag."
+          fi
+
+      - name: Gate — artifact bundle preflight
+        run: |
+          if [ -f data/gold/dashboard_showcase.json ]; then
+            python scripts/check_artifacts.py
+          else
+            echo "::notice::Gold artifacts absent — preflight is exercised by the"
+            echo "::notice::Docker job below and locally before a release tag."
+          fi
+
+      - name: Gate — snapshot verification
+        run: |
+          if [ -f data/gold/snapshot_manifest.json ]; then
+            python src/snapshot.py verify
+          else
+            echo "::notice::No snapshot manifest in the checkout (data/ is"
+            echo "::notice::DVC-managed). Verified locally before a release tag."
+          fi
+
+  docker:
+    name: image builds and refuses an empty bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t portfolio-ml:ci .
+
+      - name: Gate — container runs as non-root
+        run: |
+          uid=$(docker run --rm portfolio-ml:ci id -u)
+          echo "container uid: $uid"
+          test "$uid" != "0"
+
+      - name: Gate — image carries no credentials
+        run: |
+          # .dockerignore excludes .env and .dvc/config.local; this asserts the
+          # exclusion actually held, because gitignoring a secret does NOT keep
+          # it out of a build context.
+          for secret in .env .dvc/config.local; do
+            if docker run --rm portfolio-ml:ci test -e "/app/$secret"; then
+              echo "::error::$secret is present inside the image"
+              exit 1
+            fi
+          done
+          echo "no credential files in the image"
+
+      - name: Gate — image carries no market data
+        run: |
+          count=$(docker run --rm portfolio-ml:ci sh -c "ls data/gold 2>/dev/null | wc -l")
+          echo "data/gold entries in image: $count"
+          test "$count" -eq 0
+
+      - name: Gate — preflight refuses an incomplete bundle
+        run: |
+          # The image ships without data, so the default command must FAIL
+          # loudly rather than serve a partial bundle.
+          if docker run --rm portfolio-ml:ci python scripts/check_artifacts.py; then
+            echo "::error::preflight passed with no artifacts present"
+            exit 1
+          fi
+          echo "preflight correctly refused to start"

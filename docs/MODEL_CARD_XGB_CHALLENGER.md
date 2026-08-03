@@ -11,10 +11,9 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `5201a589cb14` |
-| Release description | `phase2-validation-protocol-4-g18f390a` |
+| Code revision (artifacts) | `d3659c247481` |
 | Python | 3.11.14 |
-| Snapshot manifest | `data/gold/snapshot_manifest.json`, 25 files hashed |
+| Snapshot manifest | `data/gold/snapshot_manifest.json`, 26 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
 
 > **Challenger status.** This model **did not establish statistically supported

@@ -1,5 +1,6 @@
 # Portfolio ML — Docker Compose services.
 #
+#   docker compose up api               # research API on http://localhost:8000
 #   docker compose run --rm test        # offline test suite, zero config
 #   docker compose run --rm pipeline    # Bronze→Silver→Gold (requires .env with FRED_API_KEY)
 #   docker compose up notebook          # Jupyter on http://localhost:8888 (token in logs)
@@ -8,6 +9,16 @@
 # runs persist across containers (and stay visible to DVC on the host).
 
 services:
+  # The research API. Read-only by construction: it serves committed artifacts,
+  # never refits, and the bundle is mounted read-only so that is enforced by the
+  # filesystem rather than by convention.
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data:ro
+
   test:
     build: .
     command: python -m pytest tests/ -q

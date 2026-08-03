@@ -23,7 +23,6 @@ system whose interpretability comes from its structure.
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 
 import yaml
@@ -57,14 +56,13 @@ PARAMS = yaml.safe_load((ROOT / "params.yaml").read_text(encoding="utf-8"))
 UNIVERSES = ("etf_2017", "full_2021")
 
 
-def _git_describe() -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "describe", "--tags", "--always"], cwd=ROOT, text=True,
-            stderr=subprocess.DEVNULL,
-        ).strip()
-    except (OSError, subprocess.CalledProcessError):
-        return "unknown"
+# NOTE: an earlier draft also stamped `git describe --tags --always` here.
+# Removed, for two reasons. It describes the CHECKOUT, not the artifact set the
+# card documents — the manifest's own `git_commit` is the revision that
+# produced these numbers. And it changed on every commit, which made
+# regeneration non-idempotent and quietly defeated the CI gate asserting that
+# rebuilding the cards is a no-op. A card must be a function of its artifacts
+# alone.
 
 
 def _f(x: float, n: int = 3) -> str:
@@ -151,7 +149,6 @@ def _header(title: str, status: str) -> str:
 | | |
 |---|---|
 | Code revision (artifacts) | `{MANIFEST['git_commit'][:12]}`{dirty} |
-| Release description | `{_git_describe()}` |
 | Python | {MANIFEST['python']} |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, {len(MANIFEST['files'])} files hashed |
 | Card generated from | committed Gold artifacts, not typed |
