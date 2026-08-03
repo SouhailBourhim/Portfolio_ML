@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 GOLD = ROOT / "data" / "gold"
 OUT = ROOT / "docs" / "rapport" / "assets" / "figures"
 OUT.mkdir(parents=True, exist_ok=True)
+TABLES = ROOT / "docs" / "rapport" / "assets" / "tables"
+TABLES.mkdir(parents=True, exist_ok=True)
 
 BLUE, GREY, RED, GREEN = "#1F3864", "#595959", "#B03000", "#1B5E20"
 plt.rcParams.update({
@@ -29,6 +31,7 @@ L = lambda n: json.loads((GOLD / n).read_text())
 SC, P5, NW, CW, CAP = (L("dashboard_showcase.json"), L("phase5_results.json"),
                        L("nested_walkforward_results.json"),
                        L("crisis_windows.json"), L("etf_cap_verdict.json"))
+PAIRED = L("paired_comparison_results.json")
 EQ = pd.read_parquet(GOLD / "dashboard_equity.parquet")
 
 FR = {"equal_weight": "Équipondéré (1/N)", "min_variance_lw": "Variance min. (Ledoit-Wolf)",
@@ -206,6 +209,121 @@ def plafond():
     print(f"  plafond.pdf   ({swing:.1f} % swing)")
 
 
+# ── 6. Paired-comparison table (LaTeX, generated) ────────────────────────────
+# This table was hand-typed once. Eight rows of literals in a report whose every
+# other number is derived is exactly the drift the convention exists to prevent:
+# the next Phase 5 run would move the artifact and leave the report asserting the
+# old figures with no test able to notice. The prose immediately after the table
+# quotes three of the same numbers, so those are emitted as macros rather than
+# left as a second copy.
+CAND_FR = {"rf_signal_tuned": "RF", "xgb_signal_tuned": "XGB"}
+CAND_PROSE = {"rf_signal_tuned": "signal RF calibré",
+              "xgb_signal_tuned": "signal XGB calibré"}
+BENCH_FR = {"regime_conditional": "régimes", "equal_weight": "1/N"}
+# Table cells are terse; the surrounding prose needs a readable noun phrase.
+BENCH_PROSE = {"regime_conditional": "la stratégie à régimes",
+               "equal_weight": "l'équipondéré"}
+UNI_FR = {"etf_2017": r"\texttt{etf\_2017}", "full_2021": r"\texttt{full\_2021}"}
+CARDINAUX = {1: "une", 2: "deux", 3: "trois", 4: "quatre", 5: "cinq",
+             6: "six", 7: "sept", 8: "huit", 9: "neuf", 10: "dix"}
+
+
+def _signe(x: float, n: int = 3) -> str:
+    """Signed French decimal for math mode: 0.0087 → ``+0{,}009``.
+
+    ASCII hyphen, not U+2212: these strings land inside ``$...$`` where TeX
+    already renders ``-`` as a proper minus, and a literal Unicode minus would
+    depend on the math font covering it.
+    """
+    return ("+" if x >= 0 else "-") + f"{abs(x):.{n}f}".replace(".", "{,}")
+
+
+def _mot(n: int) -> str:
+    return CARDINAUX.get(n, str(n))
+
+
+def tableau_paires():
+    comps = PAIRED["comparisons"]
+    # "Establishes outperformance" is the artifact's own bar, recomputed here so
+    # the caption cannot claim a clean sweep that the data no longer supports.
+    etablies = [c for c in comps
+                if c["sharpe_diff_ci"][0] > 0 and c["p_value_no_outperformance"] < 0.05]
+    verdict = (f"\\emph{{Aucune}} des {_mot(len(comps))} comparaisons n'établit de "
+               "surperformance." if not etablies else
+               f"{_mot(len(etablies)).capitalize()} comparaison(s) sur {_mot(len(comps))} "
+               "établissent une surperformance.")
+
+    lignes, n_boot = [], comps[0]["n_boot"]
+    for uni in ("etf_2017", "full_2021"):
+        bloc = [c for c in comps if c["universe"] == uni]
+        lignes.append(f"    \\multirow{{{len(bloc)}}}{{*}}{{{UNI_FR[uni]}}}")
+        for c in bloc:
+            lo, hi = c["sharpe_diff_ci"]
+            lignes.append(
+                f"      & {CAND_FR[c['candidate']]} vs {BENCH_FR[c['benchmark']]}"
+                f" & ${_signe(c['sharpe_diff'])}$"
+                f" & $[{_signe(lo)};\\ {_signe(hi)}]$"
+                f" & {fr(c['p_value_no_outperformance'], 3)} \\\\")
+        if uni == "etf_2017":
+            lignes.append("    \\addlinespace")
+
+    # The prose highlights the case the paired test exists to catch: a candidate
+    # ahead on point estimate whose paired interval still spans zero.
+    cas = max((c for c in comps if c["sharpe_diff"] > 0
+               and c["sharpe_diff_ci"][0] < 0 < c["sharpe_diff_ci"][1]),
+              key=lambda c: P5[c["universe"]]["tuned"][c["candidate"]]["test_sharpe_net"])
+    p5 = P5[cas["universe"]]
+    plus_proche = min(comps, key=lambda c: c["p_value_no_outperformance"])
+
+    macros = {
+        "paireNb": _mot(len(comps)),
+        "paireCasUnivers": UNI_FR[cas["universe"]],
+        "paireCasCandidat": CAND_PROSE[cas["candidate"]],
+        "paireCasSharpe": fr(p5["tuned"][cas["candidate"]]["test_sharpe_net"], 3),
+        "paireCasRefSharpe": fr(p5["baselines"][cas["benchmark"]]["test_sharpe_net"], 3),
+        # Delivered WITHOUT surrounding $: the prose places them inside its own
+        # math, and nesting $...$ inside $...$ closes the group early.
+        "paireCasDelta": _signe(cas["sharpe_diff"]),
+        "paireCasIC": (f"[{_signe(cas['sharpe_diff_ci'][0])};\\ "
+                       f"{_signe(cas['sharpe_diff_ci'][1])}]"),
+        # Braced comma: these two land inside $...$, where a bare "," is a list
+        # separator and TeX inserts a space after it ("p = 0, 066").
+        "paireCasP": f"{cas['p_value_no_outperformance']:.3f}".replace(".", "{,}"),
+        "paireMinP": f"{plus_proche['p_value_no_outperformance']:.3f}".replace(".", "{,}"),
+        "paireMinPCas": (f"{CAND_FR[plus_proche['candidate']]} contre "
+                         f"{BENCH_PROSE[plus_proche['benchmark']]} sur "
+                         f"{UNI_FR[plus_proche['universe']]}"),
+    }
+
+    # French thousands separator, applied to the number alone: joining first and
+    # substituting commas afterwards also rewrites the caption's punctuation.
+    n_boot_fr = f"{n_boot:,}".replace(",", "\\,")
+    texte = "\n".join([
+        "% GÉNÉRÉ par scripts/build_figures_chap5.py — ne pas éditer à la main.",
+        "% Source : data/gold/paired_comparison_results.json + phase5_results.json",
+        *(f"\\newcommand{{\\{k}}}{{{v}}}" for k, v in macros.items()),
+        "",
+        "\\begin{table}[htbp]",
+        "  \\centering",
+        "  \\small",
+        "  \\caption[Comparaisons pairées]{Comparaisons pairées sur la fenêtre de test",
+        f"  gelée, nettes de coûts (bootstrap par blocs, {n_boot_fr} rééchantillons).",
+        f"  {verdict}}}",
+        "  \\label{tab:paires}",
+        "  \\begin{tabular}{@{}llrrr@{}}",
+        "    \\toprule",
+        "    Univers & Comparaison & $\\Delta$Sharpe & IC 90~\\% & $p$ \\\\",
+        "    \\midrule",
+        *lignes,
+        "    \\bottomrule",
+        "  \\end{tabular}",
+        "\\end{table}",
+        "",
+    ])
+    (TABLES / "paires.tex").write_text(texte, encoding="utf-8")
+    print(f"  paires.tex    ({len(comps)} comparaisons, {len(etablies)} établie(s))")
+
+
 if __name__ == "__main__":
     print("figures chapitre 5 :")
-    courbes(); intervalles(); crises(); detection(); plafond()
+    courbes(); intervalles(); crises(); detection(); plafond(); tableau_paires()

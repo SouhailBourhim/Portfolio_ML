@@ -224,3 +224,58 @@ class TestGoldInputsAreOneSnapshot:
             assert f_end <= r_end, (
                 f"{feats} ends {f_end}, after {rets} at {r_end}."
             )
+
+
+class TestReportTablesAreGeneratedNotTyped:
+    """The report must not restate a result the artifact can move.
+
+    The paired-comparison table was hand-typed into `Chapter5.tex` when it was
+    first written. Every figure in the report is built from Gold precisely so
+    the prose cannot outlive the run it describes, and eight rows of LaTeX
+    literals were the one place that convention had been broken: the next
+    Phase 5 run would move `paired_comparison_results.json` and leave the
+    report asserting the old numbers, with nothing able to tell.
+    """
+
+    TABLE = ROOT / "docs" / "rapport" / "assets" / "tables" / "paires.tex"
+    CHAPTER = ROOT / "docs" / "rapport" / "chapters" / "Chapter5.tex"
+
+    def _table(self) -> str:
+        if not self.TABLE.is_file():
+            pytest.skip("paires.tex not built — run scripts/build_figures_chap5.py.")
+        return self.TABLE.read_text(encoding="utf-8")
+
+    def test_chapter5_inputs_the_generated_table_instead_of_defining_one(self):
+        if not self.CHAPTER.is_file():
+            pytest.skip("Chapter5.tex not present.")
+        source = self.CHAPTER.read_text(encoding="utf-8")
+        assert r"\input{assets/tables/paires}" in source
+        assert r"\label{tab:paires}" not in source, (
+            "Chapter5.tex defines the paired table inline again. It must consume "
+            "the generated assets/tables/paires.tex so the numbers cannot drift."
+        )
+
+    def test_every_row_matches_the_paired_comparison_artifact(self):
+        paired = _require("paired_comparison_results.json")
+        table = self._table()
+        for comparison in paired["comparisons"]:
+            # Rendered exactly as the generator writes it: French decimal comma
+            # braced for math mode, three decimals.
+            delta = f"{comparison['sharpe_diff']:+.3f}".replace(".", "{,}")
+            p_value = f"{comparison['p_value_no_outperformance']:.3f}".replace(".", ",")
+            assert delta in table, (
+                f"{comparison['universe']} {comparison['candidate']} vs "
+                f"{comparison['benchmark']}: Δ={delta} is not in the generated table. "
+                f"Re-run scripts/build_figures_chap5.py."
+            )
+            assert p_value in table, f"p={p_value} is not in the generated table."
+
+    def test_the_table_reports_as_many_rows_as_the_artifact_holds(self):
+        paired = _require("paired_comparison_results.json")
+        rows = [line for line in self._table().splitlines()
+                if line.strip().startswith("& ") and line.rstrip().endswith(r"\\")]
+        assert len(rows) == len(paired["comparisons"]), (
+            f"The table shows {len(rows)} comparisons but the artifact holds "
+            f"{len(paired['comparisons'])}. A silently dropped row reads as a "
+            f"smaller search than was actually run."
+        )
