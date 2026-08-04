@@ -1137,10 +1137,6 @@ stages:
       hash: md5
       md5: cc929d7b138755e25d386463ac5e334f
       size: 121639
-    - path: data/gold/phase5_results.json
-      hash: md5
-      md5: d1dc093f808c757ed9ad83ff971054e7
-      size: 3908
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
@@ -1159,12 +1155,12 @@ stages:
       size: 10504
     - path: src/run_phase5.py
       hash: md5
-      md5: 7daf84e035ba1d43c2cc4cf1b04abde8
-      size: 24766
+      md5: 4271e3a0ac841e7420cc4e8a908b91fb
+      size: 28280
     - path: src/run_reality_check.py
       hash: md5
-      md5: 78699309d03dddf41cf193ce724fafe9
-      size: 15935
+      md5: 78d618ad52ebce89ef6f08fd06548320
+      size: 16648
     - path: src/strategies.py
       hash: md5
       md5: e14c05a35b6727c01bac51b66afcef58
@@ -1204,6 +1200,7 @@ stages:
         - 0.5
         - 0.75
         - 1.0
+        phase5.test_frac: 0.35
         phase5.xgb_grid:
           max_depth:
           - 2
