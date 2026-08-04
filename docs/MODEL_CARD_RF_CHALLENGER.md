@@ -11,7 +11,7 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `14ef39c847d4` |
+| Code revision (artifacts) | `55e96221a5ac` |
 | Python | 3.11.14 |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, 29 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
