@@ -232,3 +232,29 @@ class TestWordDeliverablesCarryNoRetractedClaim:
             f"claim-reframing record. Fix the generator or the update script, then "
             f"regenerate; do not hand-edit the binary."
         )
+
+    def test_evaluation_metrics_annex_documents_released_p4_protocol(self):
+        """The jury-facing metrics annex must explain the tests it relies on."""
+        docx = pytest.importorskip("docx")
+        path = ROOT / "docs" / "Annexe_Metriques_Evaluation.docx"
+        if not path.is_file():
+            pytest.skip("evaluation-metrics annex not present.")
+        document = docx.Document(str(path))
+        text = "\n".join(p.text for p in document.paragraphs)
+        for table in document.tables:
+            for row in table.rows:
+                text += "\n" + " | ".join(cell.text for cell in row.cells)
+        required = (
+            "4.3 Bootstrap pairé sur les différences",
+            "4.4 Correction du choix parmi de nombreuses variantes",
+            "White Reality Check et Hansen SPA",
+            "regime_conditional",
+            "equal_weight est exploratoire",
+            "240 candidats",
+        )
+        missing = [phrase for phrase in required if phrase not in text]
+        assert not missing, (
+            "The evaluation-metrics annex no longer explains the released Phase 5 "
+            f"comparison protocol: missing {missing}. Regenerate it with "
+            "scripts/update_annexe_metriques.py rather than editing the binary."
+        )

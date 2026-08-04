@@ -202,7 +202,10 @@ def build_latex(summary: dict) -> str:
         )
 
     strategies = len({r["strategy_requested"] for r in results})
-    dates = sum(r["rebalances"] for r in results)
+    # Four strategies share each universe's rebalance calendar. Counting every
+    # fit here would call 1,188 fits "rebalance dates"; the audit statement
+    # must distinguish the two units exactly as its Markdown counterpart does.
+    dates = _distinct_rebalance_dates(results)
     verdict = (
         f"Sur l'instantané publié, {total_fallbacks} ajustement sur {total_fits} "
         f"— {strategies} stratégies évaluées, {dates} dates de rééquilibrage — "
