@@ -1,13 +1,12 @@
 """
 streamlit_app.py — Entry point for the Portfolio ML Suite dashboard.
 
-Two pages, two audiences (Streamlit renders `pages/` in the sidebar):
+Two research views (Streamlit renders `pages/` in the sidebar):
 
-  1. Histoire de valeur — business-facing pitch. No controls. Shows what the
-     ML system adds over classical Markowitz, with the out-of-sample rigor
-     visible as a credibility layer rather than a footnote.
-  2. Outil du gestionnaire — the operator tool. Interactive; consumes the
-     FastAPI service when it's running.
+  1. Résultats de recherche — evidence and caveats for stakeholders. No
+     controls; observed differences are never promoted to recommendations.
+  2. Explorateur de stratégies — interactive research comparison. It reads the
+     same versioned artifacts as the read-only FastAPI service.
 
 Run with:
     streamlit run dashboard/streamlit_app.py
@@ -31,24 +30,24 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.title("Système d'optimisation de portefeuille piloté par le Machine Learning")
+st.title("Prototype de recherche — optimisation de portefeuille assistée par ML")
 st.caption("EURAFRIC Information · INPT · Projet de Fin d'Année")
 
 st.markdown(
     """
-    Ce prototype alloue un capital entre actions de la Bourse de Casablanca et ETF
-    internationaux, sous contraintes réalistes de gestion (long-only, plafond de 25 %
-    par actif, coûts de transaction déduits), et compare rigoureusement l'apport du
-    Machine Learning à la méthode classique de Markowitz.
+    Ce prototype analyse des allocations entre actions de la Bourse de Casablanca et
+    ETF internationaux, sous contraintes réalistes de gestion (long-only, plafond de
+    25 % par actif, coûts de transaction déduits). Il compare les résultats historiques
+    du Machine Learning à la méthode classique de Markowitz, sans fournir de conseil,
+    de recommandation client ni d'exécution d'ordres.
 
     ### Deux vues
 
-    **📊 Histoire de valeur** — *pour les décideurs.* Ce que le système ML apporte
-    par rapport à la méthode classique, avec la validation hors échantillon qui rend
-    ce chiffre crédible.
+    **📊 Résultats de recherche** — *pour les décideurs.* Les résultats observés,
+    leur validation hors échantillon et leurs limites d'inférence.
 
-    **🛠️ Outil du gestionnaire** — *pour l'utilisateur métier.* Sélection d'univers et
-    de stratégie, allocations cibles, export CSV.
+    **🛠️ Explorateur de stratégies** — *pour l'analyse.* Sélection d'univers et de
+    stratégie, allocations historiques et export CSV.
 
     👈 Choisissez une vue dans la barre latérale.
     """

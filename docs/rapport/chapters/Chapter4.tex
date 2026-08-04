@@ -107,9 +107,9 @@ bibliothèque employée fournit uniquement des modèles de volatilité
 deux paramètres par maximum de vraisemblance ont donc été écrites à la main. Une
 sécurité l'accompagne~: si l'estimation ne converge pas pour un actif, la
 stratégie retombe sur le rétrécissement de Ledoit-Wolf en journalisant un
-avertissement. Ce filet s'est déclenché une fois en conditions réelles, sur une
-seule fenêtre et un seul actif — le dispositif fonctionne, et il ne fonctionne
-pas seulement dans les tests.
+avertissement. Ce chemin est testé et instrumenté ; son taux d'activation sur
+l'instantané de release est rapporté avec les résultats au
+chapitre~\ref{chap:resultats}, plutôt que déduit d'une observation historique.
 \end{remarquebox}
 
 % =============================================================================
@@ -139,8 +139,8 @@ régime (figure~\ref{fig:regimes}).
   un régime par décision de rééquilibrage, estimé sans aucune connaissance de la
   suite. Les bandes verticales marquent cinq crises dont les dates proviennent
   d'une source externe et ont été fixées \emph{avant} toute mesure. La question
-  de savoir si les amas rouges coïncident significativement avec ces bandes est
-  traitée au chapitre~\ref{chap:resultats}.}
+  de savoir si les amas rouges sont associés à ces bandes est traitée comme une
+  analyse exploratoire au chapitre~\ref{chap:resultats}.}
   \label{fig:regimes}
 \end{figure}
 

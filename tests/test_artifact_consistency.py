@@ -279,3 +279,49 @@ class TestReportTablesAreGeneratedNotTyped:
             f"{len(paired['comparisons'])}. A silently dropped row reads as a "
             f"smaller search than was actually run."
         )
+
+
+class TestFinalReportReleaseFraming:
+    """The jury-facing report must not regress to superseded evidence claims.
+
+    These assertions deliberately cover release facts that are easy to leave in
+    old prose during a rebuild: the deep ETF history, the remaining BVC limit,
+    the completed correction for search multiplicity, and the distinction
+    between monitoring-ready and live monitoring.
+    """
+
+    REPORT = ROOT / "docs" / "rapport"
+
+    def _source(self) -> str:
+        return "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted(self.REPORT.rglob("*.tex"))
+        ).lower()
+
+    def test_report_carries_current_release_facts(self):
+        source = self._source()
+        for expected in (
+            "novembre 2004",
+            "historique marocain gratuit ne remonte pas avant 2021",
+            "white/spa",
+            "240 configurations",
+            "1\\,188",
+            "297 dates",
+            "prêt mais non actif",
+        ):
+            assert expected in source, f"Final report is missing release fact: {expected!r}"
+
+    def test_report_does_not_restore_retracted_wording(self):
+        source = self._source()
+        banned = (
+            "l'écart n'est pas significatif",
+            "indiscernable de la ligne de base",
+            "résultat le plus solide",
+            "النتيجة الوحيدة الدالة إحصائياً",
+            "390~tests",
+        )
+        hits = [phrase for phrase in banned if phrase in source]
+        assert not hits, (
+            "Final report restored a retracted or stale claim: "
+            f"{hits}. Update the source, not just the compiled PDF."
+        )

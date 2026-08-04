@@ -6,7 +6,20 @@
 > code; this file is the source of truth for *decisions, status, and scope*. This version
 > supersedes both the original code-embedding AGENTS.md and the interim `Codex.v2.md` (now
 > stale — do not edit it further; it is kept only as history). Last synced against the actual
-> repo state on **2026-08-02** (see §5 for how that sync was verified).
+> repo state on **2026-08-04** (see the release supersession below).
+
+> **Release supersession — 2026-08-04.** This file retains the chronological
+> record below, but the current release is `pfa-defense-ready` at `cc0a824` and
+> supersedes older current-state wording. The ETF evaluation universe now starts
+> in **2004-11** (not 2017), while the BVC-inclusive universe still starts in
+> 2021. Phase 5 uses forward-only purged walk-forward selection, paired block
+> bootstrap comparisons, and White Reality Check/Hansen SPA over 240 reachable
+> configurations; no candidate establishes outperformance against the
+> pre-specified primary benchmark. Telemetry reports 0 fallbacks in 1,188 fits on
+> the released snapshot, model cards and exact explanation artefacts are
+> generated from Gold, and monitoring is ready but deliberately not live. Where
+> historical text below conflicts with this paragraph or current Gold artefacts,
+> current Gold artefacts and the report source take precedence.
 
 ---
 

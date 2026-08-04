@@ -1,10 +1,9 @@
 % =============================================================================
 %  Chapitre 5 — Résultats, validation et produit livré
 %
-%  Tous les chiffres cités proviennent des artefacts versionnés du projet
-%  (data/gold/*.json) et sont repris à l'identique par les figures, produites
-%  par scripts/build_figures_chap5.py. Aucun nombre n'est saisi manuellement,
-%  de sorte que le rapport ne peut pas diverger des résultats qu'il décrit.
+%  Les tableaux de validation, d'intégrité et de sensibilité proviennent des
+%  artefacts versionnés (data/gold/*.json) et sont générés par les scripts du
+%  projet. Les chiffres de synthèse renvoient aux mêmes artefacts.
 % =============================================================================
 
 \chapter{Résultats, validation et produit livré}
@@ -18,14 +17,16 @@ un principe simple, hérité du problème P4 exposé au
 chapitre~\ref{chap:problematique} : \textbf{un chiffre n'est un résultat que si
 l'on sait de combien il pourrait être faux.}
 
-Chaque performance est donc rapportée avec son intervalle de confiance, et le
-chapitre distingue explicitement trois catégories :
+Chaque résultat est donc qualifié selon son niveau de preuve. Le chapitre
+distingue explicitement quatre catégories :
 
 \begin{itemize}
   \item ce qu'il \textbf{observe} — des écarts historiques, sans les transformer
         en supériorité généralisable faute de test pairé ;
   \item ce qu'il \textbf{explore} — des associations sur un faible nombre
         d'événements, utiles pour orienter l'analyse mais non confirmatoires ;
+  \item ce qu'il \textbf{teste sans l'établir} — une comparaison pairée ou une
+        correction de recherche qui ne conclut pas à la surperformance ;
   \item ce qu'il \textbf{réfute} — cinq pistes explorées et fermées.
 \end{itemize}
 
@@ -260,19 +261,18 @@ moyenne des intervalles tombe de 2,22 à 1,59, soit $-28{,}6$~\%, mieux que les
 déflaté du gagnant atteint 0,835 sur 198~configurations testées, contre 0,67 sur
 36 pour le découpage unique.
 
-Ensuite, toutes les bornes inférieures deviennent positives (de 0,48 à 0,89)~:
-sur cet univers, chaque stratégie examinée est désormais crédiblement profitable
-hors échantillon — ce qui n'était pas établi auparavant, l'équipondéré descendant
-jusqu'à $-0{,}090$.
+Ensuite, toutes les bornes inférieures marginales deviennent positives (de 0,48
+à 0,89) dans ce protocole. C'est une description de chaque stratégie prise
+isolément ; elle ne démontre ni une rentabilité future ni un avantage relatif.
 
 Enfin — et c'est l'observation la plus instructive — \textbf{le classement change
 selon le protocole}. Le découpage unique place le signal XGB calibré en tête~; le
 protocole imbriqué replace le système à régime devant. Un classement qui change
-de sens lorsqu'on modifie le protocole d'évaluation, sans qu'aucun intervalle ne
-bouge significativement, n'était pas un classement.
+de sens lorsqu'on modifie le protocole d'évaluation, sans test pairé établissant
+une différence, ne doit pas être promu en verdict.
 
 % =============================================================================
-\section{Comportement en crise : le résultat le plus solide (P3)}
+\section{Comportement en crise : une lecture métier descriptive (P3)}
 % =============================================================================
 
 Les mesures précédentes portent sur des moyennes de période. Or pour un
@@ -453,7 +453,7 @@ indépendamment, chacune avec un protocole pré-enregistré.
     \toprule
     Piste testée & Verdict \\
     \midrule
-    Prédiction de rendement calibrée honnêtement & indiscernable de la ligne de base \\
+    Prédiction de rendement calibrée honnêtement & aucune surperformance incrémentale établie \\
     5 fois plus d'historique de prix (univers marocain profond, 56\,000 lignes) &
       coefficient d'information $\times 2$ à $\times 4$, aucun avantage de portefeuille \\
     Données fondamentales point-in-time (P/E, P/B, P/S, D/E) &
@@ -484,12 +484,12 @@ d'un effet de régime. Mais sur l'univers ETF, elle \emph{dépasse} la meilleure
 variante « correcte ». Un effet qui change de signe selon l'univers n'est pas un
 effet. Sans ce contrôle, la conclusion aurait été inverse.
 
-\begin{resultatbox}{Ce que la convergence de ces cinq études démontre}
-Le constat n'est pas que chaque idée a échoué individuellement, mais qu'à cette
-taille d'échantillon, \textbf{l'évaluation ne peut pas résoudre des différences
-de l'ordre de grandeur que ces idées produisent}. C'est l'affirmation
-scientifique la plus défendable du projet, et elle n'est disponible que parce que
-cinq tentatives indépendantes ont été menées avec un protocole identique.
+\begin{resultatbox}{Ce que la convergence de ces cinq études indique}
+Les cinq études ne justifient pas une valeur incrémentale de la couche de
+prédiction sur les univers et protocoles évalués. Elles montrent aussi que des
+écarts de l'ordre de grandeur observé restent trop instables pour être promus en
+surperformance. L'absence de preuve n'est pas une preuve d'absence ; c'est une
+limite mesurée, rendue visible par des tentatives comparables.
 \end{resultatbox}
 
 % =============================================================================
@@ -564,22 +564,50 @@ robustesse ni validation économique. L'ordre de fragilité est en revanche
 informatif et recoupe le diagnostic des phases 4B/4C : les modèles de signal à
 forte rotation sont les plus sensibles aux coûts.
 
+\section{Gouvernance, explicabilité et monitoring}
+% =============================================================================
+
+Trois \emph{model cards} sont générées à partir des artefacts Gold : une carte
+pour la stratégie de référence \texttt{regime\_conditional}, et une carte pour
+chacun des challengers \texttt{rf\_signal} et \texttt{xgb\_signal}. La première
+est la référence non parce qu'une supériorité a été démontrée, mais parce qu'aucun
+challenger ne l'a déplacée selon le protocole retenu et que sa décision est
+reconstructible. Les deux autres restent explicitement exploratoires.
+
+L'explication est adaptée à la nature de chaque modèle. La stratégie de référence
+produit une trace de décision par rééquilibrage (régime, sous-optimiseur,
+contraintes, poids et éventuel repli). Les challengers à arbres produisent des
+attributions additives exactes : TreeSHAP natif pour XGBoost et décomposition de
+chemin pour la forêt aléatoire. Les contrôles vérifient la reconstruction de la
+prédiction ; une explication ne peut donc pas provenir de poids différents de
+ceux de l'instantané publié.
+
+Le monitoring est \textbf{prêt mais non actif}. L'ordonnanceur demeure arrêté
+après l'incident d'artefacts déchirés : avant toute reprise, publication atomique,
+vérification du manifeste avant lecture, répertoires de release versionnés avec
+verrou, et procédure de rollback exercée sont requis. Cette réserve est
+intentionnelle : documenté n'est pas validé indépendamment, et prêt au monitoring
+n'est pas monitoring en production.
+
+% =============================================================================
 \section{Le produit livré}
 % =============================================================================
 
-Le projet ne se limite pas à une étude~: il livre un outil utilisable, composé
-d'une application web à deux pages et d'une interface REST, partageant une couche
-de données unique — de sorte que deux surfaces ne puissent jamais afficher des
-chiffres divergents pour la même stratégie.
+Le projet livre un \textbf{prototype de recherche} composé d'une application web
+à deux pages et d'une interface REST en lecture seule. Elles partagent une couche
+de données unique, afin que deux surfaces ne puissent pas afficher des chiffres
+divergents pour la même stratégie. Elles ne fournissent ni conseil
+d'investissement, ni ordre, ni service de production.
 
-\subsection{Page « Histoire de valeur » — destinée aux décideurs}
+\subsection{Page « Résultats de recherche » — destinée aux décideurs}
 
 \begin{figure}[htbp]
   \centering
   \fbox{\includegraphics[width=0.93\textwidth]{assets/figures/dashboard_page1.png}}
   \caption[Tableau de bord — page décideur]{Page destinée aux décideurs. Elle
-  présente d'abord le comportement en crise — le résultat le plus solide — puis
-  seulement ensuite le ratio de Sharpe, dont l'écart n'est pas significatif.
+  présente d'abord le comportement en crise, lecture descriptive, puis seulement
+  ensuite le ratio de Sharpe, dont l'écart observé n'établit pas une
+  surperformance.
   L'attribution honnête et les réserves statistiques sont affichées à l'écran, non
   reléguées en note.}
   \label{fig:dashboard1}
@@ -597,16 +625,16 @@ plutôt que laissées à la discipline de rédaction~:
   \item le cas défavorable — l'univers ETF, où le système perd — est affiché, non
         dissimulé~;
   \item la couche de prédiction de rendement n'est jamais présentée comme
-        l'apport du projet, puisque cinq études ont établi qu'elle n'en apporte
-        pas.
+        l'apport du projet, puisque cinq études n'ont pas établi d'avantage
+        incrémental de portefeuille.
 \end{enumerate}
 
-\subsection{Page « Outil du gestionnaire » — destinée à l'usage métier}
+\subsection{Page « Explorateur de stratégies » — destinée à l'analyse}
 
 \begin{figure}[htbp]
   \centering
   \fbox{\includegraphics[width=0.93\textwidth]{assets/figures/dashboard_page2.png}}
-  \caption[Tableau de bord — outil du gestionnaire]{Page métier~: comparaison de
+  \caption[Tableau de bord — explorateur de stratégies]{Page d'analyse~: comparaison de
   stratégies, métriques nettes de coûts, allocation cible et export CSV. Elle
   intègre également un explorateur de plafond, qui rend interactif le résultat de
   la section précédente.}
@@ -647,20 +675,20 @@ d'attribution et ses limites d'inférence.
         \textbf{huit} comparaisons pairées sur la fenêtre gelée ont un intervalle
         contenant zéro ($p$ de 0,066 à 0,939). Aucun modèle de signal n'établit de
         surperformance, ni contre la stratégie à régimes ni contre l'équipondéré,
-        sur aucun des deux univers. C'est le résultat le mieux étayé du chapitre,
-        parce que c'est le seul qui repose sur un test de la \emph{différence}
-        plutôt que sur des intervalles marginaux.
-  \item \textbf{Observé, robuste} — l'optimisation sous contrainte protège
-        systématiquement mieux que la diversification naïve pendant les cinq
-        crises, avec un délai de récupération environ deux fois plus court. Ce
-        gain revient à la contrainte et à la covariance, non à la couche de
-        régime.
+        sur aucun des deux univers. La correction White/SPA sur 240 configurations
+        n'établit pas non plus de surperformance contre la référence primaire.
+  \item \textbf{Observé} — l'optimisation sous contrainte protège mieux que la
+        diversification naïve sur les cinq fenêtres de crise étudiées, avec un
+        délai de récupération environ deux fois plus court. Cette lecture reste
+        descriptive et ce gain revient à la contrainte et à la covariance, non à
+        la couche de régime.
   \item \textbf{Découvert} — le plafond de position, choisi comme règle métier,
         est le régulariseur le plus efficace du système~: 10,1~\% de Sharpe, plus
         que tout modèle testé.
-  \item \textbf{Réfuté} — cinq pistes indépendantes visant à dépasser la ligne de
-        base, dont deux établissant que précision de prédiction et performance de
-        portefeuille sont des objectifs distincts.
+  \item \textbf{Réfuté / non établi} — cinq pistes indépendantes visant à
+        dépasser la ligne de base n'ont pas établi d'avantage incrémental ; deux
+        montrent que précision de prédiction et performance de portefeuille sont
+        des objectifs distincts.
 \end{itemize}
 
 Le chapitre suivant conclut en dressant le bilan de ce que le système apporte,

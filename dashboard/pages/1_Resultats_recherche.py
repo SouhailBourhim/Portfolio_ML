@@ -1,13 +1,12 @@
 """
-1_Histoire_de_valeur.py — The business-facing pitch (Phase 7).
+1_Resultats_recherche.py — Stakeholder-facing research results (Phase 7).
 
 INTEGRITY CONSTRAINTS, enforced in this file rather than left to discipline:
 
-  1. "Notre système" means the REGIME + DYNAMIC-COVARIANCE system
-     (`regime_conditional`) — the system with the higher full-window point estimate
-     on `full_2021`. The F7 return-prediction signals are NEVER presented as our
-     value-add: the available evaluations have not established a robust portfolio
-     edge. `ML_STRATEGY` below is a single constant so this cannot drift.
+  1. The reference system is REGIME + DYNAMIC-COVARIANCE
+     (`regime_conditional`). It is not presented as superior: the available
+     evaluations have not established incremental portfolio outperformance.
+     `ML_STRATEGY` below is a single constant so this cannot drift.
 
   2. Every headline number is described as an observed point estimate. Marginal
      confidence intervals quantify uncertainty but do not replace a paired test of
@@ -50,7 +49,7 @@ ML_STRATEGY = "regime_conditional"
 # The universe the pitch headlines: EURAFRIC's actual 9-asset business portfolio.
 HEADLINE_UNIVERSE = "full_2021"
 
-st.set_page_config(page_title="Histoire de valeur", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Résultats de recherche", page_icon="📊", layout="wide")
 
 try:
     showcase = D.load_showcase()
@@ -99,7 +98,7 @@ st.markdown(
 )
 st.divider()
 
-# ── 2 & 3. Markowitz vs. notre système ─────────────────────────────────────
+# ── 2 & 3. Markowitz vs. stratégie de référence ────────────────────────────
 st.header("Ce qui existe aujourd'hui, et ce que nous ajoutons")
 
 col1, col2, col3 = st.columns(3)
@@ -162,10 +161,9 @@ with st.expander("Qu'est-ce que le système fait différemment ?"):
 
 st.divider()
 
-# ── 3bis. Comportement en crise (P3) — la preuve la plus directe ───────────
-# Placed BEFORE the Sharpe credibility layer deliberately: this is the
-# strongest and most business-legible evidence the project owns, and it is
-# expressed in money and time rather than in a ratio.
+# ── 3bis. Comportement en crise (P3) — lecture métier descriptive ──────────
+# Placed before the Sharpe section because drawdowns and recovery time are
+# business-legible. Five windows remain descriptive evidence, not confirmation.
 if crisis and crisis.get("universes", {}).get("etf_2017"):
     st.header("Et quand les marchés s'effondrent ?")
     st.markdown(
@@ -252,7 +250,7 @@ if crisis and crisis.get("universes", {}).get("etf_2017"):
         f"⚠️ Attribution honnête : ce gain revient à la **contrainte de portefeuille et au "
         f"modèle de covariance** (P1/P3), pas spécifiquement à la couche de régime. Sur "
         f"{n_tied} des {n_windows} crises les trois optimiseurs sont identiques à la décimale "
-        f"près — en régime baissier notre système *devient* la variance minimale par "
+        f"près — en régime baissier la stratégie à régimes *devient* la variance minimale par "
         f"construction, et le plafond de {100*showcase['max_weight']:.0f} % sur 5 actifs "
         f"contraint fortement l'allocation."
     )
@@ -370,7 +368,7 @@ ou = showcase["universes"][other_universe]
 st.markdown(
     f"""
     - **L'écart observé n'est pas universel.** Sur l'univers ETF internationaux seuls
-      ({D.UNIVERSE_LABELS[other_universe]}), notre système fait **{ou['headline_lift_pct']:+.1f} %**
+      ({D.UNIVERSE_LABELS[other_universe]}), la stratégie à régimes fait **{ou['headline_lift_pct']:+.1f} %**
       face au Markowitz classique — c'est-à-dire qu'il **perd**. Ces deux univers ne
       permettent donc pas de revendiquer une valeur généralisable du ML.
     - **Ce cas défavorable est en partie un artefact de contrainte, pas seulement
@@ -388,7 +386,7 @@ st.markdown(
       portefeuille.** Quatre évaluations indépendantes vont dans ce sens : calibration
       honnête (Phase 5), historique marocain profond sur 20 ans, ajout de données
       fondamentales, et la ré-évaluation menée après la correction des dividendes.
-      Son estimation ponctuelle passe **au-dessus ou en dessous** de notre système
+      Son estimation ponctuelle passe **au-dessus ou en dessous** de la stratégie à régimes
       selon la fenêtre de test retenue — sur la dernière ré-évaluation elle le
       dépasse sur `full_2021` et lui reste inférieure sur `etf_2017`, l'inverse de
       ce qu'indiquait l'évaluation précédente. Ce **changement de signe** rend toute

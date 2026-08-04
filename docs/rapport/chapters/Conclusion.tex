@@ -29,9 +29,11 @@ quatre familles de modèles ajoutées une à une, du rétrécissement de covaria
 la détection de régime, de la prédiction de rendement à l'optimisation sensible
 aux coûts~; un protocole d'évaluation comportant une sélection strictement
 antérieure, un segment de test gelé, des \textbf{comparaisons pairées} et une
-correction pour le nombre d'essais~; et deux surfaces d'usage — une application web à deux pages et une
-interface REST — partageant une couche de données unique. L'ensemble est couvert
-par \textbf{390~tests} exécutés hors ligne en moins de deux minutes.
+correction pour le nombre d'essais~; trois cartes de modèle, une couche
+d'explicabilité et une instrumentation des replis~; et deux surfaces de
+consultation — une application web à deux pages et une interface REST en lecture
+seule — partageant une couche de données unique. L'ensemble est couvert par
+\textbf{plus de 580~tests} exécutés hors ligne.
 
 % =============================================================================
 \section*{Ce que le projet établit}
@@ -75,7 +77,7 @@ accepter l'hypothèse nulle. L'établir demanderait un test d'équivalence contr
 marge fixée à l'avance, qui n'a pas été mené. Ces réserves sont affichées dans le
 rapport, le tableau de bord et l'interface de programmation.
 
-\paragraph{Observé, robuste.} Pendant les cinq crises, l'optimisation sous
+\paragraph{Observé sur cinq fenêtres.} Pendant les cinq crises, l'optimisation sous
 contrainte a systématiquement mieux protégé le capital que la diversification
 naïve, avec un délai de retour au sommet environ deux fois plus court.
 L'attribution est faite honnêtement~: ce gain revient à la contrainte de position
@@ -95,9 +97,9 @@ ont été explorées et fermées~: la prédiction de rendement calibrée honnêt
 un historique cinq fois plus long, l'ajout de données fondamentales, la
 re-sélection à chaque repli temporel, et le conditionnement de la contrainte au
 régime. Le constat qui émerge de leur convergence est plus intéressant que chaque
-échec pris isolément~: \textbf{à cette taille d'échantillon, l'évaluation ne peut
-pas résoudre des écarts de l'ordre de grandeur que ces idées produisent}. Deux de
-ces études établissent en outre, séparément, que \emph{précision de prédiction et
+échec pris isolément~: \textbf{aucune de ces pistes n'établit un avantage
+incrémental de portefeuille dans les protocoles évalués}. Deux de ces études
+montrent en outre, séparément, que \emph{précision de prédiction et
 performance de portefeuille sont deux objectifs distincts}~: le coefficient
 d'information a doublé sans que le ratio de Sharpe suive, et il a même reculé
 dans un cas.
@@ -127,7 +129,11 @@ tests~: chacune de ces règles est un test qui échoue si on l'enfreint. Les tro
 incidents les plus coûteux du projet ont tous consisté en une règle respectée par
 discipline jusqu'au jour où elle ne l'a plus été, sans que rien ne le signale.
 Chacun a donné lieu à un garde-fou automatique, validé en rejouant l'incident
-réel.
+réel. Les cartes de modèle et les traces d'explication complètent ce dispositif :
+la stratégie de référence est expliquée par ses décisions, les challengers par
+des attributions additives vérifiées, et le monitoring est explicitement prêt
+mais non actif tant que ses préconditions de publication atomique et de rollback
+ne sont pas satisfaites.
 
 % =============================================================================
 \section*{Limites}
@@ -140,15 +146,16 @@ Elles sont énoncées ici plutôt que laissées à découvrir.
         visé ne compte qu'environ cinq années d'historique exploitable. C'est ce
         qui empêche de conclure, et aucun modèle supplémentaire ne le corrigera.
   \item \textbf{L'historique marocain gratuit ne remonte pas avant 2021}, ce qui
-        exclut la crise de 2020 de l'univers principal. La conception à double
-        univers en atténue l'effet~; elle ne le supprime pas.
+        exclut la crise de 2020 de l'univers principal. L'univers ETF, lui,
+        remonte désormais à novembre 2004 et couvre 2008, 2020 et 2022 ; il
+        atténue ce manque sans transformer l'univers BVC en historique long.
   \item \textbf{Un rendement de dividende sur quatre a dû être estimé}, la source
         publique ne le publiant pas. L'analyse de sensibilité correspondante est
         documentée, mais la donnée reste une estimation.
-  \item \textbf{La correction pour le nombre d'essais est bornée} au périmètre de
-        chaque recherche, et non à l'ensemble des expériences menées au cours du
-        projet — définition volontairement explicite, mais moins sévère que
-        l'idéal.
+  \item \textbf{La correction pour le nombre d'essais est bornée} aux 240
+        configurations atteignables de la recherche évaluée contre la référence
+        primaire. Les huit comparaisons externes et les résultats contre
+        l'équipondéré restent signalés comme multiplicité externe ou exploratoire.
   \item \textbf{Le système n'a pas été exposé à des conditions d'exploitation
         réelles}~: ni exécution d'ordres, ni flux temps réel, ni couverture du
         risque de change dirham/dollar, exclus du périmètre dès le cadrage.
@@ -167,10 +174,11 @@ raccorder cet historique profond aux données récentes sur leur période de
 recouvrement, puis l'intégrer à la chaîne — donnerait au portefeuille visé la
 profondeur dont il manque, y compris la crise de 2008.
 
-\textbf{Adopter le protocole imbriqué comme protocole de référence.} Il a réduit
-la largeur des intervalles de confiance de 28,6~\% pour un coût de calcul modéré,
-et il a montré que les réglages sélectionnés changent d'un repli à l'autre — ce
-qui confirme qu'une valeur unique et globale est inadaptée.
+\textbf{Faire valider le modèle indépendamment et activer le monitoring.} Une
+validation extérieure doit challenger le protocole, les hypothèses de coûts et
+les artefacts de release. Ensuite seulement, le monitoring pourra être activé
+après publication atomique, vérification de manifeste, verrouillage des releases
+et exercice de rollback.
 
 \textbf{Calibrer la pénalité de rotation par modèle.} Les mesures ont établi
 qu'une valeur globale unique dégrade le bon modèle tout en corrigeant le mauvais.

@@ -1,5 +1,5 @@
 """
-2_Outil_gestionnaire.py — The operator tool (Phase 6).
+2_Explorateur_strategies.py — The research exploration view (Phase 6).
 
 Different audience, different rules from Page 1. A portfolio manager comparing
 options legitimately needs to see EVERY strategy, including the F7 signals that

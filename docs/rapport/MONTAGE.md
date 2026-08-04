@@ -1,20 +1,17 @@
 # Montage du rapport dans le modèle INPT
 
-Le rapport final est monté dans le **modèle INPT PFE** (page de garde et mise en
-page officielles). Les fichiers de ce dossier sont conçus pour y être déposés
-tels quels.
-
-`main.tex` est un **build autonome de vérification** : il n'est pas le rapport
-final, mais il prouve que tout compile et produit un PDF lisible sans Overleaf.
+`main.tex` est la **source canonique du rapport final autonome**. Les fichiers
+de ce dossier peuvent aussi être montés dans le modèle INPT PFE (page de garde et
+mise en page institutionnelles), sans modifier le fond vérifié ici.
 
 ```bash
 cd docs/rapport
 tectonic -X compile main.tex        # ou : xelatex main.tex (deux passes)
 ```
 
-État du dernier build vérifié : **73 pages, 0 référence non résolue, 0 caractère
-manquant, 2 débordements de marge résiduels (4,0 pt et 0,2 pt — invisibles à
-l'impression).** Moteur : XeTeX (requis par `fontspec` / `polyglossia`).
+Le build de release est vérifié à chaque modification par compilation XeTeX,
+contrôle des références et inspection visuelle du PDF. Moteur : XeTeX (requis par
+`fontspec` / `polyglossia`).
 
 ## 1. Fichiers à copier dans le projet Overleaf
 
@@ -99,7 +96,8 @@ s'imprime avec des rectangles vides :
 
 3. **Choisir une police qui contient aussi les chiffres et la ponctuation
    latins.** Geeza Pro n'a ni les chiffres ni le caractère « : » : le texte
-   s'imprime avec des rectangles à la place de `1952`, `6,2` et `390`. Amiri
+   s'imprime avec des rectangles à la place de `1952`, `6,2` et des compteurs
+   de tests. Amiri
    convient, chargée **par nom de fichier** — la seule forme qui fonctionne à la
    fois sur Overleaf/TeX Live et avec tectonic :
 

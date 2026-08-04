@@ -586,6 +586,12 @@ stages:
       - data/gold/dsr_trial_ledger.json
       - data/gold/phase5_validation_protocol.json
       - data/gold/paired_comparison_results.json
+      - data/gold/model_explanations.json
+      - data/gold/monitoring_baseline.json
+      - data/gold/fit_reports.parquet
+      - data/gold/fit_report_summary.json
+      - data/gold/reality_check_series.parquet
+      - data/gold/reality_check_results.json
       - data/gold/dashboard_showcase.json
       - data/gold/dashboard_equity.parquet
       - data/gold/dashboard_weights.parquet

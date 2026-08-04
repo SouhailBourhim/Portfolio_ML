@@ -256,11 +256,12 @@ prédiction ≠ performance du portefeuille » :
 - **Le modèle apprend davantage** : IC ×2 en validation croisée purgée (0,028 → 0,058 pour RF),
   `FUND_pb` devient la 2ᵉ feature la plus importante (15,8 % de l'importance totale).
 - **Le portefeuille n'en profite pas** : Sharpe net *baisse* de 1,21 à 0,88 sur la fenêtre test
-  gelée (IC de confiance à 90 % chevauchant, donc non-significatif — mais toutes les estimations
-  ponctuelles vont dans le mauvais sens).
+  gelée. Les intervalles de confiance marginaux se chevauchent ; ils quantifient
+  l'incertitude mais ne testent pas la différence entre stratégies. Les estimations
+  ponctuelles vont toutes dans le mauvais sens.
 Trois tests indépendants (Phase 5 sur prix, Deep-Morocco sur 20 ans de prix, fondamentaux) convergent
-vers la même conclusion : à l'échelle de cet univers, le signal F7 de prédiction de rendement
-n'améliore pas significativement la ligne de base régime + covariance dynamique. Détails :
+vers le même constat : à l'échelle de cet univers, le signal F7 de prédiction de rendement
+n'établit pas d'avantage incrémental sur la ligne de base régime + covariance dynamique. Détails :
 [`docs/FUNDAMENTALS_EXPERIMENT.md`](docs/FUNDAMENTALS_EXPERIMENT.md) ·
 `experiments/fundamentals_ic_lift.py` · `experiments/fundamentals_portfolio.py` ·
 `src/fundamentals.py`.
@@ -328,7 +329,7 @@ vérifie que chaque chiffre affiché découle bien des artefacts Gold produits p
 │   └── orchestration/    # Assets Dagster (planification quotidienne du pipeline)
 ├── dashboard/            # Application Streamlit à deux pages (Phase 6+7)
 │   ├── streamlit_app.py  # Point d'entrée
-│   ├── pages/            # 1_Histoire_de_valeur · 2_Outil_gestionnaire
+│   ├── pages/            # 1_Resultats_recherche · 2_Explorateur_strategies
 │   └── shared/           # Couche de données + bibliothèque de graphiques communes
 ├── experiments/          # Notes de recherche (deep-Morocco, fondamentaux)
 ├── docs/                 # Walkthrough Phase 1 + livrables encadrant (Phases 1-5)

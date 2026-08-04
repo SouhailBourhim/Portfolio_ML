@@ -201,7 +201,7 @@ class TestCurrencyExposureTravelsWithEveryPortfolioFigure:
         )
 
     def test_the_stakeholder_page_shows_it_above_the_results(self):
-        page = ROOT / "dashboard" / "pages" / "1_Histoire_de_valeur.py"
+        page = ROOT / "dashboard" / "pages" / "1_Resultats_recherche.py"
         if not page.is_file():
             pytest.skip("dashboard page not present.")
         source = page.read_text(encoding="utf-8")

@@ -152,7 +152,7 @@ overlapped).
 
 **What must change** is every place the +14.3% (or the earlier "+15%") figure appears:
 
-- `dashboard/pages/1_Histoire_de_valeur.py` — the headline metric and narrative
+- `dashboard/pages/1_Resultats_recherche.py` — the headline metric and narrative
 - `data/gold/dashboard_showcase.json` — regenerated automatically once the fix lands
 - `README.md` — the suite section
 - `CLAUDE.md` — §5 status table, §13

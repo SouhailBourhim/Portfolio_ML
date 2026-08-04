@@ -46,7 +46,8 @@ résultats de portefeuille, non d'une réserve de forme. Sur l'instantané publi
 aucun des 1\,188 ajustements — quatre stratégies évaluées, 297 dates de
 rééquilibrage — n'a utilisé de repli d'estimateur~: chaque résultat rapporté
 provient du modèle que son étiquette désigne, mesure reproductible et versionnée
-plutôt qu'hypothèse. Sous validation strictement antérieure, les huit
+plutôt qu'hypothèse. Après correction White/SPA pour les 240 configurations
+atteignables, sous validation strictement antérieure, les huit
 comparaisons pairées menées sur la fenêtre de test gelée ont toutes un intervalle
 contenant zéro~: \textbf{aucune surperformance n'est établie}, ni pour les
 modèles de signal contre la stratégie à régimes, ni contre l'équipondéré. Ce
@@ -55,7 +56,9 @@ n'est pas davantage une preuve d'équivalence, faute de test dédié. Cinq piste
 performance de portefeuille sont deux objectifs distincts. Enfin, le plafond de
 position imposé comme règle métier s'est révélé le régulariseur le plus efficace
 du système. Le livrable comprend un tableau de bord de recherche à deux pages et
-une interface REST de consultation, couverts par 390~tests automatisés.
+une interface REST de consultation, trois cartes de modèle générées depuis les
+artefacts et un monitoring prêt mais non actif, couverts par plus de 580~tests
+automatisés.
 
 \vspace{0.6em}
 \noindent\textbf{Mots-clés~:} optimisation de portefeuille, apprentissage
@@ -97,8 +100,9 @@ are MAD-denominated and the ETFs USD — a material economic exposure carried by
 every portfolio result, not a formality. On the released snapshot none of the
 1\,188 fits — four evaluated strategies, 297 rebalance dates — used an estimator
 fallback: every reported result was produced by the model its label names, a
-reproducible versioned measurement rather than an assumption. Published
-under forward-only selection, all eight paired comparisons on the frozen test
+reproducible versioned measurement rather than an assumption. After White/SPA
+correction across the 240 reachable configurations and under forward-only
+selection, all eight paired comparisons on the frozen test
 window have intervals containing zero: \textbf{no outperformance is established},
 for either signal model against either the regime strategy or equal weighting.
 Nor is this evidence of equivalence, absent a dedicated test.
@@ -106,8 +110,9 @@ Five independent avenues for improvement were explored and closed, establishing
 among other things that prediction accuracy and portfolio performance are
 distinct objectives. Finally, the position cap imposed as a business rule turned
 out to be the system's most effective regulariser. Deliverables include a
-two-page research dashboard and a read-only REST interface, covered by 390
-automated tests.
+two-page research dashboard and a read-only REST interface, three
+artefact-generated model cards, and monitoring that is ready but deliberately
+not live, covered by more than 580 automated tests.
 
 \vspace{0.6em}
 \noindent\textbf{Keywords:} portfolio optimisation, machine learning, hidden
