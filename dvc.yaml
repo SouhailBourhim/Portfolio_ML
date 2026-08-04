@@ -471,6 +471,46 @@ stages:
       - data/gold/fit_reports.parquet
       - data/gold/fit_report_summary.json
 
+  # ── Multiple-testing correction over the WHOLE search ─────────────────────
+  # Closes Phase 5's `not_established` position. Evaluates every REACHABLE
+  # candidate (15 hyperparameter configs x 16 lever combinations = 240) on the
+  # frozen test dates, stores each series, and runs White's Reality Check and
+  # Hansen's SPA over the set.
+  #
+  # Expensive by nature: ~18 min on full_2021, ~3.4 h on etf_2017. That cost is
+  # the reason the position was `not_established` until now, and it is paid once
+  # per data snapshot rather than per read.
+  reality_check:
+    cmd: python src/run_reality_check.py
+    deps:
+      - src/run_reality_check.py
+      - src/metrics.py
+      - src/run_phase5.py
+      - src/strategies.py
+      - src/ml_signals.py
+      - src/regime.py
+      - src/memo.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_full.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/phase5_results.json
+    params:
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - backtest.max_weight
+      - backtest.risk_free_annual
+      - backtest.costs_bps
+      - phase5.rf_grid
+      - phase5.xgb_grid
+      - phase5.shrink_grid
+      - phase5.penalty_grid
+      - phase5.bootstrap
+      - ml_signals.min_train_rows
+    outs:
+      - data/gold/reality_check_series.parquet
+      - data/gold/reality_check_results.json
+
   # ── Phase 3: offline monitoring reference ─────────────────────────────────
   # Pins the reference distributions a future drift check measures against.
   # The reference is the Phase 5 train+validation segment ONLY — including the

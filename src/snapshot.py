@@ -72,6 +72,11 @@ SNAPSHOT_FILES = (
     # snapshot, or the caveat can drift away from the number it qualifies.
     Path("data/gold/fit_reports.parquet"),
     Path("data/gold/fit_report_summary.json"),
+    # The multiple-testing correction and the per-candidate series behind it.
+    # A corrected p-value and the search it corrects for must come from the
+    # same snapshot, or the correction stops describing the actual search.
+    Path("data/gold/reality_check_series.parquet"),
+    Path("data/gold/reality_check_results.json"),
     Path("data/gold/dashboard_showcase.json"),
     Path("data/gold/dashboard_equity.parquet"),
     Path("data/gold/dashboard_weights.parquet"),

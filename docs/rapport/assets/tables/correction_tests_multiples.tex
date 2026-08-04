@@ -1,0 +1,25 @@
+% GÉNÉRÉ par scripts/build_multiple_testing_doc.py — ne pas éditer à la main.
+% Source : data/gold/reality_check_results.json
+\newcommand{\correctionVerdict}{Aucun des 240 candidats ne bat la stratégie à régimes une fois la recherche prise en compte, sur aucun des deux univers.}
+\newcommand{\correctionCandidats}{240}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption[Correction pour tests multiples]{Reality Check de White et SPA de Hansen sur l'ensemble des candidats explorés. L'hypothèse nulle est composite : \emph{aucun} candidat ne surperforme la référence.}
+  \label{tab:correction}
+  \begin{tabular}{@{}lllrr@{}}
+    \toprule
+    Univers & Référence & Statistique & RC $p$ & SPA $p$ \\
+    \midrule
+    \texttt{etf\_2017} & \texttt{regime\_conditional} & mean return & 0,2259 & 0,3588 \\
+    \texttt{etf\_2017} & \texttt{regime\_conditional} & Sharpe & 0,8811 & 0,6357 \\
+    \texttt{etf\_2017} & \texttt{equal\_weight} & mean return & 0,0630 & 0,0020 \\
+    \texttt{etf\_2017} & \texttt{equal\_weight} & Sharpe & 0,2714 & 0,0980 \\
+    \texttt{full\_2021} & \texttt{regime\_conditional} & mean return & 0,0690 & 0,0930 \\
+    \texttt{full\_2021} & \texttt{regime\_conditional} & Sharpe & 0,3163 & 0,2939 \\
+    \texttt{full\_2021} & \texttt{equal\_weight} & mean return & 0,0405 & 0,0085 \\
+    \texttt{full\_2021} & \texttt{equal\_weight} & Sharpe & 0,1009 & 0,0170 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

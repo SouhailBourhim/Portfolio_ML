@@ -622,3 +622,205 @@ def paired_block_bootstrap(
     out["avg_turnover_diff"] = _mean_delta(candidate_turnover, benchmark_turnover)
     out["avg_cost_diff"] = _mean_delta(candidate_cost, benchmark_cost)
     return out
+
+
+# ── Multiple-testing correction over a whole searched candidate set ──────────
+#
+# Addresses: P4 — the last stated statistical limitation of this project. Every
+# comparison reported so far tests ONE candidate against a benchmark. But the
+# candidate was CHOSEN from a search, and the best of N candidates beats a
+# benchmark by chance more often than any single candidate does. Without a
+# correction, "the selected model beat the hurdle" is not the claim it appears
+# to be.
+#
+# White's Reality Check (2000) and Hansen's SPA (2005) test the composite null
+# "NO candidate in the set outperforms the benchmark", accounting for both the
+# number of candidates and their cross-correlation — which matters enormously
+# here, because 240 configurations that share a data window and differ by one
+# hyperparameter are nearly the same strategy 240 times, not 240 independent
+# bets.
+
+def _circular_block_indices(
+    n: int, block_len: int, rng: np.random.Generator
+) -> np.ndarray:
+    """One circular-block resample of positions 0..n-1.
+
+    Circular rather than plain moving blocks so every observation has equal
+    probability of selection; without the wrap, the first and last block_len-1
+    points are systematically under-sampled.
+    """
+    n_blocks = int(np.ceil(n / block_len))
+    starts = rng.integers(0, n, size=n_blocks)
+    offsets = np.arange(block_len)
+    return ((starts[:, None] + offsets[None, :]).ravel() % n)[:n]
+
+
+def _sharpe_from_array(values: np.ndarray, risk_free_annual: float) -> float:
+    std = float(np.std(values, ddof=1))
+    if std <= 1e-15:
+        return 0.0
+    ann_return = float(np.mean(values)) * TRADING_DAYS_PER_YEAR
+    return (ann_return - risk_free_annual) / (std * np.sqrt(TRADING_DAYS_PER_YEAR))
+
+
+def reality_check(
+    candidate_returns: Mapping[str, pd.Series],
+    benchmark: pd.Series,
+    *,
+    statistic: str = "mean_return",
+    block_len: int = 21,
+    n_boot: int = 2000,
+    seed: int = 0,
+    risk_free_annual: float = 0.0,
+) -> dict:
+    """White's Reality Check and Hansen's SPA over an entire candidate set.
+
+    Addresses: P4 — tests the composite null that NO candidate outperforms the
+    benchmark, rather than testing one pre-chosen candidate as if it had not
+    been selected from a search.
+
+    Every candidate is resampled with the SAME block draws as the benchmark and
+    as each other. That is not an optimisation: the candidates here differ by a
+    single hyperparameter on a shared data window, so they are heavily
+    cross-correlated, and resampling them independently would treat 240
+    near-identical strategies as 240 independent bets and badly overstate the
+    effective breadth of the search.
+
+    Two statistics are offered because the project reports both:
+
+    * ``mean_return`` — the textbook White (2000) formulation, on the per-period
+      return differential. The performance measure is a mean, which is what the
+      recentering argument assumes.
+    * ``sharpe`` — the differential in annualized Sharpe, matching this
+      project's headline metric. Defensible and widely used, but the statistic
+      is a ratio of moments rather than a mean, so the asymptotic argument is
+      weaker than for the first. Reported alongside, never alone.
+
+    Hansen's SPA differs from RC in two ways, both of which make it less
+    conservative: it studentizes each candidate by its own bootstrap standard
+    error, so a high-variance candidate cannot dominate the max statistic on
+    noise alone; and it drops hopelessly poor candidates from the null
+    recentering, so padding the search with bad configurations can no longer
+    make a good one look significant by lowering the bar.
+
+    Args:
+        candidate_returns: Net-return series per candidate, all on the SAME
+            index as the benchmark.
+        benchmark: The strategy every candidate is measured against.
+        statistic: ``"mean_return"`` or ``"sharpe"``.
+        block_len, n_boot, seed: Bootstrap configuration.
+        risk_free_annual: Used only by the Sharpe statistic.
+
+    Returns:
+        Observed best candidate and its differential, the RC p-value, the SPA
+        p-value, and the inputs needed to reproduce both.
+
+    Raises:
+        ValueError: on an empty set, misaligned indexes, NaN, or too little
+            data for one block. Aligning silently would change which days are
+            compared.
+    """
+    if statistic not in ("mean_return", "sharpe"):
+        raise ValueError(
+            f"Unknown statistic {statistic!r}; expected 'mean_return' or 'sharpe'."
+        )
+    if not candidate_returns:
+        raise ValueError(
+            "reality_check needs at least one candidate. An empty set would "
+            "return a vacuous p-value of 1.0 that reads like a finding."
+        )
+
+    names = sorted(candidate_returns)
+    for name in names:
+        series = candidate_returns[name]
+        if not series.index.equals(benchmark.index):
+            raise ValueError(
+                f"Candidate {name!r} is not on the benchmark's index; refusing to "
+                f"align silently. Every candidate must be evaluated on the SAME "
+                f"frozen test dates or the max statistic compares different periods."
+            )
+        if series.isna().any():
+            raise ValueError(f"Candidate {name!r} contains NaN.")
+    if benchmark.isna().any():
+        raise ValueError("benchmark contains NaN.")
+
+    n = len(benchmark)
+    if n < 2 or n < block_len:
+        raise ValueError(
+            f"Not enough observations: n={n}, block_len={block_len}."
+        )
+
+    matrix = np.column_stack([candidate_returns[name].to_numpy(dtype=float) for name in names])
+    bench = benchmark.to_numpy(dtype=float)
+    n_candidates = len(names)
+
+    def differentials(rows: np.ndarray) -> np.ndarray:
+        """Per-candidate performance differential vs the benchmark."""
+        sub, sub_bench = matrix[rows], bench[rows]
+        if statistic == "mean_return":
+            return sub.mean(axis=0) - sub_bench.mean()
+        bench_sharpe = _sharpe_from_array(sub_bench, risk_free_annual)
+        return np.array([
+            _sharpe_from_array(sub[:, k], risk_free_annual) - bench_sharpe
+            for k in range(n_candidates)
+        ])
+
+    all_rows = np.arange(n)
+    observed = differentials(all_rows)
+    scale = np.sqrt(n)
+
+    rng = np.random.default_rng(seed)
+    boot = np.empty((n_boot, n_candidates), dtype=float)
+    for b in range(n_boot):
+        boot[b] = differentials(_circular_block_indices(n, block_len, rng))
+
+    # ---- White's Reality Check -------------------------------------------
+    # V = max_k sqrt(T)*f_k ; null draws recenter each candidate on its own
+    # observed value, which imposes "no candidate outperforms" on every one.
+    observed_v = float(np.max(scale * observed))
+    null_v = np.max(scale * (boot - observed[None, :]), axis=1)
+    rc_p = float((np.sum(null_v >= observed_v) + 1) / (n_boot + 1))
+
+    # ---- Hansen's SPA (consistent variant) --------------------------------
+    omega = np.std(scale * boot, axis=0, ddof=1)
+    # A zero-variance differential is a DETERMINISTIC edge (or deficit), not an
+    # unusable candidate. An earlier version mapped it to omega = inf, which
+    # inverted the meaning twice over: a candidate beating the benchmark by a
+    # constant got a t-statistic of zero and could never be detected, while one
+    # LOSING by a constant was retained in the recentring instead of dropped.
+    # The positive-control test caught it. Flooring keeps the sign and the
+    # magnitude, so a risk-free edge scores as the extreme case it is.
+    omega = np.maximum(omega, 1e-12)
+    observed_t = float(np.max(scale * observed / omega))
+
+    # Drop candidates that are so poor they cannot plausibly be the best. The
+    # threshold is Hansen's -sqrt(2 log log T) rule; without it, adding bad
+    # configurations to the search lowers the bar for the good ones.
+    threshold = -np.sqrt(2.0 * np.log(max(np.log(n), 1.0001))) * omega / scale
+    retained = observed >= threshold
+    recentre = np.where(retained, observed, 0.0)
+    null_t = np.max(scale * (boot - recentre[None, :]) / omega[None, :], axis=1)
+    spa_p = float((np.sum(null_t >= observed_t) + 1) / (n_boot + 1))
+
+    best = int(np.argmax(observed))
+    return {
+        "statistic": statistic,
+        "n_candidates": n_candidates,
+        "n_observations": int(n),
+        "block_len": int(block_len),
+        "n_boot": int(n_boot),
+        "seed": int(seed),
+        "best_candidate": names[best],
+        "best_differential": float(observed[best]),
+        "reality_check_p_value": rc_p,
+        "spa_p_value": spa_p,
+        "spa_candidates_retained": int(np.sum(retained)),
+        "n_candidates_beating_benchmark": int(np.sum(observed > 0)),
+        "interpretation": (
+            f"No evidence that ANY of the {n_candidates} searched candidates "
+            f"outperforms the benchmark (RC p = {rc_p:.3f}, SPA p = {spa_p:.3f})."
+            if min(rc_p, spa_p) >= 0.05 else
+            f"The best of {n_candidates} candidates outperforms the benchmark after "
+            f"correcting for the search (RC p = {rc_p:.3f}, SPA p = {spa_p:.3f})."
+        ),
+    }

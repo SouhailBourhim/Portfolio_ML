@@ -194,8 +194,8 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: ce8c43bab2d161612eeff74c58e2d4f7
-      size: 27027
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
     - path: src/run_backtest.py
       hash: md5
       md5: 0c487a6acf7cf270a8959cc42926c74c
@@ -255,8 +255,8 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: ce8c43bab2d161612eeff74c58e2d4f7
-      size: 27027
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
     - path: src/regime.py
       hash: md5
       md5: 23cba30454ec306ceea5c08dde3c7299
@@ -337,8 +337,8 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: ce8c43bab2d161612eeff74c58e2d4f7
-      size: 27027
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
     - path: src/ml_signals.py
       hash: md5
       md5: 8deb9470629e15379eff17bdf89b4b71
@@ -441,8 +441,8 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: ce8c43bab2d161612eeff74c58e2d4f7
-      size: 27027
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
     - path: src/ml_signals.py
       hash: md5
       md5: 8deb9470629e15379eff17bdf89b4b71
@@ -595,8 +595,8 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: ce8c43bab2d161612eeff74c58e2d4f7
-      size: 27027
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
     - path: src/regime.py
       hash: md5
       md5: 23cba30454ec306ceea5c08dde3c7299
@@ -685,8 +685,8 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: ce8c43bab2d161612eeff74c58e2d4f7
-      size: 27027
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
     - path: src/ml_signals.py
       hash: md5
       md5: 8deb9470629e15379eff17bdf89b4b71
@@ -1114,3 +1114,109 @@ stages:
       hash: md5
       md5: af575bd110c558260cf45163efcc2c92
       size: 10599
+  reality_check:
+    cmd: python src/run_reality_check.py
+    deps:
+    - path: data/gold/log_returns.parquet
+      hash: md5
+      md5: bd21b9bc62cc2646edf90cc008ef0a10
+      size: 117723
+    - path: data/gold/log_returns_etf.parquet
+      hash: md5
+      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      size: 317942
+    - path: data/gold/ml_features_etf.parquet
+      hash: md5
+      md5: 97e87574aa4c10ab983b116c8a04d847
+      size: 482732
+    - path: data/gold/ml_features_full.parquet
+      hash: md5
+      md5: cc929d7b138755e25d386463ac5e334f
+      size: 121639
+    - path: data/gold/phase5_results.json
+      hash: md5
+      md5: d1dc093f808c757ed9ad83ff971054e7
+      size: 3908
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
+    - path: src/metrics.py
+      hash: md5
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
+    - path: src/ml_signals.py
+      hash: md5
+      md5: 8deb9470629e15379eff17bdf89b4b71
+      size: 40942
+    - path: src/regime.py
+      hash: md5
+      md5: 23cba30454ec306ceea5c08dde3c7299
+      size: 10504
+    - path: src/run_phase5.py
+      hash: md5
+      md5: 7daf84e035ba1d43c2cc4cf1b04abde8
+      size: 24766
+    - path: src/run_reality_check.py
+      hash: md5
+      md5: 78699309d03dddf41cf193ce724fafe9
+      size: 15935
+    - path: src/strategies.py
+      hash: md5
+      md5: e14c05a35b6727c01bac51b66afcef58
+      size: 32414
+    params:
+      params.yaml:
+        backtest.costs_bps:
+          etf: 10
+          bvc: 30
+        backtest.max_weight: 0.25
+        backtest.min_train_days: 252
+        backtest.rebalance_freq: ME
+        backtest.risk_free_annual: 0.0
+        ml_signals.min_train_rows: 504
+        phase5.bootstrap:
+          block_len: 21
+          n_boot: 2000
+          alpha: 0.1
+          seed: 0
+        phase5.penalty_grid:
+        - 0.0
+        - 0.5
+        - 1.0
+        - 2.0
+        phase5.rf_grid:
+          max_depth:
+          - 3
+          - 4
+          - 6
+          min_samples_leaf:
+          - 10
+          - 20
+          n_estimators:
+          - 200
+        phase5.shrink_grid:
+        - 0.25
+        - 0.5
+        - 0.75
+        - 1.0
+        phase5.xgb_grid:
+          max_depth:
+          - 2
+          - 3
+          - 4
+          learning_rate:
+          - 0.03
+          - 0.05
+          - 0.1
+          n_estimators:
+          - 200
+    outs:
+    - path: data/gold/reality_check_results.json
+      hash: md5
+      md5: ab883d0136bf340b7e76eb14dcd44461
+      size: 10179
+    - path: data/gold/reality_check_series.parquet
+      hash: md5
+      md5: 96b2f69a42b5b8b353b12d70b320ce12
+      size: 5406656
