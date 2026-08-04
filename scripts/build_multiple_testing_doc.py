@@ -156,15 +156,34 @@ def build_markdown(payload: dict) -> str:
         "Quoting the smallest p-value from eight correlated tests is multiplicity one "
         "level up, and no further correction has been applied to *these* eight.",
         "",
-        "## What this changes",
+        "## Release status — the limitation is NOT yet closed",
         "",
-        "- Phase 5's `multiple_testing: not_established` is **superseded** by this "
-        "artifact. `paired_comparison_results.json` still carries the old status; it "
-        "is the record of that run, and re-running Phase 5 to update the field is a "
-        "separate and expensive step.",
-        "- The project's headline conclusion is unchanged and better supported: no "
-        "evidence that the ML signal layer outperforms the regime baseline, now "
-        f"including a correction for the whole {n_candidates}-candidate search.",
+        "> This is an **experiment result, not a release result.** The released "
+        "status of the multiple-testing position remains "
+        "`multiple_testing: not_established`, as recorded in "
+        "`paired_comparison_results.json`.",
+        "",
+        "Calling it superseded would be premature. A finding becomes a released "
+        "result in this project only when the canonical pipeline produces it, which "
+        "means all of the following, none of which has happened yet:",
+        "",
+        "1. The `reality_check` DVC stage regenerates both artifacts and they are "
+        "hashed into the snapshot manifest.",
+        "2. Phase 5 is re-run so `paired_comparison_results.json` carries the "
+        "updated status rather than the old one — an expensive rebuild, done once.",
+        "3. The report, the model cards and every derived surface are rebuilt from "
+        "the new artifacts.",
+        "4. `snapshot verify` and the release gates pass on the result.",
+        "",
+        "Until then the honest thing to say is that the correction has been *run* "
+        "and its evidence is versioned, not that the limitation is *closed*. This "
+        "distinction is the same one the project applies to every other number: a "
+        "result someone executed once is not yet a result the pipeline produces.",
+        "",
+        "- The project's headline conclusion is unchanged and, once released, better "
+        "supported: no evidence that the ML signal layer outperforms the regime "
+        f"baseline, now including a correction for the whole {n_candidates}-candidate "
+        "search.",
         "",
         "## Cost, and why this was deferred",
         "",

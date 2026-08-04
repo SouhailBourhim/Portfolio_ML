@@ -333,3 +333,30 @@ class TestPersistedArtifact:
             + len(list(itertools.product(*phase5["xgb_grid"].values())))
         ) * len(phase5["shrink_grid"]) * len(phase5["penalty_grid"])
         assert len(run_reality_check.candidate_configs(params)) == expected
+
+    def test_the_doc_does_not_claim_the_limitation_is_closed(self):
+        """The hard boundary between an experiment result and a release result.
+
+        The correction has been RUN and its evidence is versioned. That is not
+        the same as the limitation being CLOSED, which requires the canonical
+        pipeline to produce the artifact, Phase 5 to be re-run so
+        paired_comparison_results.json carries the new status, every derived
+        surface to be rebuilt, and the release gates to pass.
+
+        A doc that announced closure early would be the same class of error as
+        a stale number, in the surface most likely to be quoted.
+        """
+        doc = self.ROOT / "docs" / "MULTIPLE_TESTING.md"
+        if not doc.is_file():
+            pytest.skip("MULTIPLE_TESTING.md not built.")
+        text = doc.read_text(encoding="utf-8")
+
+        paired = self.ROOT / "data" / "gold" / "paired_comparison_results.json"
+        if paired.is_file():
+            status = json.loads(paired.read_text(encoding="utf-8"))["multiple_testing"]["status"]
+            if status == "not_established":
+                assert "NOT yet closed" in text, (
+                    "the released status is still not_established, so the doc must "
+                    "say the limitation is not yet closed"
+                )
+                assert "experiment result, not a release result" in text
