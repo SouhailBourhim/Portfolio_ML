@@ -11,7 +11,7 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `9dff7eb26393` |
+| Code revision (artifacts) | `bbdef6c4f2ea` |
 | Python | 3.11.14 |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, 31 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
@@ -199,7 +199,7 @@ a strategy that wins gross and loses net is treated as a finding.
 ## Reproducibility
 
 ```bash
-git checkout 9dff7eb26393
+git checkout bbdef6c4f2ea
 ./scripts/dvc.sh pull
 ./.venv/bin/python src/snapshot.py verify
 ```

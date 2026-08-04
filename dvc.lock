@@ -829,6 +829,14 @@ stages:
       hash: md5
       md5: 0dab12e3eb7804e6ea6785eb299fa86f
       size: 7212650
+    - path: data/gold/fit_report_summary.json
+      hash: md5
+      md5: 14f98662230e851f047fe3ee72a68d5f
+      size: 38789
+    - path: data/gold/fit_reports.parquet
+      hash: md5
+      md5: af575bd110c558260cf45163efcc2c92
+      size: 10599
     - path: data/gold/log_returns.parquet
       hash: md5
       md5: bd21b9bc62cc2646edf90cc008ef0a10
@@ -845,6 +853,14 @@ stages:
       hash: md5
       md5: cc929d7b138755e25d386463ac5e334f
       size: 121639
+    - path: data/gold/model_explanations.json
+      hash: md5
+      md5: 37eb0f7200aa919a7d4a02f0b676ae13
+      size: 36590
+    - path: data/gold/monitoring_baseline.json
+      hash: md5
+      md5: 4d94af0530cff995fa8d0423249c45b5
+      size: 24001
     - path: data/gold/paired_comparison_results.json
       hash: md5
       md5: bbf5978e840b4eb51fcf3aa50237199d
@@ -873,6 +889,14 @@ stages:
       hash: md5
       md5: b7a250c24b1b7427ba4491219b236a56
       size: 12364
+    - path: data/gold/reality_check_results.json
+      hash: md5
+      md5: ab883d0136bf340b7e76eb14dcd44461
+      size: 10179
+    - path: data/gold/reality_check_series.parquet
+      hash: md5
+      md5: 96b2f69a42b5b8b353b12d70b320ce12
+      size: 5406656
     - path: params.yaml
       hash: md5
       md5: 78a3e7c8877df429424f72d6896e39c3
@@ -892,7 +916,7 @@ stages:
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: b15dbda7466dae2e2df2616c57a52331
+      md5: 3815bbb577b6940d14813b67366c2fb8
       size: 9071
   smoke:
     cmd: python scripts/smoke_pipeline.py
