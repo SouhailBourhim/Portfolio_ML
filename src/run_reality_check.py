@@ -46,7 +46,7 @@ import yaml
 
 import metrics
 from backtest import build_cost_vector
-from run_phase5 import evaluate_on_test
+from run_phase5 import evaluate_on_test, split_train_test
 from strategies import RandomForestSignalStrategy, XGBoostSignalStrategy
 
 log = logging.getLogger("run_reality_check")
@@ -116,8 +116,19 @@ def evaluate_universe(universe: str, params: dict) -> tuple[pd.DataFrame, dict]:
     features = pd.read_parquet(GOLD / features_file)
 
     bt, sig = params["backtest"], params["ml_signals"]
-    phase5_results = json.loads((GOLD / "phase5_results.json").read_text())[universe]
-    test_start = pd.Timestamp(phase5_results["test_start"])
+    # Derived with Phase 5's OWN splitter rather than read back from
+    # phase5_results.json. Two reasons, and the second is structural:
+    #
+    #   1. Agreement by construction. Both stages call the same function on the
+    #      same returns and the same test_frac, so the frozen window cannot
+    #      drift between them. Reading the date back would make agreement a
+    #      coincidence that nothing checks.
+    #   2. It breaks a dependency CYCLE. Phase 5's paired-comparison artifact
+    #      must record the multiple-testing status this stage produces, so
+    #      phase5 depends on reality_check. If reality_check also read
+    #      phase5_results.json, DVC would have a cycle and neither could be
+    #      declared honestly in the graph.
+    _, test_start = split_train_test(returns, params["phase5"]["test_frac"])
 
     costs = build_cost_vector(
         returns.columns, bt["costs_bps"]["etf"], bt["costs_bps"]["bvc"]

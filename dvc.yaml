@@ -304,6 +304,11 @@ stages:
       - src/model_selection.py
       - src/run_phase4.py
       - src/run_phase5.py
+      # The multiple-testing correction phase5 reports. Declared so the status
+      # in paired_comparison_results.json cannot silently disagree with the
+      # artifact that produced it — the same invisible-input class of bug as
+      # the undeclared BVC dividend cache.
+      - data/gold/reality_check_results.json
       - data/gold/log_returns.parquet
       - data/gold/log_returns_etf.parquet
       - data/gold/ml_features_etf.parquet
@@ -494,13 +499,13 @@ stages:
       - data/gold/log_returns_etf.parquet
       - data/gold/ml_features_full.parquet
       - data/gold/ml_features_etf.parquet
-      - data/gold/phase5_results.json
     params:
       - backtest.rebalance_freq
       - backtest.min_train_days
       - backtest.max_weight
       - backtest.risk_free_annual
       - backtest.costs_bps
+      - phase5.test_frac
       - phase5.rf_grid
       - phase5.xgb_grid
       - phase5.shrink_grid

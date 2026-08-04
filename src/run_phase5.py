@@ -448,6 +448,73 @@ def _interpret(cmp_: dict, excludes_zero: bool) -> str:
     )
 
 
+def _reality_check_status() -> dict | None:
+    """Read the multiple-testing correction, if the pipeline has produced one.
+
+    Addresses: P4 — returns None rather than a permissive default when the
+    artifact is absent. A correction that silently reports "established"
+    because a file is missing would be the single most damaging failure this
+    module could have.
+
+    The PRIMARY benchmark governs the headline status. `equal_weight`
+    comparisons are exploratory by pre-specification and are carried through
+    for transparency, never as the basis of the verdict.
+    """
+    path = ROOT / "data" / "gold" / "reality_check_results.json"
+    if not path.is_file():
+        return None
+    artifact = json.loads(path.read_text(encoding="utf-8"))
+
+    primary, exploratory = {}, {}
+    for universe, block in artifact["universes"].items():
+        for key, test in block["tests"].items():
+            row = {
+                "universe": universe,
+                "benchmark": test["benchmark"],
+                "statistic": test["statistic"],
+                "n_candidates": test["n_candidates"],
+                "reality_check_p_value": test["reality_check_p_value"],
+                "spa_p_value": test["spa_p_value"],
+                "spa_candidates_retained": test["spa_candidates_retained"],
+            }
+            (primary if test["status"] == "primary" else exploratory)[f"{universe}/{key}"] = row
+
+    any_primary_rejects = any(
+        min(r["reality_check_p_value"], r["spa_p_value"]) < 0.05 for r in primary.values()
+    )
+    n_candidates = max(r["n_candidates"] for r in primary.values())
+    return {
+        "status": "established",
+        "method": artifact["method"],
+        "artifact": "data/gold/reality_check_results.json",
+        "series_artifact": "data/gold/reality_check_series.parquet",
+        "primary_benchmark": "regime_conditional",
+        "n_candidates_corrected_for": n_candidates,
+        "verdict": (
+            f"Against the pre-specified primary benchmark, no candidate of "
+            f"{n_candidates} establishes outperformance on either universe or "
+            f"statistic (White Reality Check and Hansen SPA)."
+            if not any_primary_rejects else
+            "At least one primary comparison rejects the composite null; see the "
+            "artifact before quoting any per-comparison p-value."
+        ),
+        "primary_comparisons": primary,
+        "exploratory_comparisons": exploratory,
+        "exploratory_note": (
+            "Comparisons against equal_weight are EXPLORATORY by pre-specification. "
+            "The regime system and the dividend-corrected classical max_sharpe "
+            "already clear that floor, so a candidate beating it is not evidence "
+            "that the ML layer adds value."
+        ),
+        "reporting_note": (
+            "RC and SPA are reported together and neither is to be quoted alone; "
+            "read spa_candidates_retained before attributing a divergence to the "
+            "trimming rule rather than to studentization. Eight outer comparisons "
+            "were run and are not themselves corrected for multiplicity."
+        ),
+    }
+
+
 def _search_correction_note(ledger, universes) -> dict:
     """State honestly what multiple-testing correction the search supports.
 
@@ -471,11 +538,17 @@ def _search_correction_note(ledger, universes) -> dict:
     "superficial implementation" that is worse than none, because it converts
     an admitted gap into a false reassurance.
 
-    So the correction is reported as NOT ESTABLISHED, with the concrete
-    experiment that would establish it named rather than hand-waved. The
-    Deflated Sharpe Ratio still applies and is reported, and now counts the ML
-    grid it previously omitted.
+    That gap has since been closed by the `reality_check` stage, which runs
+    exactly the named experiment: every REACHABLE configuration evaluated on
+    the frozen test dates, each series stored, and White's Reality Check plus
+    Hansen's SPA bootstrapped over the whole set. When that artifact is
+    present this function reports the established status and links to it; when
+    it is absent it reports NOT ESTABLISHED as before, because a missing
+    correction must never read as a passed one.
     """
+    corrected = _reality_check_status()
+    if corrected is not None:
+        return corrected
     return {
         "status": "not_established",
         "reason": (
