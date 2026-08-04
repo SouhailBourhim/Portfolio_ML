@@ -175,3 +175,59 @@ class TestNoResultLiteralsInTheGenerator:
             f"number must be read from data/gold/ so a re-run cannot leave the "
             f"cards asserting a superseded figure."
         )
+
+
+class TestWordDeliverablesCarryNoRetractedClaim:
+    """The claim reframing must reach the binaries, not just the source tree.
+
+    CLAUDE.md §17.11 is the record of a retracted claim surviving in six
+    surfaces at once. The .docx deliverables are the surfaces a jury actually
+    reads, and they are the ones a text search over the repository misses —
+    `test_artifact_consistency.py` compares numbers, never wording, and nothing
+    else looks inside a Word file. This closes that gap.
+
+    Skips when python-docx or the files are absent, so a fresh clone stays
+    green; asserts hard whenever they are present.
+    """
+
+    BANNED = (
+        "statistiquement significatif",
+        "statistiquement significative",
+        "seul résultat significatif",
+        "indiscernable",
+        "indistinguable",
+        "statistically significant",
+        "statistically indistinguishable",
+    )
+
+    # Owned by a teammate and excluded from this project's commits; reported
+    # rather than silently skipped, so its exclusion stays a decision.
+    NOT_OURS = {"Annexe_Metriques_Evaluation.docx"}
+
+    def test_no_livrable_asserts_significance_or_equivalence(self):
+        docx = pytest.importorskip("docx")
+        paths = sorted((ROOT / "docs").glob("Livrable_*.docx"))
+        if not paths:
+            pytest.skip("no Word deliverables present.")
+
+        offenders = {}
+        for path in paths:
+            if path.name in self.NOT_OURS:
+                continue
+            document = docx.Document(str(path))
+            text = "\n".join(p.text for p in document.paragraphs)
+            for table in document.tables:
+                for row in table.rows:
+                    text += "\n" + " | ".join(cell.text for cell in row.cells)
+            lowered = text.lower()
+            hits = [phrase for phrase in self.BANNED if phrase in lowered]
+            if hits:
+                offenders[path.name] = hits
+
+        assert not offenders, (
+            f"Word deliverable(s) still assert significance or equivalence: "
+            f"{offenders}. Overlapping marginal intervals are not a test of a "
+            f"difference in either direction — see docs/MODEL_GOVERNANCE.md and the "
+            f"claim-reframing record. Fix the generator or the update script, then "
+            f"regenerate; do not hand-edit the binary."
+        )

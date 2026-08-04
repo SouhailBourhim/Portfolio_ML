@@ -51,7 +51,7 @@ P[2].runs[0].text = "Livrable de la Phase 8 — Études de robustesse"
 for r in P[2].runs[1:]:
     r.text = ""
 P[3].runs[0].text = ("Cinq tentatives indépendantes de dépasser la ligne de base — "
-                     "protocoles pré-enregistrés, contrôles, et le seul résultat significatif")
+                     "protocoles pré-enregistrés, contrôles, et un diagnostic exploratoire")
 for r in P[3].runs[1:]:
     r.text = ""
 
@@ -156,9 +156,11 @@ para("1. Objet — pourquoi une phase d'études après la Phase 5", "h1")
 para(
     "La Phase 5 a conclu que, hors échantillon et avec de vraies barres d'erreur, les modèles F7 "
     "honnêtement calibrés et la ligne de base régime + covariance dynamique sont "
-    "STATISTIQUEMENT INDISCERNABLES. Face à un tel résultat, deux attitudes sont possibles : "
+    "séparés par des écarts PLUS PETITS QUE L'INCERTITUDE qui les entoure — aucun test pairé de la "
+    "différence n'ayant alors été mené, la conclusion licite est «\u00a0rien n'est établi\u00a0», "
+    "et non «\u00a0les stratégies sont équivalentes\u00a0». Face à un tel résultat, deux attitudes sont possibles : "
     "l'accepter, ou vérifier qu'il résiste. Nous avons choisi la seconde — parce qu'un résultat "
-    "nul non testé est indiscernable d'un manque d'effort."
+    "nul non testé ne se distingue pas d'un manque d'effort."
 )
 para(
     "Cette phase rassemble cinq investigations indépendantes menées après la Phase 5. Chacune "
@@ -169,7 +171,7 @@ para(
 )
 para(
     "Quatre de ces cinq études se concluent par un résultat négatif ou nul. La cinquième produit "
-    "le SEUL résultat statistiquement significatif du projet. Les deux catégories sont "
+    "le seul test formel de la phase, dont le statut reste EXPLORATOIRE (voir §5). Les deux catégories sont "
     "présentées avec la même rigueur : c'est la cohérence de l'ensemble qui constitue le "
     "livrable, pas la seule réussite."
 )
@@ -193,8 +195,10 @@ para(
     "celui que l'on croit. C'est ce contrôle qui a tranché.", "li"
 )
 para(
-    "Aucune affirmation de significativité sans test. Les écarts de Sharpe sont rapportés avec "
-    "leurs intervalles bootstrap et décrits comme non significatifs tant qu'ils se chevauchent. "
+    "Aucune affirmation de significativité sans test — ni dans un sens ni dans l'autre. Les écarts "
+    "de Sharpe sont rapportés avec leurs intervalles bootstrap MARGINAUX, qui quantifient "
+    "l'incertitude sans constituer un test de la différence : un chevauchement n'établit pas "
+    "l'équivalence, une absence de chevauchement n'établirait pas la supériorité. "
     "L'unique test formel de cette phase (étude 5) est présenté avec sa version conservatrice EN "
     "PREMIER et sa version libérale explicitement marquée comme optimiste.", "li"
 )
@@ -233,7 +237,7 @@ table(
 spacer()
 para(
     "Verdict : davantage de données rend le modèle plus intelligent sans produire d'avantage de "
-    "portefeuille statistiquement significatif — tous les intervalles sont larges et incluent "
+    "portefeuille démontrable — tous les intervalles sont larges et incluent "
     "zéro. Le plafond n'est pas la QUANTITÉ de données. Cette étude ferme la piste « plus "
     "d'historique de prix » et réoriente vers la qualité des données, ce que fait l'étude 2."
 )
@@ -265,7 +269,8 @@ lift = FP["results"]["rf_signal_fundamentals"]["test_net_sharpe"] - \
     FP["results"]["rf_signal_baseline"]["test_net_sharpe"]
 para(
     f"Verdict, et il est frappant : l'apport des fondamentaux au signal F7 vaut {fr(lift)} de "
-    f"Sharpe — NÉGATIF. Non significatif (les intervalles se chevauchent), mais toutes les "
+    f"Sharpe — NÉGATIF. Non établi (les intervalles marginaux se chevauchent et aucun test "
+    f"pairé n'a été mené), mais toutes les "
     f"estimations ponctuelles vont dans le mauvais sens, pour une feature qui a DOUBLÉ l'IC. "
     f"Les fondamentaux réduisent le turnover de moitié, comme on l'attend d'un signal plus lent — "
     f"et la stabilisation tue l'alpha dans la même proportion."
@@ -418,7 +423,10 @@ table(["Test", "Résultat", "Lecture"],
       [2400, 1600, 5026])
 spacer()
 para(
-    "C'est le SEUL résultat statistiquement significatif du projet : toutes nos comparaisons de "
+    "Ce diagnostic reste EXPLORATOIRE et n'est pas présenté comme un résultat significatif : "
+    "cinq fenêtres retenues rétrospectivement, et un état «\u00a0baissier\u00a0» défini par son "
+    "rendement moyen faible alors que les crises sont par construction des périodes de faible "
+    "rendement, ne permettent pas une conclusion confirmatoire. Par ailleurs toutes nos comparaisons de "
     "ratio de Sharpe ont des intervalles qui se chevauchent."
 )
 para(
@@ -430,8 +438,9 @@ para(
 )
 para(
     "Deux affirmations à ne jamais confondre, et à garder dans des phrases séparées : le "
-    "détecteur VOIT démonstrativement ce qu'il prétend voir ; le fait d'AGIR dessus reste "
-    "statistiquement indiscernable des lignes de base (Phase 5, étude 3)."
+    "détecteur produit, de façon CAUSALE et en temps réel, une lecture de l'état du marché "
+    "associée à ces cinq fenêtres — association exploratoire, non démontrée ; le fait d'AGIR dessus reste "
+    "non établi face aux lignes de base : aucun test pairé ne le démontre (Phase 5, étude 3)."
 )
 
 # ═══ 8. Le plafond ═══════════════════════════════════════════════════════════
@@ -464,7 +473,7 @@ para(
 # ═══ 9. Synthèse ═════════════════════════════════════════════════════════════
 para("9. Synthèse — cinq routes testées, et ce que leur convergence démontre", "h1")
 table(["Route testée", "Verdict"],
-      [["Prédiction de rendement F7, calibrée honnêtement (Phase 5)", "indiscernable de la ligne de base"],
+      [["Prédiction de rendement F7, calibrée honnêtement (Phase 5)", "aucun avantage établi"],
        ["5× plus d'historique de prix (étude 1)", "IC ×2–4, aucun avantage de portefeuille"],
        ["Fondamentaux point-in-time (étude 2)", "IC ×2, Sharpe en BAISSE"],
        ["Ré-sélection par pli, 74 % de données OOS en plus (étude 3)", "intervalles −28,6 %, classement instable"],
