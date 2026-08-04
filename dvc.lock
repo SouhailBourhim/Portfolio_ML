@@ -431,6 +431,10 @@ stages:
       hash: md5
       md5: 7e30328dca66bab419e4f5b9c91d8a8f
       size: 675
+    - path: data/gold/reality_check_results.json
+      hash: md5
+      md5: ab883d0136bf340b7e76eb14dcd44461
+      size: 10179
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
@@ -465,8 +469,8 @@ stages:
       size: 15261
     - path: src/run_phase5.py
       hash: md5
-      md5: 7daf84e035ba1d43c2cc4cf1b04abde8
-      size: 24766
+      md5: 4271e3a0ac841e7420cc4e8a908b91fb
+      size: 28280
     - path: src/strategies.py
       hash: md5
       md5: e14c05a35b6727c01bac51b66afcef58
@@ -552,8 +556,8 @@ stages:
       size: 7212650
     - path: data/gold/paired_comparison_results.json
       hash: md5
-      md5: 83c92971ee62cdeb20b578b5c62cf99c
-      size: 9774
+      md5: bbf5978e840b4eb51fcf3aa50237199d
+      size: 12018
     - path: data/gold/phase5_results.json
       hash: md5
       md5: d1dc093f808c757ed9ad83ff971054e7

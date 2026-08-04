@@ -233,10 +233,16 @@ must not record request bodies or any caller-supplied content verbatim.
 - **No paired test of the difference existed until Phase 2**, so every
   comparative claim made before it — in either direction — over-claimed. Those
   statements are retracted in the project record rather than quietly edited.
-- **Multiple-testing correction is `not_established`.** A Reality Check needs
-  frozen-test series for every searched candidate; only the finally-selected
-  configurations have them. Approximating it on the available subset would
-  under-count the search and read as false reassurance.
+- **Multiple-testing correction is `established`.** The experiment the earlier
+  `not_established` status named has been run: every one of the 240 reachable
+  configurations was re-evaluated on the frozen test dates, each net-return
+  series stored, and White's Reality Check and Hansen's SPA bootstrapped over
+  the whole set. Against the pre-specified primary benchmark
+  (`regime_conditional`) no candidate establishes outperformance on either
+  universe or statistic. Comparisons against `equal_weight` are exploratory by
+  pre-specification and are not the basis of that status. See
+  [`MULTIPLE_TESTING.md`](MULTIPLE_TESTING.md) and
+  `data/gold/reality_check_results.json`.
 - **`full_2021` has a short test window** (~1.75 years), which is why its
   intervals are wide. That is a sample-size property, not a model defect, and
   no model choice fixes it.

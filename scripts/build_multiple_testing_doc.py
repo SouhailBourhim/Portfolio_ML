@@ -64,6 +64,54 @@ def _table_md(rows: list[tuple]) -> str:
     return "\n".join(out)
 
 
+def _release_status_block() -> list[str]:
+    """Release status, driven by the artifact rather than by an author.
+
+    This section has to be able to say BOTH things. It first said the
+    limitation was closed when it was not; then, after the canonical rebuild
+    recorded `established`, the corrected wording became stale in the opposite
+    direction. Either way the doc was asserting a status independently of the
+    artifact that defines it, which is the drift this project keeps closing.
+    So it now reads the status and branches.
+    """
+    path = ROOT / "data" / "gold" / "paired_comparison_results.json"
+    status = None
+    if path.is_file():
+        status = json.loads(path.read_text(encoding="utf-8"))["multiple_testing"]["status"]
+
+    if status == "established":
+        return [
+            "## Release status — released",
+            "",
+            "> The canonical pipeline records "
+            "`multiple_testing: established` in `paired_comparison_results.json`, "
+            "produced by the `reality_check` DVC stage and hashed into the snapshot "
+            "manifest.",
+            "",
+            "This is a released result, not an experiment: the stage regenerates both "
+            "artifacts, Phase 5 consumes the status rather than asserting one, the "
+            "report and model cards are built from those artifacts, and the release "
+            "gates pass on the result. The limitation Phase 5 recorded as "
+            "`not_established` is closed.",
+            "",
+        ]
+    return [
+        "## Release status — the limitation is NOT yet closed",
+        "",
+        "> This is an **experiment result, not a release result.** The released "
+        "status of the multiple-testing position remains "
+        "`multiple_testing: not_established`, as recorded in "
+        "`paired_comparison_results.json`.",
+        "",
+        "A finding becomes a released result in this project only when the canonical "
+        "pipeline produces it: the `reality_check` stage regenerates both artifacts "
+        "into the snapshot manifest, Phase 5 is re-run so the status is consumed "
+        "rather than asserted, every derived surface is rebuilt, and the release "
+        "gates pass. Until then the correction has been *run*, not *closed*.",
+        "",
+    ]
+
+
 def build_markdown(payload: dict) -> str:
     universes = payload["universes"]
     rows = _rows(universes)
@@ -156,30 +204,7 @@ def build_markdown(payload: dict) -> str:
         "Quoting the smallest p-value from eight correlated tests is multiplicity one "
         "level up, and no further correction has been applied to *these* eight.",
         "",
-        "## Release status — the limitation is NOT yet closed",
-        "",
-        "> This is an **experiment result, not a release result.** The released "
-        "status of the multiple-testing position remains "
-        "`multiple_testing: not_established`, as recorded in "
-        "`paired_comparison_results.json`.",
-        "",
-        "Calling it superseded would be premature. A finding becomes a released "
-        "result in this project only when the canonical pipeline produces it, which "
-        "means all of the following, none of which has happened yet:",
-        "",
-        "1. The `reality_check` DVC stage regenerates both artifacts and they are "
-        "hashed into the snapshot manifest.",
-        "2. Phase 5 is re-run so `paired_comparison_results.json` carries the "
-        "updated status rather than the old one — an expensive rebuild, done once.",
-        "3. The report, the model cards and every derived surface are rebuilt from "
-        "the new artifacts.",
-        "4. `snapshot verify` and the release gates pass on the result.",
-        "",
-        "Until then the honest thing to say is that the correction has been *run* "
-        "and its evidence is versioned, not that the limitation is *closed*. This "
-        "distinction is the same one the project applies to every other number: a "
-        "result someone executed once is not yet a result the pipeline produces.",
-        "",
+        *_release_status_block(),
         "- The project's headline conclusion is unchanged and, once released, better "
         "supported: no evidence that the ML signal layer outperforms the regime "
         f"baseline, now including a correction for the whole {n_candidates}-candidate "

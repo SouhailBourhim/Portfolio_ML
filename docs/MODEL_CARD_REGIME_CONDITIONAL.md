@@ -188,7 +188,7 @@ a strategy that wins gross and loses net is treated as a finding.
   no order execution path.
 - **No client data.** The system consumes public market and macro series only.
   It holds no personal data and no client PII of any kind.
-- **Multiple testing is `not_established`.** A correct White Reality Check / Hansen SPA needs the frozen-test return series of EVERY searched candidate on a common index. Phase 5 evaluates the frozen test only for the finally-selected configurations; lever trials carry validation-window series, and ML-grid trials are IC-scored and carry none. A Reality Check over the available subset would under-count the search and read as a false reassurance.
+- **Multiple testing is `established`.** Against the pre-specified primary benchmark, no candidate of 240 establishes outperformance on either universe or statistic (White Reality Check and Hansen SPA). Corrected over 240 reachable configurations via White's Reality Check and Hansen's SPA (`data/gold/reality_check_results.json`). Comparisons against `equal_weight` are exploratory by pre-specification and are not the basis of this status.
 - **Currency exposure is unhedged.** BVC returns are MAD-denominated and ETF
   returns USD; every reported figure embeds an unhedged USD/MAD exposure.
 - **`full_2021` excludes the 2020 COVID crash** — the free BVC source begins

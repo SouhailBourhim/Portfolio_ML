@@ -444,118 +444,34 @@ Sharpe net, intervalle pairé, p-value, probabilité de différence positive, é
 turnover et de coûts, et une **interprétation économique générée à partir des chiffres**
 plutôt que rédigée à la main.
 
-### Correction pour tests multiples — statut : non établie
+### Correction pour tests multiples — statut : établie
 
 Un White Reality Check ou un Hansen SPA correct rééchantillonne le **maximum** sur les
-séries de rendement de **tous** les candidats explorés, sur un index commun. La
-recherche de la Phase 5 ne le permet pas : la fenêtre gelée n'est évaluée que pour les
-configurations finalement retenues, les essais de leviers portent des séries de la
-fenêtre de **validation**, et les essais de grille ML sont notés par IC et **n'ont
-aucune série de portefeuille** — une configuration d'hyperparamètres n'est pas un
-portefeuille.
+séries de rendement de **tous** les candidats explorés, sur un index commun. Cette
+exigence est désormais satisfaite : l'étape `reality_check` réévalue les **240
+configurations atteignables** — 15 jeux d'hyperparamètres × 16 combinaisons de leviers,
+soit l'espace que la recherche hiérarchique pouvait sélectionner, et non les 51 essais
+que le registre avait enregistrés — sur les dates de test gelées, et conserve la série
+de rendement nette de chacune.
 
-Appliquer un Reality Check au seul sous-ensemble disponible sous-estimerait la
-recherche et produirait une **fausse réassurance**. Le statut est donc déclaré
-`not_established` dans l'artefact, avec l'expérience qui l'établirait (réévaluer la
-fenêtre gelée pour **chaque** configuration explorée). Ce qui est rapporté à la place :
-le ratio de Sharpe déflaté — désormais calculé sur un registre qui **inclut la grille
-d'hyperparamètres**, absente du schéma 1, ce qui sous-comptait la recherche de 15
-configurations par univers, **en faveur du projet**.
+**Résultat.** Face à la référence primaire **pré-spécifiée** (`regime_conditional`),
+aucun des 240 candidats n'établit de surperformance, sur aucun des deux univers ni
+aucune des deux statistiques (RC 0,069–0,881 ; SPA 0,093–0,636). Même en retenant le
+meilleur candidat **jugé sur la fenêtre de test elle-même** — Sharpe 1,87 sur
+`full_2021` contre 1,31 pour celui sélectionné honnêtement — la ligne de base à régimes
+n'est pas dépassée une fois la recherche prise en compte. Cet écart 1,87 / 1,31 mesure
+directement ce que la sélection sur l'échantillon de test fabrique.
 
-**Formulation autorisée.** « Aucune preuve de surperformance », ou « écart
-économiquement positif mais statistiquement non concluant ». Jamais « équivalent » sur
-la seule base d'une p-value non significative : cela demanderait un test d'équivalence
-contre une marge fixée à l'avance, qui n'a pas été mené.
+Les comparaisons face à `equal_weight` sont **exploratoires par pré-spécification** :
+la stratégie à régimes, et depuis la correction des dividendes le `max_sharpe`
+classique, franchissent déjà ce plancher, donc le dépasser n'établit pas que la couche
+ML apporte quelque chose. RC et SPA sont rapportés côte à côte, jamais l'un seul, avec
+le nombre de candidats retenus par SPA — ici 227 à 240 sur 240, ce qui montre que
+l'écart entre les deux tests vient de la studentisation et non de la règle d'exclusion.
+Huit comparaisons externes ont été menées et ne sont pas elles-mêmes corrigées.
 
-## Comment vérifier qu'un résultat est à jour
-
-**Ne pas se fier à la date de modification des fichiers.** DVC restaure les sorties depuis son
-cache en conservant leur horodatage d'origine : un artefact parfaitement valide peut afficher
-une date ancienne, et un fichier récent peut être périmé. L'horodatage ne dit rien.
-
-Deux commandes font foi :
-
-```bash
-# 1. Le graphe est-il à jour vis-à-vis du code et des données ?
-./scripts/dvc.sh status                 # « Data and pipelines are up to date. »
-
-# 2. Les artefacts publiés correspondent-ils au manifeste de release ?
-./.venv/bin/python src/snapshot.py verify
-```
-
-`snapshot.py verify` recalcule le SHA-256 des 23 entrées du snapshot (données brutes, matrices
-Gold, résultats de phase, artefacts du dashboard, étude de crise, `params.yaml`, `dvc.yaml`,
-`requirements.lock.txt`) et les compare au manifeste versionné. Il **échoue** si :
-
-- un artefact requis est absent ou a changé d'un seul octet ;
-- le manifeste a été produit depuis un arbre de travail **non commité** — le `git_commit`
-  inscrit ne désignerait alors pas le code qui a produit les chiffres ;
-- la révision inscrite n'est pas un ancêtre de la révision courante (autre branche, historique
-  réécrit).
-
-La révision inscrite est celle qui a **produit** les artefacts ; le commit qui enregistre le
-manifeste en est nécessairement l'enfant, d'où le test d'ascendance plutôt que d'égalité.
-
-Régénérer le manifeste après une reconstruction — **depuis un arbre propre** :
-
-```bash
-./scripts/dvc.sh repro --single-item --force snapshot_manifest
-```
-
-> ⚠️ **Les deux options sont nécessaires, et `--force` seul est dangereux.**
-> `--single-item` (`-s`) restreint l'exécution à cette seule étape ; `--force` (`-f`) la
-> réexécute alors que ses dépendances n'ont pas changé (le manifeste doit refléter le
-> nouveau commit, pas de nouvelles données). **`--force` sans `--single-item` réexécute
-> toute la chaîne amont**, y compris `ingest` : cela retélécharge les cours et régénère la
-> couche Gold, invalidant le snapshot que l'on cherchait à publier. C'est arrivé une fois
-> sur ce dépôt ; la récupération s'est faite depuis le cache DVC.
-
-> **Portabilité.** Un *remote* DVC (Cloudflare R2, bucket privé) est configuré depuis le
-> 2026-08-03 : un clone neuf muni d'identifiants récupère le snapshot par `dvc pull` et
-> retrouve chaque artefact à l'octet près. Les identifiants ne sont pas dans le dépôt
-> (voir « Versionnage des données »), et les données de marché ne sont pas republiées
-> publiquement (licences des sources).
-
-> **Angle mort connu du graphe DVC.** `src/memo.py` (le cache adressé par contenu utilisé par
-> `ml_signals` et `dcc_garch`) n'est **pas** déclaré comme dépendance des étapes de recherche :
-> en modifier la logique ne marquerait donc pas le pipeline comme périmé. Cela n'affecte pas
-> les chiffres publiés — le cache n'a pas changé depuis leur production — mais c'est un trou
-> d'intégrité à combler. Correction planifiée, avec la reconstruction complète qu'elle impose :
-> [`docs/PHASE1_FOLLOWUPS.md`](docs/PHASE1_FOLLOWUPS.md).
-
-## Docker (environnement reproductible)
-
-Alternative à l'installation locale : l'image fige l'OS, la version de Python et toutes les
-dépendances — le projet s'exécute à l'identique sur macOS, Windows ou Linux (seul
-[Docker Desktop](https://www.docker.com/products/docker-desktop/) est requis).
-
-**Option A — image pré-construite (Docker Hub).** L'image exacte que nous avons validée
-(multi-architecture : amd64 + arm64), sans rien construire :
-
-```bash
-docker pull souhailbourhim/portfolio-ml:phase1
-docker run --rm souhailbourhim/portfolio-ml:phase1        # exécute la suite de tests
-```
-
-**Option B — construire depuis les sources :**
-
-```bash
-# 1. Vérification sans aucune configuration : la suite de tests (hors-ligne)
-docker compose run --rm test
-
-# 2. Pipeline complet (nécessite un fichier .env avec FRED_API_KEY)
-docker compose run --rm pipeline
-
-# 3. Notebooks dans le navigateur (token affiché dans les logs)
-docker compose up notebook        # → http://localhost:8888
-```
-
-Les données ne sont pas incluses dans l'image (elles sont générées à l'exécution et gérées
-par DVC) : `data/` et `mlruns/` sont montés depuis l'hôte, donc les sorties persistent et
-restent visibles par DVC. La planification Dagster/launchd reste hors périmètre Docker
-(spécifique macOS).
-
-## Commandes utiles
+Détail : [`docs/MULTIPLE_TESTING.md`](docs/MULTIPLE_TESTING.md) ; artefacts
+`data/gold/reality_check_results.json` et `reality_check_series.parquet`.
 
 ### Pipeline de données
 

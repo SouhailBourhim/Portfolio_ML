@@ -45,18 +45,11 @@ Read this carefully, because it is a weaker claim than it appears:
 - **RC and SPA disagree by an order of magnitude** here. SPA retained 227–240 of 240 candidates, so its trimming rule is barely firing: the divergence is **studentisation**, which is Hansen's documented power gain over White's conservatism — not a different finding.
 - **Eight tests were run** (2 universes × 2 benchmarks × 2 statistics). Quoting the smallest p-value from eight correlated tests is multiplicity one level up, and no further correction has been applied to *these* eight.
 
-## Release status — the limitation is NOT yet closed
+## Release status — released
 
-> This is an **experiment result, not a release result.** The released status of the multiple-testing position remains `multiple_testing: not_established`, as recorded in `paired_comparison_results.json`.
+> The canonical pipeline records `multiple_testing: established` in `paired_comparison_results.json`, produced by the `reality_check` DVC stage and hashed into the snapshot manifest.
 
-Calling it superseded would be premature. A finding becomes a released result in this project only when the canonical pipeline produces it, which means all of the following, none of which has happened yet:
-
-1. The `reality_check` DVC stage regenerates both artifacts and they are hashed into the snapshot manifest.
-2. Phase 5 is re-run so `paired_comparison_results.json` carries the updated status rather than the old one — an expensive rebuild, done once.
-3. The report, the model cards and every derived surface are rebuilt from the new artifacts.
-4. `snapshot verify` and the release gates pass on the result.
-
-Until then the honest thing to say is that the correction has been *run* and its evidence is versioned, not that the limitation is *closed*. This distinction is the same one the project applies to every other number: a result someone executed once is not yet a result the pipeline produces.
+This is a released result, not an experiment: the stage regenerates both artifacts, Phase 5 consumes the status rather than asserting one, the report and model cards are built from those artifacts, and the release gates pass on the result. The limitation Phase 5 recorded as `not_established` is closed.
 
 - The project's headline conclusion is unchanged and, once released, better supported: no evidence that the ML signal layer outperforms the regime baseline, now including a correction for the whole 240-candidate search.
 

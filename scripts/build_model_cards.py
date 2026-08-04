@@ -155,6 +155,24 @@ def _header(title: str, status: str) -> str:
 """
 
 
+def _multiple_testing_sentence(mt: dict) -> str:
+    """One sentence, whichever status the pipeline recorded.
+
+    The card must follow the artifact rather than assume a status: it read
+    `mt['reason']` unconditionally and broke the moment the correction moved
+    from `not_established` to `established`, which is the transition the whole
+    exercise existed to produce.
+    """
+    if mt["status"] != "established":
+        return mt.get("reason", "")
+    return (
+        f"{mt['verdict']} Corrected over {mt['n_candidates_corrected_for']} reachable "
+        f"configurations via White's Reality Check and Hansen's SPA "
+        f"(`{mt['artifact']}`). Comparisons against `equal_weight` are exploratory "
+        f"by pre-specification and are not the basis of this status."
+    )
+
+
 def _shared_limitations() -> str:
     mt = PAIRED["multiple_testing"]
     return f"""## Limitations
@@ -165,7 +183,7 @@ def _shared_limitations() -> str:
   no order execution path.
 - **No client data.** The system consumes public market and macro series only.
   It holds no personal data and no client PII of any kind.
-- **Multiple testing is `{mt['status']}`.** {mt['reason']}
+- **Multiple testing is `{mt['status']}`.** {_multiple_testing_sentence(mt)}
 - **Currency exposure is unhedged.** BVC returns are MAD-denominated and ETF
   returns USD; every reported figure embeds an unhedged USD/MAD exposure.
 - **`full_2021` excludes the 2020 COVID crash** — the free BVC source begins

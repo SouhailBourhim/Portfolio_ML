@@ -352,11 +352,22 @@ class TestPersistedArtifact:
         text = doc.read_text(encoding="utf-8")
 
         paired = self.ROOT / "data" / "gold" / "paired_comparison_results.json"
-        if paired.is_file():
-            status = json.loads(paired.read_text(encoding="utf-8"))["multiple_testing"]["status"]
-            if status == "not_established":
-                assert "NOT yet closed" in text, (
-                    "the released status is still not_established, so the doc must "
-                    "say the limitation is not yet closed"
-                )
-                assert "experiment result, not a release result" in text
+        if not paired.is_file():
+            pytest.skip("paired_comparison_results.json not present.")
+        status = json.loads(paired.read_text(encoding="utf-8"))["multiple_testing"]["status"]
+
+        # Both directions. The first version of this test only fired on
+        # `not_established`, so when the canonical rebuild flipped the status the
+        # doc went stale the OTHER way and the test passed vacuously.
+        if status == "not_established":
+            assert "NOT yet closed" in text, (
+                "the released status is not_established, so the doc must say the "
+                "limitation is not yet closed"
+            )
+            assert "experiment result, not a release result" in text
+        else:
+            assert "NOT yet closed" not in text, (
+                f"the released status is {status!r}, but the doc still says the "
+                f"limitation is not yet closed"
+            )
+            assert "Release status — released" in text

@@ -195,6 +195,63 @@ accepter l'hypothèse nulle. L'établir demanderait un test d'équivalence contr
 marge fixée à l'avance, qui n'a pas été mené.
 \end{resultatbox}
 
+\subsection{Corriger pour l'ampleur de la recherche}
+
+% The table also DEFINES \correctionVerdict and \correctionCandidats, so it
+% must be input before the prose that uses them.
+\input{assets/tables/correction_tests_multiples}
+
+Les huit comparaisons pairées ci-dessus testent chacune \emph{un} candidat contre
+une référence. Mais ce candidat a été \emph{choisi dans une recherche}, et le
+meilleur de plusieurs candidats bat une référence par chance plus souvent qu'un
+candidat unique. Tant que cette sélection n'est pas tarifée, « le modèle retenu
+a battu la haie » n'est pas l'affirmation qu'il paraît être.
+
+\paragraph{L'ensemble corrigé est l'espace ATTEIGNABLE.} La recherche était
+hiérarchique — hyperparamètres choisis par coefficient d'information, puis
+leviers de portefeuille conditionnellement à ces hyperparamètres. Le registre
+d'essais en avait enregistré 51, mais l'espace que la recherche pouvait
+sélectionner compte \correctionCandidats{} configurations : 15 jeux
+d'hyperparamètres $\times$ 16 combinaisons de leviers. Corriger pour 51 quand
+240 étaient atteignables sous-estimerait la multiplicité, donc c'est le nombre
+le plus grand qui est retenu. Chacune de ces 240 configurations a été
+réévaluée sur les dates de test gelées et sa série de rendement conservée.
+
+\begin{resultatbox}{Le verdict corrigé}
+\correctionVerdict{}
+
+\textbf{La référence primaire est pré-spécifiée} : \texttt{regime\_conditional}
+est la haie que la couche ML devait franchir et celle que toutes les phases
+antérieures rapportaient. Face à elle, ni le Reality Check ni le SPA n'établit
+de surperformance, sur aucun univers ni aucune statistique.
+
+L'illustration la plus parlante tient en deux nombres. En retenant le meilleur
+des 240 candidats \emph{jugé sur la fenêtre de test elle-même}, on obtient un
+Sharpe de 1,87 sur \texttt{full\_2021} — contre 1,31 pour celui que la
+sélection honnête avait désigné. Cet écart ne mesure pas une performance : il
+mesure ce que la sélection sur l'échantillon de test \emph{fabrique}, et c'est
+exactement ce que la correction sert à tarifer.
+
+Les comparaisons face à \texttt{equal\_weight} sont \textbf{exploratoires par
+pré-spécification} et n'étayent aucune réussite du ML : la stratégie à régimes,
+et depuis la correction des dividendes le \texttt{max\_sharpe} classique,
+franchissent déjà ce plancher.
+\end{resultatbox}
+
+\paragraph{Trois réserves qui accompagnent ce tableau.} Le RC et le SPA sont
+rapportés \emph{côte à côte} et aucun ne doit être cité seul : le SPA est plus
+puissant par construction — il studentise chaque candidat et écarte les
+candidats sans espoir du recentrage — donc il donnera d'ordinaire la plus
+petite $p$-value. Ici il conserve 227 à 240 candidats sur 240, ce qui montre que
+sa règle d'exclusion ne joue quasiment pas : l'écart entre les deux tests vient
+de la studentisation, gain de puissance documenté de Hansen sur la
+conservativité de White, et non d'un désaccord sur le résultat. Enfin, huit
+comparaisons externes ont été menées (2 univers $\times$ 2 références $\times$ 2
+statistiques) et ne sont pas elles-mêmes corrigées : citer la plus petite des
+huit serait de la multiplicité un niveau au-dessus de celle que ce tableau
+corrige.
+
+
 Trois éléments confirment ce diagnostic plutôt qu'ils ne l'affaiblissent.
 
 D'abord, le protocole imbriqué apporte un gain de précision réel~: la largeur
