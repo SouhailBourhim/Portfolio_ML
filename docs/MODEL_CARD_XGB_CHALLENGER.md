@@ -11,9 +11,9 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `55e96221a5ac` |
+| Code revision (artifacts) | `9dff7eb26393` |
 | Python | 3.11.14 |
-| Snapshot manifest | `data/gold/snapshot_manifest.json`, 29 files hashed |
+| Snapshot manifest | `data/gold/snapshot_manifest.json`, 31 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
 
 > **Challenger status.** This model **did not establish statistically supported

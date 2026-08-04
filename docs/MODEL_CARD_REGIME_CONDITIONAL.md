@@ -11,9 +11,9 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `55e96221a5ac` |
+| Code revision (artifacts) | `9dff7eb26393` |
 | Python | 3.11.14 |
-| Snapshot manifest | `data/gold/snapshot_manifest.json`, 29 files hashed |
+| Snapshot manifest | `data/gold/snapshot_manifest.json`, 31 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
 
 ## Purpose
@@ -199,12 +199,12 @@ a strategy that wins gross and loses net is treated as a finding.
 ## Reproducibility
 
 ```bash
-git checkout 55e96221a5ac
+git checkout 9dff7eb26393
 ./scripts/dvc.sh pull
 ./.venv/bin/python src/snapshot.py verify
 ```
 
-The manifest hashes 29 inputs and artifacts and records
+The manifest hashes 31 inputs and artifacts and records
 whether the tree was clean when it was written. Verification rejects a manifest
 produced from a dirty tree, and rejects a revision that is not an ancestor of
 the checked-out one.

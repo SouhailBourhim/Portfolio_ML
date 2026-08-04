@@ -847,8 +847,8 @@ stages:
       size: 121639
     - path: data/gold/paired_comparison_results.json
       hash: md5
-      md5: 83c92971ee62cdeb20b578b5c62cf99c
-      size: 9774
+      md5: bbf5978e840b4eb51fcf3aa50237199d
+      size: 12018
     - path: data/gold/phase2_hurdle.json
       hash: md5
       md5: 655f015895c13898a158239bb7a6d54f
@@ -887,13 +887,13 @@ stages:
       size: 3554
     - path: src/snapshot.py
       hash: md5
-      md5: 0806d318ff8feacee541b93cd2683b55
-      size: 13480
+      md5: f9c4661f53a183eceb2ec6cdb2a30967
+      size: 13811
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: 13d8f03bc14d01e98f9dce896149bbb0
-      size: 8581
+      md5: b15dbda7466dae2e2df2616c57a52331
+      size: 9071
   smoke:
     cmd: python scripts/smoke_pipeline.py
     deps:
