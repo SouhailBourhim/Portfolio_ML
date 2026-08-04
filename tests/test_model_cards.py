@@ -200,20 +200,21 @@ class TestWordDeliverablesCarryNoRetractedClaim:
         "statistically indistinguishable",
     )
 
-    # Owned by a teammate and excluded from this project's commits; reported
-    # rather than silently skipped, so its exclusion stays a decision.
-    NOT_OURS = {"Annexe_Metriques_Evaluation.docx"}
+    # Nothing is excluded. The annex was carved out while a teammate owned it;
+    # it has since been corrected here, so the guard covers every Word
+    # deliverable in docs/ without exception.
+    NOT_OURS: set[str] = set()
 
-    def test_no_livrable_asserts_significance_or_equivalence(self):
+    def test_no_word_deliverable_asserts_significance_or_equivalence(self):
         docx = pytest.importorskip("docx")
-        paths = sorted((ROOT / "docs").glob("Livrable_*.docx"))
+        paths = sorted((ROOT / "docs").glob("*.docx"))
         if not paths:
             pytest.skip("no Word deliverables present.")
 
         offenders = {}
         for path in paths:
-            if path.name in self.NOT_OURS:
-                continue
+            if path.name in self.NOT_OURS or path.name.startswith("~$"):
+                continue  # ~$ files are Word lock files, not deliverables
             document = docx.Document(str(path))
             text = "\n".join(p.text for p in document.paragraphs)
             for table in document.tables:
