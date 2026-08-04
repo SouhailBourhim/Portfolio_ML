@@ -5,7 +5,7 @@
 
 Several estimators in this project degrade rather than crash: DCC-GARCH falls back to Ledoit-Wolf shrinkage on non-convergence, the ML signals fall back to the naive sample mean on a thin panel or a failed fit, and the regime strategy resolves an uncertain posterior to its defensive branch. Each is deliberate — a walk-forward loop must not die on one bad window — but each also means a result can carry a label that is not the whole truth.
 
-On the released data snapshot, **0 of 1,188 strategy fits** across 297 rebalance dates used a fallback. **Every published result was produced by the model named in its label.**
+On the released snapshot, **0 of 1,188 fits** across **4 evaluated strategies** and **297 rebalance dates** used a fallback. Every result reported here was produced by the model named in its label.
 
 ## Audit
 
@@ -25,8 +25,9 @@ Source artifacts, both versioned and hashed into the snapshot manifest:
 
 ## What this does and does not say
 
-- **Does:** on this snapshot, at this revision, no fallback path was taken.
-- **Does NOT:** claim the models never fall back. The fallback paths are live code, they are tested, and a different data snapshot can exercise them. This is a measurement of one release, not a property of the estimators.
+- **Does:** on this snapshot, at this revision, across the strategies and dates counted above, no fallback path was taken. The value is a reproducible, versioned measurement rather than an assumption.
+- **Does NOT:** claim that no model ever falls back. The fallback paths are live, tested code and a different snapshot can exercise them. The scope of the claim is exactly the fits counted above — the telemetry exists to make the wider claim TESTABLE, not to assert it.
+- **The control that makes this credible** is not the zero itself but `test_full_period_sharpe_matches_the_published_dashboard_figure`: the runner must reproduce every published Sharpe through the instrumented engine, so the telemetry cannot be auditing a differently-configured lookalike under the same name.
 - Degraded-period and excluding-fallback performance tables are omitted here **because there is nothing to show** — with zero fallback days they would repeat the full-period column. They render automatically if a future run records any fallback.
 
 **Historical context — 2026-07-20.** An earlier run recorded the DCC-GARCH Ledoit-Wolf fallback firing exactly once, on `IAM.CS` in `full_2021`, and that observation is cited in the project record as evidence the safety net worked. It does **not** reproduce on the current snapshot: the BVC dividend correction and the adoption of the deep ETF history both changed the return series the GARCH fits see. The original observation was true when made; it is retained here rather than deleted, because a superseded measurement is part of how a result came to be trusted.

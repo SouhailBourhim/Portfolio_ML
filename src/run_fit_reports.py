@@ -169,8 +169,9 @@ def _cost_sensitivity(result, risk_free_annual: float) -> dict:
 
     Addresses: P4 — a net Sharpe is a statement about an assumed cost model as
     much as about a strategy, and this project's cost assumptions (10 bps ETF,
-    30 bps BVC) are judgement calls. A result that survives 2x costs is a
-    different claim from one that does not.
+    30 bps BVC) are judgement calls. Whether a reported point estimate stays
+    positive at 2x those costs is worth knowing; it is not by itself evidence
+    of robustness.
 
     Derived EXACTLY, not re-simulated. The engine deducts the cost drag from
     gross on the day after each rebalance, so `gross - net` is precisely the
@@ -178,9 +179,19 @@ def _cost_sensitivity(result, risk_free_annual: float) -> dict:
 
         net(m) = gross - m * (gross - net)
 
-    Re-running the backtest per multiplier would produce identical weights —
-    costs never enter the optimizer for these strategies — at four times the
-    compute, and any tiny difference would be a bug rather than a finding.
+    WHAT THIS IS NOT. This is a re-pricing of a FIXED allocation path under a
+    LINEAR cost model, not a re-optimization sensitivity analysis. It answers
+    "what would these same trades have cost", never "what would the strategy
+    have done had it known costs were higher". Three conditions bound it:
+
+      1. The weight path is held fixed — no strategy here reads costs, so the
+         same trades occur in every scenario.
+      2. Costs are linear in traded notional, with no market-impact or
+         capacity term, so the drag scales exactly with the multiplier.
+      3. It does NOT apply to a turnover-penalized strategy (Phase 4C, lambda
+         in objective units): there the cost of trading reaches the objective,
+         a higher cost would change the weights, and the scenarios would have
+         to be re-simulated rather than re-priced.
     """
     gross, net = result.gross_returns, result.net_returns
     drag = gross - net
@@ -211,10 +222,24 @@ def _cost_sensitivity(result, risk_free_annual: float) -> dict:
 
     return {
         "scenarios": scenarios,
+        "method": "re-pricing of a fixed allocation path under a linear cost model",
+        "validity_conditions": [
+            "The weight path is held FIXED: no strategy evaluated here reads costs, "
+            "so the same trades occur in every scenario.",
+            "Costs are linear in traded notional. No market-impact or capacity term "
+            "is modelled, so the drag scales exactly with the multiplier.",
+            "NOT a re-optimization sensitivity analysis: it answers what these same "
+            "trades would have cost, never what the strategy would have done had it "
+            "known costs were higher.",
+            "Does NOT apply to a turnover-penalized strategy (Phase 4C), where the "
+            "cost of trading reaches the objective and higher costs would change the "
+            "weights. Those scenarios must be re-simulated, not re-priced.",
+        ],
         "break_even_cost_multiplier": break_even,
         "break_even_note": (
-            "Multiplier at which the annualized NET return reaches zero. None means "
-            "it survives 20x the assumed costs."
+            "Multiplier at which the annualized NET return of this fixed allocation "
+            "path reaches zero. None means it stays positive through 20x the assumed "
+            "costs. A point estimate on one historical path — not a robustness claim."
         ),
         "fallback_invariance_note": (
             "The fallback rate is identical across every cost scenario, and this is "

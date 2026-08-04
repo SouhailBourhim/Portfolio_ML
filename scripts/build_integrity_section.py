@@ -35,6 +35,7 @@ GOLD = ROOT / "data" / "gold"
 SUMMARY_PATH = GOLD / "fit_report_summary.json"
 OUT_MD = ROOT / "docs" / "MODEL_INTEGRITY.md"
 OUT_TEX = ROOT / "docs" / "rapport" / "assets" / "tables" / "integrite_modele.tex"
+OUT_COSTS = ROOT / "docs" / "rapport" / "assets" / "tables" / "sensibilite_couts.tex"
 
 # Kept because it happened, flagged because it no longer does.
 HISTORICAL_NOTE = (
@@ -119,10 +120,12 @@ def build_markdown(summary: dict) -> str:
     dates = _distinct_rebalance_dates(results)
     clean = total_fallbacks == 0
 
+    strategies = len({r["strategy_requested"] for r in results})
     headline = (
-        f"On the released data snapshot, **{total_fallbacks} of {total_fits:,} strategy "
-        f"fits** across {dates:,} rebalance dates used a fallback. "
-        f"**Every published result was produced by the model named in its label.**"
+        f"On the released snapshot, **{total_fallbacks} of {total_fits:,} fits** across "
+        f"**{strategies} evaluated strategies** and **{dates:,} rebalance dates** used a "
+        f"fallback. Every result reported here was produced by the model named in its "
+        f"label."
         if clean else
         f"On the released data snapshot, **{total_fallbacks} of {total_fits:,} strategy "
         f"fits** used a fallback. Results for the affected strategies are HYBRIDS of "
@@ -155,10 +158,18 @@ def build_markdown(summary: dict) -> str:
         "",
         "## What this does and does not say",
         "",
-        "- **Does:** on this snapshot, at this revision, no fallback path was taken.",
-        "- **Does NOT:** claim the models never fall back. The fallback paths are live "
-        "code, they are tested, and a different data snapshot can exercise them. This "
-        "is a measurement of one release, not a property of the estimators.",
+        "- **Does:** on this snapshot, at this revision, across the strategies and "
+        "dates counted above, no fallback path was taken. The value is a reproducible, "
+        "versioned measurement rather than an assumption.",
+        "- **Does NOT:** claim that no model ever falls back. The fallback paths are "
+        "live, tested code and a different snapshot can exercise them. The scope of the "
+        "claim is exactly the fits counted above — the telemetry exists to make the "
+        "wider claim TESTABLE, not to assert it.",
+        "- **The control that makes this credible** is not the zero itself but "
+        "`test_full_period_sharpe_matches_the_published_dashboard_figure`: the runner "
+        "must reproduce every published Sharpe through the instrumented engine, so the "
+        "telemetry cannot be auditing a differently-configured lookalike under the same "
+        "name.",
         "- Degraded-period and excluding-fallback performance tables are omitted here "
         "**because there is nothing to show** — with zero fallback days they would "
         "repeat the full-period column. They render automatically if a future run "
@@ -190,10 +201,14 @@ def build_latex(summary: dict) -> str:
             f"{entry['fallback_days']} / {entry['oos_days']} \\\\"
         )
 
+    strategies = len({r["strategy_requested"] for r in results})
+    dates = sum(r["rebalances"] for r in results)
     verdict = (
-        f"Sur l'instantané publié, {total_fallbacks} ajustement sur "
-        f"{total_fits} n'a utilisé de repli : chaque résultat publié a été produit "
-        f"par le modèle que son étiquette désigne."
+        f"Sur l'instantané publié, {total_fallbacks} ajustement sur {total_fits} "
+        f"— {strategies} stratégies évaluées, {dates} dates de rééquilibrage — "
+        f"n'a utilisé de repli : chaque résultat rapporté ici a été produit par le "
+        f"modèle que son étiquette désigne. La portée de cette affirmation est "
+        f"exactement l'ensemble compté ci-dessus."
         if total_fallbacks == 0 else
         f"Sur l'instantané publié, {total_fallbacks} ajustements sur {total_fits} "
         f"ont utilisé un repli ; les résultats concernés sont des HYBRIDES."
@@ -224,15 +239,68 @@ def build_latex(summary: dict) -> str:
     ])
 
 
+def build_cost_latex(summary: dict) -> str:
+    """Cost re-pricing table. Deliberately labelled as a re-pricing.
+
+    The caption says what the numbers are — the same allocation path priced
+    under different linear cost assumptions — so a reader cannot mistake it for
+    a re-optimization study in which the strategy would have traded differently.
+    """
+    rows = []
+    for entry in sorted(summary["results"], key=lambda r: (r["universe"], r["strategy_requested"])):
+        scenarios = entry["cost_sensitivity"]["scenarios"]
+        break_even = entry["cost_sensitivity"]["break_even_cost_multiplier"]
+        universe = entry["universe"].replace("_", r"\_")
+        strategy = entry["strategy_requested"].replace("_", r"\_")
+
+        def fr(value: float) -> str:
+            return f"{value:.3f}".replace(".", ",").replace("-", "$-$")
+
+        rows.append(
+            f"    \\texttt{{{universe}}} & \\texttt{{{strategy}}} & "
+            + " & ".join(fr(scenarios[k]["net_sharpe"]) for k in ("0.5x", "1x", "1.5x", "2x"))
+            + " & "
+            + (f"{break_even:.1f}$\\times$".replace(".", ",") if break_even else "$>20\\times$")
+            + " & "
+            + f"{entry['execution_profile']['avg_turnover']:.3f}".replace(".", ",")
+            + " \\\\"
+        )
+
+    return "\n".join([
+        "% GÉNÉRÉ par scripts/build_integrity_section.py — ne pas éditer à la main.",
+        "% Source : data/gold/fit_report_summary.json",
+        "\\begin{table}[htbp]",
+        "  \\centering",
+        "  \\small",
+        "  \\caption[Sensibilité aux coûts]{Sharpe net du \\emph{même} chemin "
+        "d'allocation, repricé sous des coûts de transaction multipliés. Il ne "
+        "s'agit pas d'une ré-optimisation : les pondérations sont identiques dans "
+        "chaque colonne. « Seuil » est le multiplicateur annulant le rendement net.}",
+        "  \\label{tab:couts}",
+        "  \\begin{tabular}{@{}llrrrrrr@{}}",
+        "    \\toprule",
+        "    Univers & Stratégie & 0,5$\\times$ & 1$\\times$ & 1,5$\\times$ & "
+        "2$\\times$ & Seuil & Rotation \\\\",
+        "    \\midrule",
+        *rows,
+        "    \\bottomrule",
+        "  \\end{tabular}",
+        "\\end{table}",
+        "",
+    ])
+
+
 def main() -> None:
     summary = _load()
     OUT_MD.write_text(build_markdown(summary), encoding="utf-8")
     OUT_TEX.parent.mkdir(parents=True, exist_ok=True)
     OUT_TEX.write_text(build_latex(summary), encoding="utf-8")
+    OUT_COSTS.write_text(build_cost_latex(summary), encoding="utf-8")
     total = sum(r["rebalances"] for r in summary["results"])
     fallbacks = sum(r["fallback_rebalances"] for r in summary["results"])
     print(f"  docs/MODEL_INTEGRITY.md")
     print(f"  docs/rapport/assets/tables/integrite_modele.tex")
+    print(f"  docs/rapport/assets/tables/sensibilite_couts.tex")
     print(f"  ({fallbacks}/{total} fits used a fallback; "
           f"degraded tables {'omitted' if fallbacks == 0 else 'RENDERED'})")
 

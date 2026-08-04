@@ -1081,8 +1081,8 @@ stages:
       size: 10504
     - path: src/run_fit_reports.py
       hash: md5
-      md5: 84a03cfe1b560989f32fcdaca71b322d
-      size: 16839
+      md5: a506a8b8b4c1e8d8ecfef3c6b16d98d9
+      size: 18549
     - path: src/strategies.py
       hash: md5
       md5: e14c05a35b6727c01bac51b66afcef58
@@ -1108,8 +1108,8 @@ stages:
     outs:
     - path: data/gold/fit_report_summary.json
       hash: md5
-      md5: addc1eaca43159a00b9db3be3f463c90
-      size: 31480
+      md5: 14f98662230e851f047fe3ee72a68d5f
+      size: 38789
     - path: data/gold/fit_reports.parquet
       hash: md5
       md5: af575bd110c558260cf45163efcc2c92

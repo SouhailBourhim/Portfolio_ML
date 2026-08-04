@@ -36,9 +36,13 @@ surperforme les méthodes classiques.
 > **2. Étiquette de modèle et modèle effectif.** Plusieurs estimateurs se dégradent
 > au lieu d'échouer (DCC-GARCH → Ledoit-Wolf, signaux ML → moyenne empirique,
 > régimes → branche défensive). Sur l'instantané publié, **0 des 1 188 ajustements
-> n'a utilisé de repli** : chaque résultat provient du modèle que son étiquette
-> désigne. Mesuré, pas supposé — voir [`docs/MODEL_INTEGRITY.md`](docs/MODEL_INTEGRITY.md)
-> et l'artefact `data/gold/fit_report_summary.json`.
+> — 4 stratégies évaluées, 297 dates de rééquilibrage — n'a utilisé de repli** :
+> chaque résultat rapporté provient du modèle que son étiquette désigne. La portée
+> est exactement cet ensemble ; ce n'est pas l'affirmation qu'aucun modèle ne replie
+> jamais, et l'instrumentation existe pour rendre cette question vérifiable sur tout
+> instantané futur. Mesuré, pas supposé — voir
+> [`docs/MODEL_INTEGRITY.md`](docs/MODEL_INTEGRITY.md) et l'artefact
+> `data/gold/fit_report_summary.json`.
 
 ## Univers d'actifs
 

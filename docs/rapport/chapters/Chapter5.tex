@@ -436,6 +436,77 @@ cinq tentatives indépendantes ont été menées avec un protocole identique.
 \end{resultatbox}
 
 % =============================================================================
+\section{L'étiquette correspond-elle au modèle ? (P4)}
+
+Plusieurs estimateurs de ce système se dégradent au lieu d'échouer : DCC-GARCH
+retombe sur le rétrécissement de Ledoit-Wolf en cas de non-convergence, les
+signaux ML retombent sur la moyenne empirique si le panel est trop mince ou si
+l'ajustement échoue, et la stratégie à régimes résout une postérieure incertaine
+vers sa branche défensive. Chacun de ces replis est délibéré — une boucle
+walk-forward ne doit pas mourir sur une fenêtre difficile — mais chacun signifie
+aussi qu'un résultat peut porter une étiquette qui n'est pas toute la vérité. Un
+« DCC-GARCH » ayant replié une fois sur quatre est, sur ces dates, un résultat
+Ledoit-Wolf sous une étiquette DCC-GARCH.
+
+Jusqu'ici ces replis n'étaient tracés qu'en journal applicatif, au niveau
+\texttt{WARNING} : un message que personne ne lit sur une exécution non
+surveillée, et absent de tout artefact publié. Une instrumentation par
+rééquilibrage enregistre désormais, pour chaque ajustement, le modèle demandé,
+le modèle effectif, le statut, la raison du repli et la taille de la fenêtre
+d'entraînement. Ces enregistrements sont persistés en couche Gold
+(\texttt{fit\_reports.parquet}), versionnés et intégrés au manifeste de release
+avant qu'aucun tableau n'en soit tiré.
+
+\input{assets/tables/integrite_modele}
+
+\integriteVerdict{}
+
+\begin{resultatbox}{Ce que cette mesure établit, et ce qu'elle n'établit pas}
+\textbf{Elle établit} qu'aucun repli n'a été emprunté sur l'instantané publié,
+pour les stratégies et les dates comptées ci-dessus. La valeur est une
+\emph{mesure reproductible et versionnée}, non une hypothèse — c'est là
+l'apport, davantage que le zéro lui-même.
+
+\textbf{Elle n'établit pas} qu'aucun modèle ne replie jamais. Les chemins de
+repli sont du code vivant et testé, et un autre instantané peut les emprunter.
+L'instrumentation existe précisément pour rendre cette question
+\emph{vérifiable}, pas pour trancher d'avance.
+
+\textbf{Le contrôle qui rend le résultat crédible} n'est pas le zéro mais le
+test d'équivalence du runner : celui-ci doit reproduire chaque ratio de Sharpe
+publié \emph{à travers} le moteur instrumenté. Sans lui, l'instrumentation
+pourrait auditer une stratégie différemment configurée portant le même nom —
+ce qui s'est effectivement produit lors d'une première rédaction, où une
+configuration incomplète produisait un \texttt{rf\_signal} à 0,146 contre 1,123
+publié.
+\end{resultatbox}
+
+\subsection{Sensibilité aux coûts de transaction}
+
+Un ratio de Sharpe net énonce autant une hypothèse de coûts qu'une propriété de
+stratégie ; les hypothèses retenues ici (10~pb ETF, 30~pb BVC) sont des
+jugements. Le tableau~\ref{tab:couts} reprice le \emph{même} chemin d'allocation
+sous 0,5×, 1×, 1,5× et 2× ces coûts.
+
+\input{assets/tables/sensibilite_couts}
+
+\textbf{Portée de ce calcul.} Il s'agit d'un \emph{repricing d'un chemin
+d'allocation figé sous un modèle de coûts linéaire}, et non d'une analyse de
+sensibilité avec ré-optimisation. Il répond à « combien ces mêmes transactions
+auraient-elles coûté », jamais à « qu'aurait fait la stratégie si elle avait su
+les coûts plus élevés ». Trois conditions le bornent : le chemin de pondérations
+est figé (aucune stratégie évaluée ici ne lit les coûts) ; les coûts sont
+linéaires en notionnel échangé, sans terme d'impact de marché ni de capacité ;
+et le calcul ne s'applique \emph{pas} à une stratégie pénalisée en rotation
+(phase 4C), où le coût atteint la fonction objectif et modifierait les
+pondérations — ces scénarios-là devraient être re-simulés, non repricés.
+
+Toutes les estimations ponctuelles de Sharpe net rapportées restent positives à
+2× les coûts. Ce constat est descriptif : il ne vaut ni démonstration de
+robustesse ni validation économique. L'ordre de fragilité est en revanche
+informatif et recoupe le diagnostic des phases 4B/4C : les modèles de signal à
+forte rotation sont les plus sensibles aux coûts.
+
 \section{Le produit livré}
 % =============================================================================
 
