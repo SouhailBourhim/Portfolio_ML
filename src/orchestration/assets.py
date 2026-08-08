@@ -15,10 +15,14 @@ data/bronze|silver|gold/); these assets exist for scheduling, lineage, and
 run history, not as a replacement data layer.
 """
 
+import json
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 SRC_DIR = Path(__file__).resolve().parents[1]
+ROOT = SRC_DIR.parent
 sys.path.insert(0, str(SRC_DIR))
 
 from dagster import AssetExecutionContext, MetadataValue, asset
@@ -85,11 +89,60 @@ def bvc_dividends(context: AssetExecutionContext) -> None:
 
 
 @asset(
+    group_name="bronze",
+    description=(
+        "Official Bank Al-Maghrib USD/MAD reference rates (Cours de référence). "
+        "A Bronze asset in its own right for the same reason as bvc_dividends: "
+        "the 9-asset universe's returns are WRONG without it, because it is what "
+        "expresses the USD-denominated ETF sleeve in the MAD numéraire. The Yahoo "
+        "USDMAD=X quote in raw_bam_macro is NOT a substitute — its daily changes "
+        "correlate with the official rate's at 0.028 and it overstates FX "
+        "volatility 6x. Cache-first: a complete window is a no-op that only "
+        "refreshes the quality report, which matters because the BAM gateway "
+        "allows 5 requests/minute and a full refetch costs ~4.4 hours."
+    ),
+)
+def bam_fx_reference(context: AssetExecutionContext) -> None:
+    import subprocess
+
+    script = ROOT / "scripts" / "backfill_bam_fx.py"
+    result = subprocess.run(
+        [sys.executable, str(script)], capture_output=True, text=True, cwd=str(ROOT)
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"BAM FX fetch failed (exit {result.returncode}). Without it the 9-asset "
+            f"universe cannot be expressed in MAD, and there is deliberately no "
+            f"fallback to the Yahoo quote.\n{result.stderr[-2000:]}"
+        )
+
+    path = ROOT / "data" / "bronze" / "bam_fx_reference.parquet"
+    series = pd.read_parquet(path)["USDMAD"]
+    quality = json.loads(
+        (ROOT / "data" / "bronze" / "bam_fx_reference_quality.json").read_text()
+    )
+    context.add_output_metadata({
+        "n_rates": len(series),
+        "date_range": f"{series.index.min().date()} -> {series.index.max().date()}",
+        "density": quality["gap_structure"]["density"],
+        "longest_gap_business_days":
+            quality["gap_structure"]["longest_consecutive_missing_business_days"],
+        "quality_gate": "PASSES" if quality["quality"]["passed"] else "FAILS",
+    })
+
+
+@asset(
     group_name="silver",
-    deps=[raw_etf_prices, raw_bvc_prices, bvc_dividends],
+    # bam_fx_reference carries the OFFICIAL USD/MAD rate, which converts the
+    # USD-denominated ETF sleeve into the MAD numéraire before returns are
+    # computed. It is an input to the NUMBER, not just a macro feature, so it
+    # belongs on this edge -- the §17.7 lesson (a Gold/Silver input invisible to
+    # the asset graph goes stale silently on every scheduled run).
+    # NOT raw_bam_macro: that is the Yahoo quote, retained for macro features only.
+    deps=[raw_etf_prices, raw_bvc_prices, bvc_dividends, bam_fx_reference],
     description=(
         "Calendar-aligned, Pandera-validated log-returns (9-asset universe), "
-        "on a TOTAL-RETURN basis for the BVC names."
+        "MAD-denominated, on a TOTAL-RETURN basis for the BVC names."
     ),
 )
 def log_returns(context: AssetExecutionContext) -> None:
@@ -106,9 +159,16 @@ def log_returns(context: AssetExecutionContext) -> None:
 
 @asset(
     group_name="silver",
+    # Deliberately NO raw_bam_macro dependency. This universe is five
+    # USD-denominated ETFs and nothing else: one numéraire, no mixed-currency
+    # defect, nothing to convert (currency.resolve_currency_policy). It also
+    # runs from 2004-11, and no USD/MAD series obtainable for this project
+    # reaches that far back — so an FX edge here would permanently block a
+    # universe that was never broken.
     deps=[raw_etf_prices],
     description=(
-        "ETF-only log-returns (2017+, includes COVID + the 2022 rate shock) — "
+        "ETF-only log-returns (2004-11+, includes the GFC, COVID and the 2022 "
+        "rate shock), USD-denominated — "
         "the Phase 2 dual-universe design's second backtest universe. Wired as "
         "its own asset so it refreshes every run instead of drifting stale "
         "relative to the 9-asset log_returns asset above."

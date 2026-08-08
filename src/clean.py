@@ -31,6 +31,23 @@ from ingest import START_DATE
 # At module level the same breakage surfaces when the code location LOADS,
 # which Dagster reports immediately and `dagster definitions validate` catches.
 from dividends import load_bvc_dividends
+# Module level for the same reason as the import above: currency conversion is
+# now an INPUT to every Silver number, so a broken import must surface when the
+# code location loads, not 30 s into an unattended run.
+from currency import (
+    BASE_CURRENCY,
+    FOREIGN_CURRENCY,
+    MIXED_UNIVERSE_START,
+    OFFICIAL_FX_FILENAME,
+    convert_prices_to_base_currency,
+    load_fx_rates,
+    resolve_currency_policy,
+)
+# Re-exported deliberately, not accidentally: a caller of `silver_pipeline`
+# catches its failures from this module, exactly as it does for
+# `DividendDataUnavailable` defined below. Removing these because they look
+# unused would break that.
+from currency import FXDataUnavailable, FXQualitySuspect  # noqa: F401
 
 logging.basicConfig(
     level=logging.INFO,
@@ -256,12 +273,16 @@ def silver_pipeline(
     output_stem: str = "log_returns",
     adjust_dividends: bool = True,
     require_dividends: bool = False,
+    convert_to_mad: bool = True,
+    allow_suspect_fx: bool = False,
+    mixed_universe_start: str | None = None,
 ) -> pd.DataFrame:
     """
     Full Bronze → Silver transformation.
 
     Steps: load ETF prices → merge BVC prices → calendar align →
-           log-returns → illiquidity check → Pandera validate → write Parquet.
+           convert to MAD → log-returns → illiquidity check →
+           Pandera validate → write Parquet.
 
     Addresses: P1, P2. With include_bvc=False, also P3/P4 — the ETF-only
     universe keeps the full 2017+ history (the BVC merge is what truncates
@@ -284,13 +305,37 @@ def silver_pipeline(
             False so ad-hoc and offline use still works; every UNATTENDED
             caller (Dagster's `log_returns` asset, `pipeline.py`) passes True,
             because a WARNING nobody reads is indistinguishable from success.
+        convert_to_mad: Express ETF prices in MAD at the observed USD/MAD spot
+            rate BEFORE computing returns, so the portfolio sums one currency
+            (see src/currency.py). Defaults True because a portfolio P&L needs
+            a numéraire; the only legitimate reason to pass False is to
+            reproduce the pre-correction mixed-currency numbers for comparison,
+            and doing so must be stated wherever those numbers are shown.
+        allow_suspect_fx: Downgrade the FX quality gate from a hard failure to
+            a WARNING. Reserved for tests and synthetic smoke runs, whose
+            fixture FX is arbitrary by construction. NO production caller may
+            set it — `tests/test_currency.py` inspects this module,
+            `pipeline.py` and `orchestration/assets.py` to prove none does.
+        mixed_universe_start: Earliest date the MIXED universe may begin,
+            defaulting to `currency.MIXED_UNIVERSE_START` (2021-07-29). Exists
+            because BAM's archive has one 17-business-day hole in July 2021 that
+            cannot be forward-filled causally. Ignored for single-currency
+            universes, which have no FX dependency at all.
 
     Returns:
-        Validated log-returns DataFrame (wide, DatetimeIndex).
+        Validated log-returns DataFrame (wide, DatetimeIndex). MAD-denominated
+        unless `convert_to_mad=False`.
 
     Raises:
         DividendDataUnavailable: if `require_dividends` and the BVC dividend
             history could not be loaded or came back empty.
+        FXDataUnavailable: if `convert_to_mad` and the USD/MAD series is
+            missing, malformed, or does not cover the price calendar. There is
+            deliberately no degraded path: continuing would emit a matrix whose
+            ETF columns are still USD while every label says MAD.
+        FXQualitySuspect: if `convert_to_mad` and the USD/MAD series fails a
+            blocking quality check (bounce, volatility, outliers, quote
+            convention, observation density) without an explicit override.
     """
     SILVER_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -336,6 +381,96 @@ def silver_pipeline(
             log.warning("%s Continuing with price-only returns.", message)
 
     aligned = align_calendars(prices, ffill_limit=ffill_limit)
+
+    # ── Base-currency conversion ────────────────────────────────────────────
+    # Deliberately placed AFTER alignment and BEFORE compute_log_returns:
+    #   * after alignment, the set of dates needing a rate is exactly the index
+    #     of a NaN-free frame, so "insufficient FX coverage" is a precise
+    #     question with a loud answer rather than a judgement call;
+    #   * before returns, so the conversion is one rule applied to prices
+    #     ("value every holding in MAD, then difference") instead of a
+    #     correction bolted onto returns afterwards.
+    # BVC columns are untouched here, which is exactly what keeps the dividend
+    # total-return handling below correct: those are MAD payments added to MAD
+    # prices (docs/DIVIDEND_BIAS.md), and they never meet the FX rate.
+    # The policy is derived from the COLUMNS, so each universe gets the rule it
+    # actually needs rather than one global default (see resolve_currency_policy):
+    #   full_2021 (4 MAD + 5 USD) -> mixed, convert to MAD, FX mandatory
+    #   etf_2017  (5 USD only)    -> single-currency USD, no FX dependency at all
+    # That second line is the important one: etf_2017 runs from 2004-11, and no
+    # USD/MAD series this project can obtain covers that window. Demanding FX for
+    # it would block a universe that never had a numéraire defect to fix.
+    policy = resolve_currency_policy(aligned.columns)
+    currency_metadata: dict | None = None
+
+    if policy["requires_conversion"] and convert_to_mad:
+        log.info("Currency policy: %s", policy["rationale"])
+
+        # BAM's archive has one unfillable hole (2021-07-06 → 07-28, 17 business
+        # days). The mixed universe therefore cannot begin before
+        # MIXED_UNIVERSE_START. Truncating is a real loss of history, so it is
+        # LOGGED with its size and reason rather than absorbed (§15.13) — and
+        # `validate_fx_gap_structure`, called inside the conversion, re-derives
+        # the constraint from the data so this date cannot go quietly stale.
+        cutoff = pd.Timestamp(mixed_universe_start or MIXED_UNIVERSE_START)
+        dropped = int((aligned.index < cutoff).sum())
+        if dropped:
+            log.warning(
+                "Dropping %d of %d rows before %s: Bank Al-Maghrib's reference-rate "
+                "archive has no publication from 2021-07-06 to 2021-07-28 (17 business "
+                "days), which exceeds the causal forward-fill limit and cannot be "
+                "covered without inventing a rate. The OOS window (2022-07-01 onward) "
+                "is unaffected.",
+                dropped, len(aligned), cutoff.date(),
+            )
+            aligned = aligned.loc[aligned.index >= cutoff]
+
+        fx = load_fx_rates(BRONZE_DIR / OFFICIAL_FX_FILENAME)
+        aligned, conversion = convert_prices_to_base_currency(
+            aligned, fx, base_currency=BASE_CURRENCY, ffill_limit=ffill_limit,
+            allow_suspect_fx=allow_suspect_fx,
+        )
+        currency_metadata = {"converted": True, **conversion, "policy": policy}
+    elif policy["requires_conversion"]:
+        # Explicitly asked to reproduce the pre-correction numbers on a universe
+        # that genuinely needs a numéraire. Permitted, but never quiet.
+        log.warning(
+            "convert_to_mad=False on a MIXED universe — ETF prices stay in %s while "
+            "BVC prices are in %s, so the resulting portfolio sums two currencies. "
+            "These are the pre-correction numbers; they are NOT expressed in %s and "
+            "must not be labelled as if they were.",
+            FOREIGN_CURRENCY, BASE_CURRENCY, BASE_CURRENCY,
+        )
+        currency_metadata = {
+            "converted": False,
+            "conversion_required": True,
+            "base_currency": None,
+            "policy": policy,
+            "note": (
+                "NOT converted, on a universe that REQUIRES a numéraire: BVC columns "
+                "are MAD and ETF columns are USD, so any portfolio built from this "
+                "matrix sums two currencies. Pre-correction artifact — do not label "
+                "these numbers as MAD."
+            ),
+        }
+    else:
+        # Single-currency universe: nothing to convert, and no FX is loaded, so
+        # this path has no dependency on raw_bam_macro.parquet whatsoever.
+        log.info("Currency policy: %s", policy["rationale"])
+        currency_metadata = {
+            "converted": False,
+            "conversion_required": False,
+            "base_currency": policy["base_currency"],
+            "policy": policy,
+            "hedge_status": "not applicable — single-currency universe",
+            "note": (
+                f"No conversion performed and none needed: every asset is already "
+                f"{policy['base_currency']}-denominated, so this universe has one "
+                f"numéraire and no mixed-currency defect. It carries NO dependency on "
+                f"the USD/MAD series."
+            ),
+        }
+
     log_returns = compute_log_returns(aligned, dividends=dividends)
     flag_illiquid_assets(log_returns)
 
@@ -346,12 +481,25 @@ def silver_pipeline(
     log.info("Silver %s written: %d rows × %d columns → %s",
              output_stem, *validated.shape, out_path)
 
-    _write_validation_report(validated, output_stem=output_stem)
+    _write_validation_report(
+        validated, output_stem=output_stem, currency_metadata=currency_metadata
+    )
     return validated
 
 
-def _write_validation_report(log_returns: pd.DataFrame, output_stem: str = "log_returns") -> None:
-    """Write a human-readable JSON summary of the Silver layer to data/silver/."""
+def _write_validation_report(
+    log_returns: pd.DataFrame,
+    output_stem: str = "log_returns",
+    currency_metadata: dict | None = None,
+) -> None:
+    """Write a human-readable JSON summary of the Silver layer to data/silver/.
+
+    The `currency` block is not decoration: a returns matrix carries no unit,
+    so without it a reader cannot tell whether these numbers are MAD, USD or a
+    mixture — which is the state this project was in until the conversion
+    landed. `converted: false` is recorded explicitly rather than omitted, so
+    an uncorrected artifact identifies itself.
+    """
     requested_start = pd.Timestamp(START_DATE)
     effective_start = log_returns.index.min()
     truncated_days = max(0, (effective_start - requested_start).days)
@@ -370,6 +518,7 @@ def _write_validation_report(log_returns: pd.DataFrame, output_stem: str = "log_
         "assets_missing": [a for a in ALL_ASSETS if a not in log_returns.columns],
         "nan_count": int(log_returns.isna().sum().sum()),
         "pandera_validation": "PASSED",
+        "currency": currency_metadata,
         "return_stats": {
             col: {
                 "mean_annualised": round(log_returns[col].mean() * 252, 6),
