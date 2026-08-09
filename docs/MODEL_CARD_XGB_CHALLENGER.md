@@ -11,7 +11,7 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `bbdef6c4f2ea` |
+| Code revision (artifacts) | `ae87f48207d1` |
 | Python | 3.11.14 |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, 31 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
@@ -19,7 +19,7 @@
 > **Challenger status.** This model **did not establish statistically supported
 > outperformance** against `regime_conditional` or against `equal_weight` in the Phase 2
 > paired comparisons on frozen test data. It is documented as transparent
-> negative-result research, not as a recommended strategy. The reference system
+> negative-result research, not as a recommended strategy. The comparator
 > is `regime_conditional` — see `docs/MODEL_CARD_REGIME_CONDITIONAL.md`.
 
 ## Purpose
@@ -51,7 +51,7 @@ caller error could bypass.
 | Universe | ML parameters | Levers | CV IC | Test Sharpe | 90% CI |
 |---|---|---|---:|---:|:---:|
 | `etf_2017` | max_depth=4, learning_rate=0.05, n_estimators=200 | shrinkage_weight=1.0, turnover_penalty=0.5 | +0.1144 | 0.9440 | [0.391, 1.537] |
-| `full_2021` | max_depth=4, learning_rate=0.1, n_estimators=200 | shrinkage_weight=0.25, turnover_penalty=2.0 | +0.0117 | 1.3084 | [0.224, 2.484] |
+| `full_2021` | max_depth=2, learning_rate=0.03, n_estimators=200 | shrinkage_weight=0.25, turnover_penalty=1.0 | +0.0150 | 0.8119 | [-0.155, 1.862] |
 
 Search grid: {"max_depth": [2, 3, 4], "learning_rate": [0.03, 0.05, 0.1], "n_estimators": [200]}, crossed with
 shrinkage [0.25, 0.5, 0.75, 1.0] and turnover penalty
@@ -67,8 +67,8 @@ it is reported rather than smoothed.
 |---|---|---:|:---:|---:|:---:|
 | `etf_2017` | `regime_conditional` | -0.149 | [-0.308, +0.010] | 0.939 | no |
 | `etf_2017` | `equal_weight` | -0.038 | [-0.177, +0.096] | 0.671 | no |
-| `full_2021` | `regime_conditional` | +0.096 | [-0.315, +0.541] | 0.361 | no |
-| `full_2021` | `equal_weight` | +0.306 | [-0.158, +0.784] | 0.147 | no |
+| `full_2021` | `regime_conditional` | -0.168 | [-0.577, +0.264] | 0.740 | no |
+| `full_2021` | `equal_weight` | -0.046 | [-0.445, +0.329] | 0.587 | no |
 
 ## Explainability
 

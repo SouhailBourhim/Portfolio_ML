@@ -23,10 +23,10 @@ They all have one now.
 | `etf_2017` | `regime_conditional` | Sharpe | 0.8811 | 0.6357 | — |
 | `etf_2017` | `equal_weight` | mean return | 0.0630 | 0.0020 | SPA |
 | `etf_2017` | `equal_weight` | Sharpe | 0.2714 | 0.0980 | — |
-| `full_2021` | `regime_conditional` | mean return | 0.0690 | 0.0930 | — |
-| `full_2021` | `regime_conditional` | Sharpe | 0.3163 | 0.2939 | — |
-| `full_2021` | `equal_weight` | mean return | 0.0405 | 0.0085 | RC, SPA |
-| `full_2021` | `equal_weight` | Sharpe | 0.1009 | 0.0170 | SPA |
+| `full_2021` | `regime_conditional` | mean return | 0.1239 | 0.0855 | — |
+| `full_2021` | `regime_conditional` | Sharpe | 0.3253 | 0.3778 | — |
+| `full_2021` | `equal_weight` | mean return | 0.0915 | 0.0280 | SPA |
+| `full_2021` | `equal_weight` | Sharpe | 0.1699 | 0.0510 | — |
 
 ### Against the hurdle (`regime_conditional`)
 
@@ -38,11 +38,11 @@ It is worth seeing how much selection inflates. On `full_2021` the best candidat
 
 ### Against the naive floor (`equal_weight`)
 
-**3 of 4 comparisons reject.** 
+**2 of 4 comparisons reject.** 
 Read this carefully, because it is a weaker claim than it appears:
 
 - It is **not** evidence for the ML layer. `regime_conditional` already beats `equal_weight` by a wider margin, and since the dividend correction so does classical `max_sharpe`. Clearing a naive floor is not the same as adding value over the system in use.
-- **RC and SPA disagree by an order of magnitude** here. SPA retained 227–240 of 240 candidates, so its trimming rule is barely firing: the divergence is **studentisation**, which is Hansen's documented power gain over White's conservatism — not a different finding.
+- **RC and SPA disagree by an order of magnitude** here. SPA retained 237–240 of 240 candidates, so its trimming rule is barely firing: the divergence is **studentisation**, which is Hansen's documented power gain over White's conservatism — not a different finding.
 - **Eight tests were run** (2 universes × 2 benchmarks × 2 statistics). Quoting the smallest p-value from eight correlated tests is multiplicity one level up, and no further correction has been applied to *these* eight.
 
 ## Release status — released
@@ -57,8 +57,8 @@ This is a released result, not an experiment: the stage regenerates both artifac
 
 | Universe | Test days | Candidates | Runtime |
 |---|---:|---:|---:|
-| `etf_2017` | 1,980 | 240 | 204 min |
-| `full_2021` | 462 | 240 | 18 min |
+| `etf_2017` | 1,980 | 240 | 138 min |
+| `full_2021` | 455 | 240 | 17 min |
 
 Affordable only because the content-addressed prediction cache is keyed on the model configuration and not on the levers: the 16 lever variants of one hyperparameter config share a single set of fitted models. Measured at 128s for the first variant and 0.3–0.7s for each of the remaining 15, so the loop runs hyperparameters-outer. Reversing that ordering would refit every model 16 times.
 

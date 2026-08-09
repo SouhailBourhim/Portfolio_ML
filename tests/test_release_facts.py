@@ -327,7 +327,8 @@ class TestTheCanonicalFactsSayTheRightThing:
 
 
 SUPERSEDED_MARK = "SUPERSEDED"
-RETIRED_NUMBERS = ("+6,2 %", "+6.2%", "+6,2%", "1,2363", "1.2363", "1,1644", "1.1644")
+RETIRED_NUMBERS = ("+6,2 %", "+6.2%", "+6,2%", "6,2~\\%", "6.2\\%",
+                   "1,2363", "1.2363", "1,1644", "1.1644")
 
 
 class TestRetiredNumbersDoNotSurvive:
@@ -335,19 +336,26 @@ class TestRetiredNumbersDoNotSurvive:
     was computed on a mixed-currency universe. It may appear only inside a block
     explicitly marked SUPERSEDED, never as a live figure."""
 
-    SURFACES = (
-        "README.md",
-        "dashboard/pages/1_Resultats_recherche.py",
-        "dashboard/pages/2_Explorateur_strategies.py",
-        "dashboard/streamlit_app.py",
-        "src/api/main.py",
-        "docs/MODEL_CARD_REGIME_CONDITIONAL.md",
-        "docs/rapport/chapters/faits_publies.tex",
-    )
+    @staticmethod
+    def _surfaces() -> list[str]:
+        """Enumerated, not hard-coded. An earlier fixed list omitted the report
+        chapters and front matter, and `+6,2 %` survived into three pages of the
+        built PDF — caught only by reading the PDF. A surface list that must be
+        maintained by hand is a surface list that goes stale."""
+        rels = [
+            "README.md",
+            "dashboard/streamlit_app.py",
+            "docs/MODEL_CARD_REGIME_CONDITIONAL.md",
+        ]
+        for pattern in ("dashboard/pages/*.py", "src/api/*.py",
+                        "docs/rapport/chapters/*.tex",
+                        "docs/rapport/frontmatter/*.tex"):
+            rels += sorted(p.relative_to(ROOT).as_posix() for p in ROOT.glob(pattern))
+        return rels
 
     def test_no_surface_quotes_a_retired_number_outside_a_superseded_block(self):
         offenders = []
-        for rel in self.SURFACES:
+        for rel in self._surfaces():
             path = ROOT / rel
             if not path.is_file():
                 continue
@@ -382,7 +390,13 @@ class TestTheReportIncludesTheFactsChapterExactlyOnce:
 class TestPreCommitSurfaceChecks:
     """Four properties agreed before the source commit."""
 
-    HISTORICAL_SECTIONS = ("README.md",)   # only the README keeps a history block
+    # Sections allowed to carry a SUPERSEDED marker. Kept SHORT and explicit:
+    # the marker silences the retired-number scan, so every entry is a place
+    # where old figures are deliberately shown as history.
+    #   README.md        — the cap-experiment table (pre-correction full_2021)
+    #   Chapter3.tex     — the revision chain +14,3 % -> +6,2 % -> -10,47 %,
+    #                      unrolled in full so no old value resembles the current one
+    HISTORICAL_SECTIONS = ("README.md", "docs/rapport/chapters/Chapter3.tex")
 
     def test_superseded_appears_only_in_authorised_historical_sections(self):
         """A SUPERSEDED marker suppresses the retired-number scan, so it must not

@@ -183,7 +183,13 @@ class TestCurrencyExposureTravelsWithEveryPortfolioFigure:
             if not path.is_file():
                 pytest.skip(f"{name} not present.")
             text = path.read_text(encoding="utf-8")
-            assert "USD/MAD" in text, f"{name} omits the currency exposure"
+            # UPDATED: previously required the literal token "USD/MAD". The
+            # résumé now names the numéraire of each universe explicitly, which
+            # is stricter — a mixed-exposure phrase was the old defect.
+            assert "Bank Al-Maghrib" in text, f"{name} omits the FX reference source"
+            assert "non couvert" in text or "unhedged" in text, (
+                f"{name} omits that the target portfolio is unhedged"
+            )
 
     def test_the_api_ships_the_numeraire_with_the_headline_comparison(self):
         """UPDATED, not relaxed. This used to require a single global

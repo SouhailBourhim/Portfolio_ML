@@ -68,10 +68,14 @@ univers, hors échantillon et net de coûts de transaction.
   \end{tabular}
 \end{table}
 
-Sur le portefeuille EURAFRIC, le système obtient un ratio de Sharpe de
-\textbf{1,236} contre \textbf{1,164} pour la meilleure approche classique, soit
-un gain de \textbf{$+6{,}2$~\%}. Sur l'univers ETF, il obtient 0,937 contre
-0,953~: il \textbf{perd} de $1{,}6$~\%.
+Sur le portefeuille EURAFRIC — libellé en dirhams aux taux de référence
+officiels de Bank Al-Maghrib et non couvert contre le risque de change — la
+stratégie à régimes obtient un ratio de Sharpe net de \textbf{0,9571} contre
+\textbf{1,0690} pour la meilleure approche classique, soit un écart ponctuel de
+\textbf{$-10{,}47$~\%}. Sur l'univers ETF, mono-devise en dollars et inchangé par
+la correction, elle obtient 0,937 contre 0,953~: un écart de $-1{,}6$~\%. Ces
+écarts ne démontrent pas une supériorité de l'approche classique~: aucun test
+pairé de cette différence n'est présenté.
 
 \begin{figure}[htbp]
   \centering
@@ -113,8 +117,9 @@ Sharpe.
 \section{Ce chiffre est-il réel ? La validation hors échantillon}
 % =============================================================================
 
-Un écart de $+6{,}2$~\% mesuré sur une période unique ne dit rien tant qu'on
-ignore sa marge d'erreur. Deux protocoles ont été appliqués pour l'établir.
+Un écart ponctuel mesuré sur une période unique — ici $-10{,}47$~\% — ne dit
+rien tant qu'on ignore sa marge d'erreur. Deux protocoles ont été appliqués pour
+l'établir.
 
 \paragraph{Le test gelé.} Les derniers 35~\% de chaque univers ont été mis de
 côté avant toute calibration. Les hyperparamètres des modèles ont été choisis sur
@@ -691,10 +696,12 @@ d'attribution et ses limites d'inférence.
   \item \textbf{Exploré} — le détecteur de régime est plus souvent dans l'état
         « baissier » durant les cinq fenêtres étudiées. Le diagnostic $p = 0{,}031$
         est rapporté comme exploratoire, non confirmatoire.
-  \item \textbf{Observé, non démontré} — le système à régimes dépasse le Markowitz
-        classique de $6{,}2$~\% sur le portefeuille EURAFRIC et lui est inférieur
-        de $1{,}6$~\% sur l'univers ETF. Le classement dépend du protocole
-        d'évaluation et de la mesure retenue.
+  \item \textbf{Observé, non démontré} — sur le portefeuille EURAFRIC, libellé en
+        dirhams et non couvert, la stratégie à régimes est en retrait du
+        Markowitz classique de $10{,}47$~\%, et lui est également inférieure de
+        $1{,}6$~\% sur l'univers ETF, mono-devise en dollars. Le classement est
+        sensible au protocole d'évaluation et à la fenêtre hors échantillon
+        associée~; aucun test pairé de cette différence n'est présenté.
   \item \textbf{Testé, non établi} — sous validation strictement antérieure, les
         \textbf{huit} comparaisons pairées sur la fenêtre gelée ont un intervalle
         contenant zéro ($p$ de 0,066 à 0,939). Aucun modèle de signal n'établit de

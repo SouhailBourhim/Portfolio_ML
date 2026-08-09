@@ -3,7 +3,7 @@
 
 # Model card — `regime_conditional`
 
-> **Status: Primary reference system · research prototype**
+> **Status: Comparateur primaire pré-spécifié (White/SPA) · prototype de recherche**
 > This is a research prototype produced for an academic end-of-year project
 > (PFA, INPT × EURAFRIC Information). It is **not** production-approved, it is
 > **not** investment advice, and it must not be used to execute orders or to
@@ -11,7 +11,7 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `bbdef6c4f2ea` |
+| Code revision (artifacts) | `ae87f48207d1` |
 | Python | 3.11.14 |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, 31 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
@@ -27,20 +27,32 @@ allocation decision to one of two already-validated Markowitz optimizers.
 entries or exits intraday, does not size positions for leverage or shorting,
 and does not produce a client-specific recommendation.
 
-## Why this is the reference system
+## Role: pre-specified primary comparator, not a reference system
+
+This strategy is the **comparateur primaire pré-spécifié** — the pre-specified
+primary comparator — for the White (2000) Reality Check and Hansen (2005) SPA
+correction. That role was fixed BEFORE the results were observed, and it is not
+rewritten now that the observed difference has changed sign. Relabelling a
+benchmark after seeing the outcome is exactly the multiple-testing abuse the
+correction exists to prevent.
+
+It is **not** a reference system, **not** a recommended candidate, and **not**
+deployed. On MAD-valued `full_2021` its observed net-Sharpe difference against
+the best classical approach is NEGATIVE, and no paired test of that difference
+is presented in either direction.
 
 Across 8 paired comparisons on frozen test data,
 **0** established statistically supported outperformance over
-this system or over equal weighting. It is the reference not because it was
-shown to be superior, but because no challenger displaced it and its behaviour
-is fully reconstructible — see *Explainability* below.
+this comparator or over equal weighting. Its value here is that it is a fixed,
+fully reconstructible reference point — see *Explainability* below — not that it
+was shown to be better than anything.
 
 ## Supported universes
 
 | Universe | Assets | Full-window OOS | Net Sharpe | Max drawdown | Avg turnover |
 |---|---:|---|---:|---:|---:|
 | `etf_2017` | 5 | 2005-12-01 → 2026-07-24 | 0.9371 | -0.2689 | 0.0561 |
-| `full_2021` | 9 | 2022-07-01 → 2026-07-24 | 1.2363 | -0.1414 | 0.2926 |
+| `full_2021` | 9 | 2022-08-01 → 2026-07-24 | 0.9571 | -0.1462 | 0.3212 |
 
 Assets — `etf_2017`: `EEM`, `GLD`, `QQQ`, `SPY`, `TLT`.
 `full_2021`: `ATW.CS`, `BCP.CS`, `CIH.CS`, `EEM`, `GLD`, `IAM.CS`, `QQQ`, `SPY`, `TLT`.
@@ -92,7 +104,7 @@ lookahead leak.
 | Universe | Train + validation | Frozen test | Test fraction |
 |---|---|---|---:|
 | `etf_2017` | 2004-11-19 → 2018-12-21 | 2018-12-24 → 2026-07-24 | 35% |
-| `full_2021` | 2021-07-02 → 2024-10-16 | 2024-10-17 → 2026-07-24 | 35% |
+| `full_2021` | 2021-07-30 → 2024-10-25 | 2024-10-28 → 2026-07-24 | 35% |
 
 Hyperparameter selection uses `purged_walk_forward`
 (5 folds, embargo
@@ -109,10 +121,10 @@ frozen test segment is untouched by any selector.
 | `etf_2017` | `equal_weight` | 0.9821 | [0.406, 1.583] |
 | `etf_2017` | `rf_signal_tuned` | 1.1020 | [0.525, 1.683] |
 | `etf_2017` | `xgb_signal_tuned` | 0.9440 | [0.391, 1.537] |
-| `full_2021` | `regime_conditional` | 1.2128 | [0.182, 2.349] |
-| `full_2021` | `equal_weight` | 1.0027 | [-0.090, 2.243] |
-| `full_2021` | `rf_signal_tuned` | 1.0012 | [0.059, 2.055] |
-| `full_2021` | `xgb_signal_tuned` | 1.3084 | [0.224, 2.484] |
+| `full_2021` | `regime_conditional` | 0.9798 | [-0.039, 2.071] |
+| `full_2021` | `equal_weight` | 0.8575 | [-0.179, 2.007] |
+| `full_2021` | `rf_signal_tuned` | 0.8522 | [-0.050, 1.896] |
+| `full_2021` | `xgb_signal_tuned` | 0.8119 | [-0.155, 1.862] |
 
 ### Paired comparisons against this system
 
@@ -125,15 +137,15 @@ The p-value is null-centred.
 |---|---|---:|:---:|---:|:---:|
 | `etf_2017` | `regime_conditional` | +0.009 | [-0.025, +0.041] | 0.326 | no |
 | `etf_2017` | `equal_weight` | +0.120 | [-0.013, +0.247] | 0.066 | no |
-| `full_2021` | `regime_conditional` | -0.212 | [-0.551, +0.151] | 0.850 | no |
-| `full_2021` | `equal_weight` | -0.002 | [-0.374, +0.360] | 0.512 | no |
+| `full_2021` | `regime_conditional` | -0.128 | [-0.486, +0.239] | 0.715 | no |
+| `full_2021` | `equal_weight` | -0.005 | [-0.424, +0.389] | 0.513 | no |
 
 | Universe | Benchmark | ΔSharpe | 90% CI | p | Establishes? |
 |---|---|---:|:---:|---:|:---:|
 | `etf_2017` | `regime_conditional` | -0.149 | [-0.308, +0.010] | 0.939 | no |
 | `etf_2017` | `equal_weight` | -0.038 | [-0.177, +0.096] | 0.671 | no |
-| `full_2021` | `regime_conditional` | +0.096 | [-0.315, +0.541] | 0.361 | no |
-| `full_2021` | `equal_weight` | +0.306 | [-0.158, +0.784] | 0.147 | no |
+| `full_2021` | `regime_conditional` | -0.168 | [-0.577, +0.264] | 0.740 | no |
+| `full_2021` | `equal_weight` | -0.046 | [-0.445, +0.329] | 0.587 | no |
 
 **No comparison establishes outperformance in either direction.** This is not a
 finding of equivalence: failing to reject is not accepting the null, and no
@@ -199,7 +211,7 @@ a strategy that wins gross and loses net is treated as a finding.
 ## Reproducibility
 
 ```bash
-git checkout bbdef6c4f2ea
+git checkout ae87f48207d1
 ./scripts/dvc.sh pull
 ./.venv/bin/python src/snapshot.py verify
 ```
