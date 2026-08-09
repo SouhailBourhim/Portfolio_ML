@@ -1469,5 +1469,5 @@ stages:
     outs:
     - path: data/gold/etf_cap_verdict.json
       hash: md5
-      md5: 0678cfae329080cca899f2e24e6feefb
-      size: 6812
+      md5: 9c8508b1323443683eb68246ca09da27
+      size: 6806
