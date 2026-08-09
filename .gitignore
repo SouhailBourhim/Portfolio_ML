@@ -76,6 +76,10 @@ anaconda_projects/
 # Microsoft Office lock/temp files (created when a .docx deliverable is open)
 ~$*
 
+# Local render/inspection workspaces. Final deliverables live under output/.
+/tmp/
+*.pptx.inspect.ndjson
+
 # LaTeX build artefacts (le PDF, lui, est versionné)
 docs/rapport/main.log
 docs/rapport/*.aux
