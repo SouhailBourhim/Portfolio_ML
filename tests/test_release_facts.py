@@ -79,7 +79,7 @@ class TestNumbersAreDerivedNotTyped:
 class TestEveryUniverseCarriesItsOwnNumeraire:
     """There is no global base currency, and no surface may imply one."""
 
-    def test_full_2021_is_mad_unhedged(self):
+    def test_full_2021_is_mad_unhedged(self, facts):
         n = numeraire_for("full_2021", ROOT)
         assert n["base_currency"] == "MAD"
         assert n["converted"] is True
@@ -87,18 +87,18 @@ class TestEveryUniverseCarriesItsOwnNumeraire:
         assert "Bank Al-Maghrib" in n["statement"]
         assert "non couvert" in n["statement"]
 
-    def test_etf_2017_is_usd_and_unconverted(self):
+    def test_etf_2017_is_usd_and_unconverted(self, facts):
         n = numeraire_for("etf_2017", ROOT)
         assert n["base_currency"] == "USD"
         assert n["converted"] is False
         assert "inchangé" in n["statement"]
 
-    def test_an_unknown_universe_raises_rather_than_defaulting(self):
+    def test_an_unknown_universe_raises_rather_than_defaulting(self, facts):
         """A wrong numéraire is worse than a missing one."""
         with pytest.raises(KeyError):
             numeraire_for("nonexistent", ROOT)
 
-    def test_the_two_universes_do_not_share_a_currency_string(self):
+    def test_the_two_universes_do_not_share_a_currency_string(self, facts):
         a = numeraire_for("full_2021", ROOT)["statement"]
         b = numeraire_for("etf_2017", ROOT)["statement"]
         assert a != b, (
@@ -180,7 +180,7 @@ class TestRegimeConditionalIsDescribedAsAComparator:
         assert "pré-spécifié" in note
         assert "n'est pas réécrit" in note
 
-    def test_no_surface_recommends_or_deploys_a_strategy(self):
+    def test_no_surface_recommends_or_deploys_a_strategy(self, statements):
         banned = ("stratégie recommandée", "nous recommandons", "à déployer",
                   "valeur ajoutée établie", "système de qualité production")
         surfaces = [
@@ -202,7 +202,7 @@ class TestRegimeConditionalIsDescribedAsAComparator:
             if "<!-- BEGIN RELEASE FACTS" in text and "<!-- END RELEASE FACTS -->" in text:
                 head, rest = text.split("<!-- BEGIN RELEASE FACTS", 1)
                 text = head + rest.split("<!-- END RELEASE FACTS -->", 1)[1]
-            for canonical in statement_list(ROOT):
+            for canonical in statements:
                 text = text.replace(canonical, "")
             offenders += [f"{rel}: {p}" for p in banned if p in text]
         assert not offenders, f"recommendation framing found: {offenders}"
@@ -424,7 +424,7 @@ class TestPreCommitSurfaceChecks:
                 f"{rel} must render the numéraire of the universe it displays"
             )
 
-    def test_no_strategy_is_preselected_or_called_recommended(self):
+    def test_no_strategy_is_preselected_or_called_recommended(self, statements):
         """A default of ALL strategies is neutral; a default of ONE would
         privilege it. And no surface may name a strategy 'recommandée'."""
         page = (ROOT / "dashboard" / "pages" / "2_Explorateur_strategies.py").read_text(
@@ -437,7 +437,7 @@ class TestPreCommitSurfaceChecks:
                     "dashboard/pages/2_Explorateur_strategies.py",
                     "src/api/main.py"):
             text = (ROOT / rel).read_text(encoding="utf-8")
-            for canonical in statement_list(ROOT):
+            for canonical in statements:
                 text = text.replace(canonical, "")
             assert "recommandée" not in text.lower() or _negated(text, "recommandée"), \
                 f"{rel} names a strategy as recommended"

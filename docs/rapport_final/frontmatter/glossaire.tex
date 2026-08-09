@@ -1,0 +1,128 @@
+% =============================================================================
+%  Glossaire
+%
+%  Destiné au lecteur non spécialiste. Il ne remplace pas les encadrés
+%  « Définition » des chapitres — qui définissent chaque notion à son premier
+%  emploi, dans son contexte — mais permet de retrouver une définition sans
+%  relire le chapitre où elle apparaît.
+%
+%  À placer de préférence APRÈS la liste des acronymes, en fin de pages
+%  liminaires (ou en annexe si le modèle le prévoit ainsi).
+% =============================================================================
+
+\chapter*{Glossaire}
+\addcontentsline{toc}{chapter}{Glossaire}
+\markboth{GLOSSAIRE}{GLOSSAIRE}
+
+\begin{description}\setlength{\itemsep}{0.35em}
+
+\item[Actif] Objet dans lequel on peut placer de l'argent~: action d'entreprise,
+obligation d'État, fonds indiciel.
+
+\item[Allocation] Répartition d'un capital entre plusieurs actifs. Synonyme
+usuel~: \emph{poids} du portefeuille.
+
+\item[Backtest] Simulation d'une stratégie sur des données passées, en rejouant
+le temps tel qu'il s'est écoulé.
+
+\item[Biais de survivance / de vision du futur] Toute situation où une décision
+passée est influencée par une information qui n'était pas disponible à ce
+moment-là. C'est l'erreur la plus grave possible dans ce domaine~: elle produit
+des performances impossibles à reproduire en conditions réelles.
+
+\item[Bootstrap à blocs] Méthode d'estimation de l'incertitude consistant à
+reconstituer des milliers d'historiques fictifs en retirant au sort des blocs de
+journées consécutives, afin de préserver la structure temporelle des rendements.
+
+\item[Coefficient d'information] Corrélation de rang entre rendements prédits et
+rendements réalisés~: mesure la capacité d'un signal à \emph{classer} les actifs,
+sans exiger que ses prédictions soient justes en niveau.
+
+\item[Data snooping] Biais produit lorsque de nombreuses stratégies sont
+essayées sur les mêmes données et que seule la meilleure est retenue. Même sans
+fraude ni fuite temporelle, le maximum observé est alors optimiste.
+
+\item[Corrélation] Mesure du degré auquel deux actifs évoluent ensemble. Comprise
+entre $-1$ (mouvements opposés) et $+1$ (mouvements identiques).
+
+\item[Covariance (matrice de)] Tableau décrivant conjointement la volatilité de
+chaque actif et la corrélation de chaque paire. C'est la description du risque
+d'un portefeuille, et la quantité la plus difficile à estimer.
+
+\item[\emph{Drawdown} (perte maximale)] Baisse maximale subie entre un sommet et
+le creux qui le suit. Répond à la question « combien aurais-je pu perdre au pire
+moment~? ».
+
+\item[Équipondération (1/N)] Stratégie consistant à placer la même somme sur
+chaque actif. Sans paramètre à estimer, donc sans erreur d'estimation~: c'est la
+référence de comparaison honnête.
+
+\item[Fonds indiciel (ETF)] Fonds coté en bourse répliquant un indice de marché~;
+en acheter une part revient à détenir une fraction de tout l'indice.
+
+\item[Hors échantillon] Se dit d'une performance mesurée sur des données qui
+n'ont servi ni à entraîner ni à sélectionner le modèle évalué.
+
+\item[Modèle de Markov caché] Modèle statistique supposant que les observations
+sont engendrées par un état non observable qui change au cours du temps~; l'état
+est inféré à partir de ce qu'il produit.
+
+\item[Numéraire] Monnaie dans laquelle un patrimoine, son profit et son risque
+sont mesurés. Pour un investisseur marocain non couvert, un actif en dollars doit
+inclure la variation USD/MAD dans son rendement en dirhams.
+
+\item[Population Stability Index (PSI)] Indicateur comparant la distribution
+d'une variable ou d'un score entre une période de référence et une période
+évaluée. Il signale une dérive ; il n'en explique pas la cause.
+
+\item[Point de base] Un centième de point de pourcentage ($0{,}01~\%$). Unité
+usuelle des coûts de transaction.
+
+\item[Ratio de Calmar] Rendement annualisé divisé par la perte maximale. Mesure
+le rendement obtenu par unité de \emph{pire} perte, là où le ratio de Sharpe
+divise par la volatilité moyenne.
+
+\item[Ratio de Sharpe] Rendement obtenu par unité de risque, le risque étant
+mesuré par la volatilité. Principal indicateur de comparaison entre stratégies —
+et, comme le montre le chapitre~\ref{chap:resultats}, un indicateur dont le
+choix n'est pas neutre.
+
+\item[Régime de marché] Période durant laquelle le marché se comporte de manière
+homogène (par exemple~: hausse régulière et faible volatilité, ou baisse et forte
+volatilité). Les régimes ne sont pas observables directement.
+
+\item[Rendement logarithmique] Rendement calculé comme $\ln(P_t/P_{t-1})$. Se
+somme dans le temps, contrairement au rendement en pourcentage — d'où son usage
+systématique dans ce projet.
+
+\item[Rétrécissement] Aussi appelé \emph{shrinkage}, technique consistant à rapprocher une
+estimation bruitée d'une cible simple et stable. On accepte un biais volontaire
+en échange d'une forte réduction de variance.
+
+\item[Sharpe déflaté] Probabilité qu'une performance mesurée soit réellement
+positive après correction du nombre de stratégies essayées et de la
+non-normalité des rendements.
+
+\item[Turnover (rotation)] Proportion du portefeuille effectivement échangée lors
+d'un rééquilibrage. Détermine directement les coûts de transaction supportés.
+
+\item[Sélection strictement antérieure] Découpage de validation dans lequel
+l'entraînement précède toujours la fenêtre de validation, séparé d'elle par une
+purge et un embargo. À la différence de la validation croisée purgée en blocs,
+aucune date postérieure à la validation ne peut entrer dans l'entraînement~:
+c'est la seule forme qui simule une décision d'allocation séquentielle.
+
+\item[Test pairé] Comparaison de deux stratégies sur les \emph{mêmes} dates, en
+rééchantillonnant les deux séries avec les mêmes blocs. Teste la
+\emph{différence}, ce que deux intervalles de confiance marginaux ne font pas~:
+ils peuvent se chevaucher alors que la différence est systématiquement positive.
+
+\item[Validation croisée purgée] Variante de la validation croisée adaptée aux
+séries temporelles~: les observations d'entraînement dont l'horizon chevauche le
+bloc de test sont retirées (\emph{purge}), et une bande de journées suivant ce
+bloc est écartée (\emph{embargo}).
+
+\item[Volatilité] Ampleur des variations d'un actif, mesurée par l'écart-type de
+ses rendements. Mesure usuelle — et imparfaite — du risque.
+
+\end{description}

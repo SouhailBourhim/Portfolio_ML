@@ -1,0 +1,22 @@
+% GÉNÉRÉ par scripts/build_integrity_section.py — ne pas éditer à la main.
+% Source : data/gold/fit_report_summary.json
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption[Sensibilité aux coûts]{Sharpe net du \emph{même} chemin d'allocation, repricé sous des coûts de transaction multipliés. Il ne s'agit pas d'une ré-optimisation : les pondérations sont identiques dans chaque colonne. « Seuil » est le multiplicateur annulant le rendement net.}
+  \label{tab:couts}
+  \begin{tabular}{@{}llrrrrrr@{}}
+    \toprule
+    Univers & Stratégie & 0,5$\times$ & 1$\times$ & 1,5$\times$ & 2$\times$ & Seuil & Rotation \\
+    \midrule
+    \texttt{etf\_2017} & \texttt{dcc\_garch} & 0,895 & 0,888 & 0,881 & 0,874 & $>20\times$ & 0,130 \\
+    \texttt{etf\_2017} & \texttt{regime\_conditional} & 0,940 & 0,937 & 0,934 & 0,931 & $>20\times$ & 0,056 \\
+    \texttt{etf\_2017} & \texttt{rf\_signal} & 0,910 & 0,904 & 0,898 & 0,891 & $>20\times$ & 0,127 \\
+    \texttt{etf\_2017} & \texttt{xgb\_signal} & 0,711 & 0,694 & 0,678 & 0,661 & 20,0$\times$ & 0,380 \\
+    \texttt{full\_2021} & \texttt{dcc\_garch} & 1,105 & 1,053 & 1,000 & 0,947 & 10,7$\times$ & 0,378 \\
+    \texttt{full\_2021} & \texttt{regime\_conditional} & 0,997 & 0,957 & 0,917 & 0,877 & 12,5$\times$ & 0,321 \\
+    \texttt{full\_2021} & \texttt{rf\_signal} & 0,870 & 0,777 & 0,684 & 0,591 & 5,0$\times$ & 0,963 \\
+    \texttt{full\_2021} & \texttt{xgb\_signal} & 0,779 & 0,681 & 0,582 & 0,483 & 4,2$\times$ & 0,988 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

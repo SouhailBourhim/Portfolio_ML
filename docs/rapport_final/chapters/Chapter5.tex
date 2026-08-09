@@ -1,0 +1,728 @@
+% =============================================================================
+%  Chapitre 5 — Résultats, validation et produit livré
+%
+%  Les tableaux de validation, d'intégrité et de sensibilité proviennent des
+%  artefacts versionnés (data/gold/*.json) et sont générés par les scripts du
+%  projet. Les chiffres de synthèse renvoient aux mêmes artefacts.
+% =============================================================================
+
+\chapter{Résultats, validation et produit livré}
+\label{chap:resultats}
+
+\section*{Comment lire ce chapitre}
+\addcontentsline{toc}{section}{Comment lire ce chapitre}
+
+Ce chapitre présente ce que le système produit réellement. Il est organisé selon
+un principe simple, hérité du problème P4 exposé au
+chapitre~\ref{chap:problematique} : \textbf{un chiffre n'est un résultat que si
+l'on sait de combien il pourrait être faux.}
+
+Chaque résultat est donc qualifié selon son niveau de preuve. Le chapitre
+distingue explicitement quatre catégories :
+
+\begin{itemize}
+  \item ce qu'il \textbf{observe} — des écarts historiques, sans les transformer
+        en supériorité généralisable faute de test pairé ;
+  \item ce qu'il \textbf{explore} — des associations sur un faible nombre
+        d'événements, utiles pour orienter l'analyse mais non confirmatoires ;
+  \item ce qu'il \textbf{teste sans l'établir} — une comparaison pairée ou une
+        correction de recherche qui ne conclut pas à la surperformance ;
+  \item ce qu'il \textbf{réfute} — cinq pistes explorées et fermées.
+\end{itemize}
+
+Cette troisième catégorie n'est pas un aveu d'échec. Sur un sujet où la
+littérature abonde en performances irreproductibles, une piste correctement
+fermée a plus de valeur qu'une performance invérifiable.
+
+% =============================================================================
+\section{Le résultat principal}
+% =============================================================================
+
+Le système complet — détection de régime par chaîne de Markov cachée et
+covariance dynamique — a été comparé aux trois approches classiques sur les deux
+univers, hors échantillon et net de coûts de transaction.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Performance comparée, hors échantillon]{Performance nette de coûts,
+  hors échantillon. \emph{DD} désigne le drawdown maximal (la pire perte
+  pic-à-creux), et le ratio de Calmar rapporte le rendement à ce drawdown.}
+  \label{tab:headline}
+  \small
+  \begin{tabular}{llrrrr}
+    \toprule
+    Univers & Stratégie & Sharpe & Rendement & DD max. & Calmar \\
+    \midrule
+    \multirow{4}{*}{\shortstack[l]{Portefeuille\\EURAFRIC\\(9 actifs)}}
+      & Système ML (régime)               & 0,957 &  9,4~\% & $-14{,}6$~\% & 0,641 \\
+      & \textbf{Markowitz Sharpe max.}   & \textbf{1,069} & \textbf{12,0~\%} & \textbf{$-11{,}3$~\%} & \textbf{1,060} \\
+      & Équipondéré (1/N)                 & 0,953 &  9,5~\% & $-12{,}4$~\% & 0,762 \\
+      & Variance min. (Ledoit-Wolf)       & 0,878 &  8,3~\% & $-12{,}6$~\% & 0,655 \\
+    \midrule
+    \multirow{4}{*}{\shortstack[l]{ETF inter-\\nationaux\\(5 actifs)}}
+      & \textbf{Variance min. (Ledoit-Wolf)} & \textbf{0,953} & 10,3~\% & $-26{,}9$~\% & 0,382 \\
+      & Système ML (régime)               & 0,937 & 10,4~\% & $-26{,}9$~\% & \textbf{0,386} \\
+      & Markowitz Sharpe max.             & 0,912 & \textbf{10,8~\%} & $-32{,}8$~\% & 0,329 \\
+      & Équipondéré (1/N)                 & 0,769 &  9,6~\% & $-36{,}2$~\% & 0,266 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Sur le portefeuille EURAFRIC — libellé en dirhams aux taux de référence
+officiels de Bank Al-Maghrib et non couvert contre le risque de change — la
+stratégie à régimes obtient un ratio de Sharpe net de \textbf{0,9571} contre
+\textbf{1,0690} pour la meilleure approche classique, soit un écart ponctuel de
+\textbf{$-10{,}47$~\%}. Sur l'univers ETF, mono-devise en dollars et inchangé par
+la correction, elle obtient 0,937 contre 0,953~: un écart de $-1{,}6$~\%. Ces
+écarts ne démontrent pas une supériorité de l'approche classique~: aucun test
+pairé de cette différence n'est présenté.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{assets/figures/courbes_equity.pdf}
+  \caption[Évolution des portefeuilles]{Évolution des portefeuilles, nette de
+  coûts et hors échantillon (échelle logarithmique). Le système ML est tracé en
+  trait épais. L'écart entre stratégies est faible au regard de l'amplitude des
+  mouvements de marché — ce que la section suivante quantifie.}
+  \label{fig:courbes}
+\end{figure}
+
+\begin{remarquebox}
+Le résultat est donc \emph{mitigé, et il est rapporté comme tel}. Un système qui
+n'apporterait un gain que sur l'univers où on a choisi de le mettre en avant ne
+serait pas un système, mais une sélection.
+\end{remarquebox}
+
+\subsection{Une réserve sur le choix de la mesure}
+
+Le tableau~\ref{tab:headline} appelle une observation que l'honnêteté impose de
+formuler, car elle nuance le résultat principal.
+
+Sur le portefeuille EURAFRIC, le système ML est derrière le Markowitz classique
+sur les cinq mesures publiées~: Sharpe net (0,957 contre 1,069), rendement
+annualisé (9,4~\% contre 12,0~\%), drawdown maximal ($-14{,}6$~\% contre
+$-11{,}3$~\%), ratio de Calmar (0,641 contre 1,060) et turnover (0,32 contre
+0,14, soit plus de deux fois plus de transactions).
+
+Autrement dit : \textbf{l'écart observé défavorable au système à régimes ne
+repose pas sur une seule métrique}. Il demeure néanmoins descriptif~: aucun test
+pairé de cette comparaison de pleine période n'autorise à conclure à une
+supériorité de l'approche classique. Le classement dépend aussi du protocole et
+de la fenêtre hors échantillon, comme le montre la suite du chapitre.
+
+Cette dépendance du classement au choix de la mesure est un résultat en soi. Elle
+justifie que les sections suivantes ne s'appuient pas uniquement sur le ratio de
+Sharpe.
+
+% =============================================================================
+\section{Ce chiffre est-il réel ? La validation hors échantillon}
+% =============================================================================
+
+Un écart ponctuel mesuré sur une période unique — ici $-10{,}47$~\% — ne dit
+rien tant qu'on ignore sa marge d'erreur. Deux protocoles ont été appliqués pour
+l'établir.
+
+\paragraph{Le test gelé.} Les derniers 35~\% de chaque univers ont été mis de
+côté avant toute calibration. Les hyperparamètres des modèles ont été choisis sur
+la partie restante par \textbf{validation strictement antérieure}
+(\emph{forward-only}), puis \emph{figés} ; le verdict n'a été mesuré qu'une fois,
+sur ce segment jamais vu.
+
+Le mot « strictement » est le correctif apporté à ce protocole. La version
+précédente employait une validation croisée purgée en blocs, qui entraîne le
+modèle sur \emph{toutes} les dates hors de la bande de purge — y compris
+\textbf{postérieures} au bloc de validation. C'est la construction canonique de
+López de Prado, défendable lorsque les labels se chevauchent, mais elle note un
+pli de 2018 avec un modèle ajusté en partie sur 2019--2024 : une question
+qu'aucun gérant ne peut poser en direct. Chaque pli respecte désormais
+\[
+\text{fin\_entraînement} < \text{début\_embargo} \le \text{début\_validation}
+\le \text{fin\_validation} < \text{début\_test}
+\]
+et la géométrie réellement appliquée — dates, effectifs, IC par pli — est publiée
+dans \texttt{phase5\_\allowbreak validation\_\allowbreak protocol.json} plutôt qu'affirmée ici.
+
+\paragraph{Le walk-forward imbriqué.} La fenêtre de test unique du protocole
+précédent ne représente que 455~jours sur le portefeuille EURAFRIC, ce qui produit
+des intervalles très larges. Un second protocole re-sélectionne la configuration à
+six frontières successives et concatène chaque segment hors échantillon, portant
+l'évaluation à \textbf{793~jours} — sans que la sélection ne voie jamais sa propre
+fenêtre d'évaluation.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{assets/figures/intervalles_confiance.pdf}
+  \caption[Intervalles de confiance]{Ratios de Sharpe hors échantillon et
+  intervalles de confiance à 90~\% (bootstrap par blocs), pour les deux
+  protocoles. Le protocole imbriqué (bleu) resserre les intervalles de
+  \textbf{28,6~\%} en moyenne. Les intervalles marginaux restent néanmoins
+  largement chevauchants~: ils quantifient l'incertitude, sans constituer un
+  test pairé de différence entre stratégies.}
+  \label{fig:intervalles}
+\end{figure}
+
+\paragraph{Le test pairé — la preuve qui manquait.} Les intervalles ci-dessus
+sont \emph{marginaux} : ils décrivent l'incertitude de \emph{chaque} stratégie
+prise isolément. Ils ne testent pas si deux stratégies diffèrent, et les lire
+ainsi est une erreur dans les deux sens — deux intervalles peuvent se chevaucher
+largement alors que la différence pairée est systématiquement positive (les
+stratégies partagent les mêmes journées de marché et leurs erreurs sont
+corrélées), et un non-chevauchement n'établirait pas davantage une différence.
+
+Ce rapport dispose désormais de l'instrument manquant : un \textbf{bootstrap par
+blocs pairé} sur les mêmes dates de la fenêtre gelée, net de coûts. Les deux
+séries sont rééchantillonnées avec les \emph{mêmes} indices de blocs, ce qui
+préserve à la fois la dépendance sérielle de chaque stratégie et la corrélation
+intra-journalière entre elles. La p-value est \emph{centrée sous l'hypothèse
+nulle} — les différences rééchantillonnées sont recentrées sur zéro, puis on
+mesure la part de cette distribution au-delà de l'écart observé. Ce n'est pas la
+fraction brute de tirages positifs, rapportée séparément et jamais présentée
+comme une p-value.
+
+% Tableau et valeurs chiffrées générés depuis
+% data/gold/paired_comparison_results.json par scripts/build_figures_chap5.py :
+% les huit lignes ne peuvent pas diverger de l'artefact qu'elles décrivent.
+\input{assets/tables/paires}
+
+\begin{resultatbox}{Le verdict honnête}
+\textbf{Aucune preuve de surperformance.} Sur les \paireNb{} comparaisons pairées,
+tous les intervalles contiennent zéro et toutes les p-values dépassent 0,05 ; la
+plus proche du seuil est \paireMinPCas{} ($p = \paireMinP$).
+
+Un cas mérite d'être isolé, car il est exactement ce que ce test sert à révéler.
+Sur \paireCasUnivers{}, le \paireCasCandidat{} obtient
+\paireCasSharpe{} contre \paireCasRefSharpe{} pour la stratégie à régimes : en
+\emph{estimation ponctuelle}, il « bat » la référence, et l'artefact
+l'enregistre comme tel. Le test pairé donne pourtant
+$\Delta = \paireCasDelta$, IC $\paireCasIC$, $p = \paireCasP$. Le classement
+ponctuel n'est pas soutenu par les données.
+
+Ce n'est pas non plus une démonstration d'équivalence : ne pas rejeter n'est pas
+accepter l'hypothèse nulle. L'établir demanderait un test d'équivalence contre une
+marge fixée à l'avance, qui n'a pas été mené.
+\end{resultatbox}
+
+\subsection{Corriger pour l'ampleur de la recherche}
+
+% The table also DEFINES \correctionVerdict and \correctionCandidats, so it
+% must be input before the prose that uses them.
+\input{assets/tables/correction_tests_multiples}
+
+Les huit comparaisons pairées ci-dessus testent chacune \emph{un} candidat contre
+une référence. Mais ce candidat a été \emph{choisi dans une recherche}, et le
+meilleur de plusieurs candidats bat une référence par chance plus souvent qu'un
+candidat unique. Tant que cette sélection n'est pas tarifée, « le modèle retenu
+a battu la haie » n'est pas l'affirmation qu'il paraît être.
+
+\paragraph{L'ensemble corrigé est l'espace ATTEIGNABLE.} La recherche était
+hiérarchique — hyperparamètres choisis par coefficient d'information, puis
+leviers de portefeuille conditionnellement à ces hyperparamètres. Le registre
+d'essais en avait enregistré 51, mais l'espace que la recherche pouvait
+sélectionner compte \correctionCandidats{} configurations : 15 jeux
+d'hyperparamètres $\times$ 16 combinaisons de leviers. Corriger pour 51 quand
+240 étaient atteignables sous-estimerait la multiplicité, donc c'est le nombre
+le plus grand qui est retenu. Chacune de ces 240 configurations a été
+réévaluée sur les dates de test gelées et sa série de rendement conservée.
+
+\begin{resultatbox}{Le verdict corrigé}
+\correctionVerdict{}
+
+\textbf{La référence primaire est pré-spécifiée} : \texttt{regime\_conditional}
+est la haie que la couche ML devait franchir et celle que toutes les phases
+antérieures rapportaient. Face à elle, ni le Reality Check ni le SPA n'établit
+de surperformance, sur aucun univers ni aucune statistique.
+
+L'illustration la plus parlante tient en deux nombres. En retenant le meilleur
+des 240 candidats \emph{jugé sur la fenêtre de test elle-même}, on obtient un
+Sharpe de 1,87 sur \texttt{full\_2021} — contre 1,31 pour celui que la
+sélection honnête avait désigné. Cet écart ne mesure pas une performance : il
+mesure ce que la sélection sur l'échantillon de test \emph{fabrique}, et c'est
+exactement ce que la correction sert à tarifer.
+
+Les comparaisons face à \texttt{equal\_weight} sont \textbf{exploratoires par
+pré-spécification} et n'étayent aucune réussite du ML : la stratégie à régimes,
+et depuis la correction des dividendes le \texttt{max\_sharpe} classique,
+franchissent déjà ce plancher.
+\end{resultatbox}
+
+\paragraph{Trois réserves qui accompagnent ce tableau.} Le RC et le SPA sont
+rapportés \emph{côte à côte} et aucun ne doit être cité seul : le SPA est plus
+puissant par construction — il studentise chaque candidat et écarte les
+candidats sans espoir du recentrage — donc il donnera d'ordinaire la plus
+petite $p$-value. Ici il conserve 227 à 240 candidats sur 240, ce qui montre que
+sa règle d'exclusion ne joue quasiment pas : l'écart entre les deux tests vient
+de la studentisation, gain de puissance documenté de Hansen sur la
+conservativité de White, et non d'un désaccord sur le résultat. Enfin, huit
+comparaisons externes ont été menées (2 univers $\times$ 2 références $\times$ 2
+statistiques) et ne sont pas elles-mêmes corrigées : citer la plus petite des
+huit serait de la multiplicité un niveau au-dessus de celle que ce tableau
+corrige.
+
+
+Trois éléments confirment ce diagnostic plutôt qu'ils ne l'affaiblissent.
+
+D'abord, le protocole imbriqué apporte un gain de précision réel~: la largeur
+moyenne des intervalles tombe de 2,06 à 1,52, soit $-26{,}6$~\%, mieux que les
+23,7~\% qu'un simple effet de taille d'échantillon laisserait attendre. Le ratio
+de Sharpe déflaté du meilleur candidat vaut 0,6707 sur 198~configurations
+testées. Aucun seuil n'ayant été pré-spécifié pour cette statistique, elle est
+rapportée telle quelle, sans qualificatif.
+
+Ensuite, toutes les bornes inférieures marginales deviennent positives (de 0,48
+à 0,89) dans ce protocole. C'est une description de chaque stratégie prise
+isolément ; elle ne démontre ni une rentabilité future ni un avantage relatif.
+
+Enfin — et c'est l'observation la plus instructive — \textbf{le classement est
+sensible au protocole d'évaluation et à la fenêtre hors échantillon associée}.
+Sur la fenêtre walk-forward complète, la meilleure approche classique devance la
+stratégie à régimes~; le protocole imbriqué, dont la fenêtre hors échantillon
+(2023-07-28~$\rightarrow$~2026-07-24, 781~lignes) diffère de celle du découpage unique, la place
+devant. Les deux facteurs sont ici confondus~: on ne peut attribuer le
+changement de signe au seul choix de protocole, puisque la période évaluée
+change en même temps. Un classement qui s'inverse ainsi, sans test pairé
+établissant une différence, ne doit pas être promu en verdict.
+
+% =============================================================================
+\section{Comportement en crise : une lecture métier descriptive (P3)}
+% =============================================================================
+
+Les mesures précédentes portent sur des moyennes de période. Or pour un
+allocataire, la question décisive est différente~: que se passe-t-il quand les
+marchés s'effondrent ? C'est le problème P3, et il n'avait jusque-là été étayé
+qu'indirectement.
+
+Cinq crises ont donc été analysées, délimitées par les \textbf{dates de
+sommet-à-creux publiées de l'indice S\&P~500} et fixées \emph{avant} tout examen
+des résultats. Ce point de méthode est essentiel~: déduire les fenêtres de nos
+propres pertes reviendrait à sélectionner les périodes où le système paraît bon.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{assets/figures/crises.pdf}
+  \caption[Comportement en crise]{Comportement pendant les cinq crises retenues,
+  sur l'univers ETF. À gauche, la performance cumulée sur la fenêtre~; à droite,
+  le nombre de jours nécessaires pour retrouver le sommet précédent.}
+  \label{fig:crises}
+\end{figure}
+
+Sur les cinq crises, \textbf{sans exception}, l'optimisation sous contrainte perd
+moins, chute moins profondément et récupère plus vite que la diversification
+naïve~:
+
+\begin{itemize}
+  \item lors de la crise financière de 2008, elle épargne \textbf{9,0 points} de
+        performance et \textbf{9,3 points} de drawdown~;
+  \item pendant la crise de la dette européenne, elle termine \textbf{positive}
+        ($+1{,}6$~\%) là où l'équipondéré perd $5{,}4$~\%~;
+  \item le \textbf{délai de récupération} est l'écart le plus régulier —
+        37~jours contre 71 après le krach COVID, 53 contre 105 après le repli de
+        2018, soit environ \textbf{deux fois moins de temps sous l'eau}.
+\end{itemize}
+
+\begin{remarquebox}
+Le délai de récupération n'apparaît dans aucune des mesures classiques du
+chapitre, alors qu'il est probablement le plus parlant pour un décideur~:
+combien de temps le capital reste-t-il en dessous de sa valeur d'avant-crise ?
+\end{remarquebox}
+
+\paragraph{Attribution — ce que ce résultat ne dit pas.} Ce gain revient à la
+\textbf{contrainte de portefeuille et au modèle de covariance} (P1 et P3), et non
+spécifiquement à la couche de régime. Sur trois des cinq fenêtres, les trois
+optimiseurs produisent des résultats identiques à la décimale près, pour deux
+raisons mécaniques~: en régime baissier, le système à régime \emph{devient} la
+variance minimale par construction~; et le plafond de 25~\% sur cinq actifs
+contraint fortement l'allocation. L'attribuer au \emph{Machine Learning} serait
+inexact.
+
+% =============================================================================
+\section{La détection de régime : une analyse exploratoire (P2)}
+% =============================================================================
+
+Le détecteur de régime est un modèle \textbf{non supervisé}~: aucune date de
+crise, aucun label de récession ne lui a jamais été fourni. Il observe uniquement
+le rendement du marché, sa volatilité et la corrélation moyenne entre actifs, et
+classe chaque date de rééquilibrage en régime haussier ou baissier — \emph{en
+temps réel}, à partir des seules données passées, sans savoir qu'une crise
+commence.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.94\textwidth]{assets/figures/detection_regime.pdf}
+  \caption[Détection non supervisée des crises]{Proportion de rééquilibrages
+  classés « baissier » pendant chacune des cinq crises, comparée au taux observé
+  hors crise. Le modèle n'a reçu aucune information sur ces événements.}
+  \label{fig:detection}
+\end{figure}
+
+Le résultat est net~: \textbf{91,7~\%} des rééquilibrages situés dans une fenêtre
+de crise sont classés « baissier », contre \textbf{29,2~\%} en dehors — un
+rapport de \textbf{3,13}, et les cinq crises dépassent le taux de base.
+
+\begin{table}[htbp]
+  \centering
+\caption[Diagnostic de la détection]{Deux diagnostics encadrent le problème de
+  dépendance sérielle. Ils sont rapportés pour transparence, non comme une
+  confirmation statistique généralisable sur cinq événements.}
+\label{tab:diagnostic_detection}
+  \small
+  \begin{tabular}{llp{7.4cm}}
+    \toprule
+    Diagnostic & Résultat & Lecture \\
+    \midrule
+    Test des signes \emph{(exploratoire)} & $p = 0{,}031$ &
+      Chaque crise compte pour une observation ($n = 5$). Ce calcul évite la
+      dépendance sérielle interne, mais cinq observations ne permettent pas une
+      conclusion confirmatoire. \\
+    Fisher exact \emph{(libéral)} & $p = 7{,}8 \times 10^{-13}$ &
+      Traite 248 rééquilibrages mensuels corrélés comme indépendants~:
+      optimiste. À ne jamais citer seul. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{resultatbox}{Association exploratoire, non preuve de détection}
+Le détecteur est plus souvent dans l'état étiqueté « baissier » pendant les cinq
+fenêtres étudiées. Le test des signes donne $p = 0{,}031$, mais cet indicateur
+reste exploratoire~: l'échantillon contient cinq événements et « baissier » est
+défini par le rendement moyen faible de l'état. Il ne doit pas être présenté comme
+un résultat confirmatoire, ni comme une preuve de valeur économique.
+\end{resultatbox}
+
+\paragraph{La réserve qui doit accompagner ce résultat.} Le régime « baissier »
+est \emph{défini} comme l'état de plus faible rendement moyen, et une crise est
+par nature une période de faible rendement~: une part de l'association est donc
+définitionnelle. Ce qui ne l'est pas, c'est que la détection soit \textbf{causale
+et en temps réel}, et qu'elle ne se déclenche pas en permanence — le taux hors
+crise reste à 29~\%, non à 80~\%. Le modèle ne crie pas au loup.
+
+\begin{remarquebox}
+Deux affirmations distinctes, à ne jamais confondre~: le détecteur produit une
+lecture causale de l'état de marché, associée aux cinq fenêtres étudiées~; le fait
+d'\textbf{agir} sur cette lecture n'a pas établi d'avantage économique robuste
+face aux approches classiques.
+\end{remarquebox}
+
+% =============================================================================
+\section{La contrainte fait plus que les modèles (P1)}
+% =============================================================================
+
+Le plafond de 25~\% par actif avait été retenu comme une contrainte de gestion
+réaliste, non comme un outil de modélisation. En le faisant varier seul, tout le
+reste étant fixé, on obtient le résultat le plus inattendu du projet.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.94\textwidth]{assets/figures/plafond.pdf}
+  \caption[Effet du plafond par actif]{Meilleur ratio de Sharpe classique en
+  fonction du plafond par actif, sur 248~rééquilibrages et 20,7~ans. Le nombre
+  d'allocations distinctes émises est indiqué sous chaque point.}
+  \label{fig:plafond}
+\end{figure}
+
+Relâcher le plafond de 25~\% jusqu'à l'absence de contrainte fait chuter le
+meilleur Sharpe classique de \textbf{0,9525 à 0,8650}, soit une perte de
+\textbf{10,1~\%}, de façon monotone. C'est davantage que l'écart entre deux
+modèles quelconques sur cet univers~: le rétrécissement de Ledoit-Wolf, l'EWMA,
+le DCC-GARCH et la commutation de régime réunis déplacent moins le résultat.
+
+Il s'agit du résultat de \textbf{Jagannathan et Ma (2003)} reproduit sur nos
+données~: une contrainte de poids active équivaut mathématiquement à un
+rétrécissement de la matrice de covariance. \textbf{La contrainte réalisait donc
+déjà le contrôle d'erreur d'estimation (P1) que le \emph{Machine Learning} devait
+apporter.}
+
+Le nombre d'allocations distinctes éclaire le mécanisme~: à 25~\% sur cinq
+actifs, $5 \times 0{,}25 = 1{,}25$, si bien que tout portefeuille admissible doit
+placer au moins quatre actifs au plafond. La variance minimale n'émet alors
+qu'\textbf{une seule} allocation sur 248~rééquilibrages~; à 30~\%, elle en émet
+171. Sur cet univers, la contrainte — et non le modèle — détermine l'essentiel de
+l'allocation.
+
+\begin{remarquebox}
+À présenter comme un résultat, non comme une limite~: le contrôle du risque le
+plus efficace de ce système s'est révélé être la limite de position qu'un mandat
+réel imposerait de toute façon. C'est précisément ce que le cadrage
+« contraintes réalistes de gestion » du cahier des charges invitait à découvrir.
+\end{remarquebox}
+
+% =============================================================================
+\section{Ce qui ne fonctionne pas : cinq pistes fermées}
+% =============================================================================
+
+La couche de prédiction de rendement — des modèles d'apprentissage supervisé
+prédisant le rendement de chaque actif — n'a jamais dépassé la ligne de base.
+Plutôt que de l'accepter, cinq explications possibles ont été testées
+indépendamment, chacune avec un protocole pré-enregistré.
+
+\begin{table}[htbp]
+  \centering
+  \caption[Les cinq pistes testées]{Cinq tentatives indépendantes de dépasser la
+  ligne de base régime + covariance dynamique.}
+  \label{tab:cinq-pistes}
+  \small
+  \begin{tabular}{p{7.4cm}p{7.2cm}}
+    \toprule
+    Piste testée & Verdict \\
+    \midrule
+    Prédiction de rendement calibrée honnêtement & aucune surperformance incrémentale établie \\
+    5 fois plus d'historique de prix (univers marocain profond, 56\,000 lignes) &
+      coefficient d'information $\times 2$ à $\times 4$, aucun avantage de portefeuille \\
+    Données fondamentales point-in-time (P/E, P/B, P/S, D/E) &
+      coefficient d'information $\times 2$, ratio de Sharpe en \textbf{baisse} \\
+    Ré-sélection par pli, 74~\% de données hors échantillon en plus &
+      intervalles $-28{,}6$~\%, classement instable \\
+    Contrainte conditionnée au régime & réfutée par son propre contrôle \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Deux de ces études méritent d'être détaillées, car elles établissent un point de
+méthode qui dépasse ce projet.
+
+\paragraph{Précision de prédiction $\neq$ performance de portefeuille.} L'ajout
+de données fondamentales a presque \emph{doublé} la capacité prédictive mesurée
+du modèle (coefficient d'information de 0,028 à 0,058) — et a fait \emph{baisser}
+le ratio de Sharpe du portefeuille correspondant. Le même phénomène est apparu
+avec cinq fois plus d'historique de prix. Améliorer un modèle et améliorer un
+portefeuille sont deux objectifs distincts~; le second ne découle pas
+automatiquement du premier.
+
+\paragraph{L'importance d'un contrôle destiné à réfuter.} L'étude sur la
+contrainte conditionnée au régime incluait une variante \textbf{inversée},
+délibérément construite dans la mauvaise direction. Sur le portefeuille EURAFRIC,
+cette variante inversée est bien la pire — ce qui semblait confirmer l'existence
+d'un effet de régime. Mais sur l'univers ETF, elle \emph{dépasse} la meilleure
+variante « correcte ». Un effet qui change de signe selon l'univers n'est pas un
+effet. Sans ce contrôle, la conclusion aurait été inverse.
+
+\begin{resultatbox}{Ce que la convergence de ces cinq études indique}
+Les cinq études ne justifient pas une valeur incrémentale de la couche de
+prédiction sur les univers et protocoles évalués. Elles montrent aussi que des
+écarts de l'ordre de grandeur observé restent trop instables pour être promus en
+surperformance. L'absence de preuve n'est pas une preuve d'absence ; c'est une
+limite mesurée, rendue visible par des tentatives comparables.
+\end{resultatbox}
+
+% =============================================================================
+\section{L'étiquette correspond-elle au modèle ? (P4)}
+
+Plusieurs estimateurs de ce système se dégradent au lieu d'échouer : DCC-GARCH
+retombe sur le rétrécissement de Ledoit-Wolf en cas de non-convergence, les
+signaux ML retombent sur la moyenne empirique si le panel est trop mince ou si
+l'ajustement échoue, et la stratégie à régimes résout une postérieure incertaine
+vers sa branche défensive. Chacun de ces replis est délibéré — une boucle
+walk-forward ne doit pas mourir sur une fenêtre difficile — mais chacun signifie
+aussi qu'un résultat peut porter une étiquette qui n'est pas toute la vérité. Un
+« DCC-GARCH » ayant replié une fois sur quatre est, sur ces dates, un résultat
+Ledoit-Wolf sous une étiquette DCC-GARCH.
+
+Jusqu'ici ces replis n'étaient tracés qu'en journal applicatif, au niveau
+\texttt{WARNING} : un message que personne ne lit sur une exécution non
+surveillée, et absent de tout artefact publié. Une instrumentation par
+rééquilibrage enregistre désormais, pour chaque ajustement, le modèle demandé,
+le modèle effectif, le statut, la raison du repli et la taille de la fenêtre
+d'entraînement. Ces enregistrements sont persistés en couche Gold
+(\texttt{fit\_reports.parquet}), versionnés et intégrés au manifeste de release
+avant qu'aucun tableau n'en soit tiré.
+
+\input{assets/tables/integrite_modele}
+
+\integriteVerdict{}
+
+\begin{resultatbox}{Ce que cette mesure établit, et ce qu'elle n'établit pas}
+\textbf{Elle établit} qu'aucun repli n'a été emprunté sur l'instantané publié,
+pour les stratégies et les dates comptées ci-dessus. La valeur est une
+\emph{mesure reproductible et versionnée}, non une hypothèse — c'est là
+l'apport, davantage que le zéro lui-même.
+
+\textbf{Elle n'établit pas} qu'aucun modèle ne replie jamais. Les chemins de
+repli sont du code vivant et testé, et un autre instantané peut les emprunter.
+L'instrumentation existe précisément pour rendre cette question
+\emph{vérifiable}, pas pour trancher d'avance.
+
+\textbf{Le contrôle qui rend le résultat crédible} n'est pas le zéro mais le
+test d'équivalence du runner : celui-ci doit reproduire chaque ratio de Sharpe
+publié \emph{à travers} le moteur instrumenté. Sans lui, l'instrumentation
+pourrait auditer une stratégie différemment configurée portant le même nom —
+ce qui s'est effectivement produit lors d'une première rédaction, où une
+configuration incomplète produisait un \texttt{rf\_signal} à 0,146 contre 1,123
+publié.
+\end{resultatbox}
+
+\subsection{Sensibilité aux coûts de transaction}
+
+Un ratio de Sharpe net énonce autant une hypothèse de coûts qu'une propriété de
+stratégie ; les hypothèses retenues ici (10~pb ETF, 30~pb BVC) sont des
+jugements. Le tableau~\ref{tab:couts} reprice le \emph{même} chemin d'allocation
+sous 0,5×, 1×, 1,5× et 2× ces coûts.
+
+\input{assets/tables/sensibilite_couts}
+
+\textbf{Portée de ce calcul.} Il s'agit d'un \emph{repricing d'un chemin
+d'allocation figé sous un modèle de coûts linéaire}, et non d'une analyse de
+sensibilité avec ré-optimisation. Il répond à « combien ces mêmes transactions
+auraient-elles coûté », jamais à « qu'aurait fait la stratégie si elle avait su
+les coûts plus élevés ». Trois conditions le bornent : le chemin de pondérations
+est figé (aucune stratégie évaluée ici ne lit les coûts) ; les coûts sont
+linéaires en notionnel échangé, sans terme d'impact de marché ni de capacité ;
+et le calcul ne s'applique \emph{pas} à une stratégie pénalisée en rotation
+(phase 4C), où le coût atteint la fonction objectif et modifierait les
+pondérations — ces scénarios-là devraient être re-simulés, non repricés.
+
+Toutes les estimations ponctuelles de Sharpe net rapportées restent positives à
+2× les coûts. Ce constat est descriptif : il ne vaut ni démonstration de
+robustesse ni validation économique. L'ordre de fragilité est en revanche
+informatif et recoupe le diagnostic des phases 4B/4C : les modèles de signal à
+forte rotation sont les plus sensibles aux coûts.
+
+\section{Gouvernance, explicabilité et monitoring}
+% =============================================================================
+
+Trois \emph{model cards} sont générées à partir des artefacts Gold : une carte
+pour la stratégie de référence \texttt{regime\_conditional}, et une carte pour
+chacun des challengers \texttt{rf\_signal} et \texttt{xgb\_signal}. La première
+est la référence non parce qu'une supériorité a été démontrée, mais parce qu'aucun
+challenger ne l'a déplacée selon le protocole retenu et que sa décision est
+reconstructible. Les deux autres restent explicitement exploratoires.
+
+L'explication est adaptée à la nature de chaque modèle. La stratégie de référence
+produit une trace de décision par rééquilibrage (régime, sous-optimiseur,
+contraintes, poids et éventuel repli). Les challengers à arbres produisent des
+attributions additives exactes : TreeSHAP natif pour XGBoost et décomposition de
+chemin pour la forêt aléatoire. Les contrôles vérifient la reconstruction de la
+prédiction ; une explication ne peut donc pas provenir de poids différents de
+ceux de l'instantané publié.
+
+Le monitoring est \textbf{prêt mais non actif}. L'ordonnanceur demeure arrêté
+après l'incident d'artefacts déchirés : avant toute reprise, publication atomique,
+vérification du manifeste avant lecture, répertoires de release versionnés avec
+verrou, et procédure de rollback exercée sont requis. Cette réserve est
+intentionnelle : documenté n'est pas validé indépendamment, et prêt au monitoring
+n'est pas monitoring en production.
+
+% =============================================================================
+\section{Le produit livré}
+% =============================================================================
+
+Le projet livre un \textbf{prototype de recherche} composé d'une application web
+à deux pages et d'une interface REST en lecture seule. Elles partagent une couche
+de données unique, afin que deux surfaces ne puissent pas afficher des chiffres
+divergents pour la même stratégie. Elles ne fournissent ni conseil
+d'investissement, ni ordre, ni service de production.
+
+\subsection{Page « Résultats de recherche » — destinée aux décideurs}
+
+\begin{figure}[p]
+  \centering
+  \fbox{\includegraphics[width=0.93\textwidth]{assets/figures/dashboard_page1_full_01.png}}\\[0.45cm]
+  \fbox{\includegraphics[width=0.93\textwidth]{assets/figures/dashboard_page1_full_02.png}}
+  \caption[Tableau de bord — page décideur]{Page destinée aux décideurs,
+  vue déroulée complète (écrans 1--2 sur 4). Elle
+  présente d'abord le comportement en crise, lecture descriptive, puis seulement
+  ensuite le ratio de Sharpe, dont l'écart observé n'établit pas une
+  surperformance.
+  L'attribution honnête et les réserves statistiques sont affichées à l'écran, non
+  reléguées en note.}
+  \label{fig:dashboard1}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \fbox{\includegraphics[width=0.93\textwidth]{assets/figures/dashboard_page1_full_03.png}}\\[0.45cm]
+  \fbox{\includegraphics[width=0.93\textwidth]{assets/figures/dashboard_page1_full_04.png}}
+  \caption[Tableau de bord — résultats de recherche]{Page « Résultats de recherche » — vue déroulée complète
+  (écrans 3--4 sur 4).}
+\end{figure}
+
+Quatre contraintes d'intégrité sont imposées \emph{par le code} de cette page,
+plutôt que laissées à la discipline de rédaction~:
+
+\begin{enumerate}
+  \item aucun chiffre n'est saisi en dur — tout est calculé à partir des
+        artefacts versionnés, ce qu'un test vérifie en inspectant le code source~;
+  \item chaque performance affichée est accompagnée de son intervalle de
+        confiance, et le texte indique explicitement que les intervalles se
+        chevauchent~;
+  \item le cas défavorable — l'univers ETF, où le système perd — est affiché, non
+        dissimulé~;
+  \item la couche de prédiction de rendement n'est jamais présentée comme
+        l'apport du projet, puisque cinq études n'ont pas établi d'avantage
+        incrémental de portefeuille.
+\end{enumerate}
+
+\subsection{Page « Explorateur de stratégies » — destinée à l'analyse}
+
+\begin{figure}[p]
+  \centering
+  \fbox{\includegraphics[width=0.93\textwidth]{assets/figures/dashboard_page2_full_01.png}}\\[0.45cm]
+  \fbox{\includegraphics[width=0.93\textwidth]{assets/figures/dashboard_page2_full_02.png}}
+  \caption[Tableau de bord — explorateur de stratégies]{Page d'analyse,
+  vue déroulée complète (écrans 1--2 sur 3)~: comparaison de
+  stratégies, métriques nettes de coûts, allocation cible et export CSV. Elle
+  intègre également un explorateur de plafond, qui rend interactif le résultat de
+  la section précédente.}
+  \label{fig:dashboard2}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \fbox{\includegraphics[width=0.93\textwidth]{assets/figures/dashboard_page2_full_03.png}}
+  \caption[Tableau de bord — explorateur de stratégies]{Page « Explorateur de stratégies » — vue déroulée complète
+  (écran 3 sur 3).}
+\end{figure}
+
+Cette page ajoute un \textbf{explorateur de plafond}~: un curseur permettant de
+faire varier la contrainte de position et d'observer immédiatement son effet sur
+la performance. C'est le résultat le plus marquant du projet rendu manipulable
+plutôt que consigné dans un tableau.
+
+\subsection{L'interface REST}
+
+Une API expose les mêmes artefacts pour un usage externe (\texttt{/strategies},
+\texttt{/metrics}, \texttt{/equity}, \texttt{/weights}, \texttt{/compare},
+\texttt{/crisis}). Elle est délibérément \emph{mince}~: elle sert des artefacts
+versionnés et ne réentraîne jamais de modèle à la demande.
+
+Deux points de conception méritent d'être signalés. D'une part, le point d'entrée
+\texttt{/compare} renvoie toujours l'intervalle de confiance \emph{avec} l'écart
+de performance~: un client ne peut pas récupérer le gain sans son incertitude.
+D'autre part, \texttt{/crisis} expose l'analyse exploratoire avec sa réserve
+d'attribution et ses limites d'inférence.
+
+% =============================================================================
+\section*{Synthèse du chapitre}
+\addcontentsline{toc}{section}{Synthèse du chapitre}
+
+\begin{itemize}
+  \item \textbf{Exploré} — le détecteur de régime est plus souvent dans l'état
+        « baissier » durant les cinq fenêtres étudiées. Le diagnostic $p = 0{,}031$
+        est rapporté comme exploratoire, non confirmatoire.
+  \item \textbf{Observé, non démontré} — sur le portefeuille EURAFRIC, libellé en
+        dirhams et non couvert, la stratégie à régimes est en retrait du
+        Markowitz classique de $10{,}47$~\%, et lui est également inférieure de
+        $1{,}6$~\% sur l'univers ETF, mono-devise en dollars. Le classement est
+        sensible au protocole d'évaluation et à la fenêtre hors échantillon
+        associée~; aucun test pairé de cette différence n'est présenté.
+  \item \textbf{Testé, non établi} — sous validation strictement antérieure, les
+        \textbf{huit} comparaisons pairées sur la fenêtre gelée ont un intervalle
+        contenant zéro ($p$ de 0,066 à 0,939). Aucun modèle de signal n'établit de
+        surperformance, ni contre la stratégie à régimes ni contre l'équipondéré,
+        sur aucun des deux univers. La correction White/SPA sur 240 configurations
+        n'établit pas non plus de surperformance contre la référence primaire.
+  \item \textbf{Observé} — l'optimisation sous contrainte protège mieux que la
+        diversification naïve sur les cinq fenêtres de crise étudiées, avec un
+        délai de récupération environ deux fois plus court. Cette lecture reste
+        descriptive et ce gain revient à la contrainte et à la covariance, non à
+        la couche de régime.
+  \item \textbf{Découvert} — le plafond de position, choisi comme règle métier,
+        est le régulariseur le plus efficace du système~: 10,1~\% de Sharpe, plus
+        que tout modèle testé.
+  \item \textbf{Réfuté / non établi} — cinq pistes indépendantes visant à
+        dépasser la ligne de base n'ont pas établi d'avantage incrémental ; deux
+        montrent que précision de prédiction et performance de portefeuille sont
+        des objectifs distincts.
+\end{itemize}
+
+Le chapitre suivant conclut en dressant le bilan de ce que le système apporte,
+des limites qui subsistent, et des directions qu'un prolongement devrait
+privilégier.

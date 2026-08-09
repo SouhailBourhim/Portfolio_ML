@@ -1,0 +1,38 @@
+% GÉNÉRÉ par scripts/build_figures_chap5.py — ne pas éditer à la main.
+% Source : data/gold/paired_comparison_results.json + phase5_results.json
+\newcommand{\paireNb}{huit}
+\newcommand{\paireCasUnivers}{\texttt{etf\_2017}}
+\newcommand{\paireCasCandidat}{signal RF calibré}
+\newcommand{\paireCasSharpe}{1,102}
+\newcommand{\paireCasRefSharpe}{1,093}
+\newcommand{\paireCasDelta}{+0{,}009}
+\newcommand{\paireCasIC}{[-0{,}025;\ +0{,}041]}
+\newcommand{\paireCasP}{0{,}326}
+\newcommand{\paireMinP}{0{,}066}
+\newcommand{\paireMinPCas}{RF contre l'équipondéré sur \texttt{etf\_2017}}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption[Comparaisons pairées]{Comparaisons pairées sur la fenêtre de test
+  gelée, nettes de coûts (bootstrap par blocs, 2\,000 rééchantillons).
+  \emph{Aucune} des huit comparaisons n'établit de surperformance.}
+  \label{tab:paires}
+  \begin{tabular}{@{}llrrr@{}}
+    \toprule
+    Univers & Comparaison & $\Delta$Sharpe & IC 90~\% & $p$ \\
+    \midrule
+    \multirow{4}{*}{\texttt{etf\_2017}}
+      & RF vs régimes & $+0{,}009$ & $[-0{,}025;\ +0{,}041]$ & 0,326 \\
+      & RF vs 1/N & $+0{,}120$ & $[-0{,}013;\ +0{,}247]$ & 0,066 \\
+      & XGB vs régimes & $-0{,}149$ & $[-0{,}308;\ +0{,}010]$ & 0,939 \\
+      & XGB vs 1/N & $-0{,}038$ & $[-0{,}177;\ +0{,}096]$ & 0,671 \\
+    \addlinespace
+    \multirow{4}{*}{\texttt{full\_2021}}
+      & RF vs régimes & $-0{,}128$ & $[-0{,}486;\ +0{,}239]$ & 0,715 \\
+      & RF vs 1/N & $-0{,}005$ & $[-0{,}424;\ +0{,}389]$ & 0,513 \\
+      & XGB vs régimes & $-0{,}168$ & $[-0{,}577;\ +0{,}264]$ & 0,740 \\
+      & XGB vs 1/N & $-0{,}046$ & $[-0{,}445;\ +0{,}329]$ & 0,587 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
