@@ -1,0 +1,137 @@
+% =============================================================================
+%  Résumé (français) et Abstract (anglais)
+%
+%  Cette édition finale contient uniquement le résumé français et l'abstract
+%  anglais, conformément au choix de remise.
+% =============================================================================
+
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+\markboth{RÉSUMÉ}{RÉSUMÉ}
+\enlargethispage{3\baselineskip}
+\small
+
+Ce projet de fin d'année, réalisé à distance pour EURAFRIC Information, porte sur
+l'allocation d'un capital entre plusieurs actifs financiers~: comment répartir
+une somme entre quatre valeurs de la Bourse de Casablanca et cinq fonds
+indiciels internationaux de manière à obtenir le meilleur rendement possible pour
+un risque maîtrisé.
+
+La théorie classique répond à cette question depuis 1952, mais échoue en pratique
+pour quatre raisons structurelles~: les quantités qu'elle estime sont bruitées,
+le comportement des marchés change au cours du temps, la diversification
+disparaît précisément pendant les crises, et les performances mesurées sur le
+passé sont systématiquement optimistes. Le travail construit une chaîne complète
+qui traite ces quatre problèmes~: préparation et validation des données en trois
+couches, moteur de simulation temporelle dont l'absence de vision du futur est
+vérifiée par des tests, puis quatre familles de modèles ajoutées une à une —
+rétrécissement de la matrice de covariance, détection non supervisée de régimes
+de marché par modèle de Markov caché, prédiction de rendement par ensembles
+d'arbres, et optimisation tenant compte des coûts de transaction. L'évaluation
+est traitée comme un objet d'ingénierie à part entière~: sélection strictement
+antérieure (l'entraînement précède toujours la validation, purge et embargo à la
+frontière), segment de test gelé, et \textbf{comparaisons pairées} par bootstrap
+à blocs — le test de la \emph{différence} entre deux stratégies, que des
+intervalles marginaux ne fournissent pas.
+
+Les résultats sont rapportés selon leur force probante. Sur cinq fenêtres de
+crise externes, le détecteur de régime est plus souvent dans son état « baissier »
+qu'en dehors des fenêtres~; cette association est présentée comme exploratoire,
+car cinq événements et une définition de l'état par le rendement ne permettent
+pas une conclusion confirmatoire. L'écart ponctuel entre la stratégie à
+régimes et la meilleure approche classique est de $-10{,}47$~\% de ratio de
+Sharpe net sur le portefeuille visé et de $-1{,}6$~\% sur l'univers
+international~; aucun test pairé de cette différence n'est présenté, dans un sens
+comme dans l'autre. \textbf{Le portefeuille visé est libellé en dirhams} au taux
+de référence officiel de Bank Al-Maghrib et demeure \textbf{non couvert} contre
+le risque de change~; l'univers international, composé uniquement de fonds
+indiciels en dollars, est mono-devise. Les niveaux de Sharpe ne sont donc pas
+comparables d'un univers à l'autre. Sur l'instantané publié,
+aucun des 1\,188 ajustements — quatre stratégies évaluées, 297 dates de
+rééquilibrage — n'a utilisé de repli d'estimateur~: chaque résultat rapporté
+provient du modèle que son étiquette désigne, mesure reproductible et versionnée
+plutôt qu'hypothèse. Après correction White/SPA pour les 240 configurations
+atteignables, sous validation strictement antérieure, les huit
+comparaisons pairées menées sur la fenêtre de test gelée ont toutes un intervalle
+contenant zéro~: \textbf{aucune surperformance n'est établie}, ni pour les
+modèles de signal contre la stratégie à régimes, ni contre l'équipondéré. Ce
+n'est pas davantage une preuve d'équivalence, faute de test dédié. Cinq pistes indépendantes ont
+été explorées et fermées, établissant notamment que précision de prédiction et
+performance de portefeuille sont deux objectifs distincts. Enfin, le plafond de
+position imposé comme règle métier s'est révélé le régulariseur le plus efficace
+du système. Le livrable comprend un tableau de bord de recherche à deux pages et
+une interface REST de consultation, trois cartes de modèle générées depuis les
+artefacts, une couche d'explicabilité adaptée à chaque décision et un monitoring
+prêt mais non actif, couverts par \textbf{788~tests automatisés}. Les corrections
+successives des dividendes puis du numéraire ont changé le verdict publié ;
+elles constituent un résultat d'ingénierie à part entière, car chaque révision
+est reconstruite, versionnée et propagée automatiquement jusqu'au rapport et
+aux interfaces.
+
+\vspace{0.6em}
+\noindent\textbf{Mots-clés~:} optimisation de portefeuille, apprentissage
+automatique, modèle de Markov caché, matrice de covariance, backtesting,
+validation hors échantillon, Bourse de Casablanca, gestion du risque.
+
+\normalsize
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\markboth{ABSTRACT}{ABSTRACT}
+\enlargethispage{3\baselineskip}
+
+This final-year project, carried out remotely for EURAFRIC Information, addresses capital
+allocation across financial assets: how to split a sum between four Casablanca
+Stock Exchange equities and five international index funds so as to obtain the
+best possible return for a controlled level of risk.
+
+Classical theory has answered this question since 1952, but fails in practice for
+four structural reasons: the quantities it estimates are noisy, market behaviour
+changes over time, diversification vanishes precisely during crises, and
+performance measured on past data is systematically optimistic. This work builds
+a complete pipeline addressing all four: a three-layer data preparation and
+validation stack, a walk-forward simulation engine whose inability to see the
+future is enforced by tests rather than asserted, and four model families added
+one at a time — covariance shrinkage, unsupervised market-regime detection via a
+hidden Markov model, return prediction with tree ensembles, and
+transaction-cost-aware optimisation. Evaluation is treated as an engineering
+artefact in its own right: strictly forward-only selection (training always
+precedes validation, with a purge and an embargo at the boundary), a frozen test
+segment, and \textbf{paired} block-bootstrap comparisons — a test of the
+\emph{difference} between two strategies, which marginal intervals do not provide.
+
+Results are reported by strength of evidence. Across five external crisis
+windows, the regime detector is more often in its ``bear'' state than outside
+those windows; this association is reported as exploratory because five events
+and a return-based state definition cannot support a confirmatory conclusion.
+The observed net-Sharpe difference between the regime strategy and the best
+classical approach is $-10.47$\% on the target portfolio and $-1.6$\% on the
+international universe; no paired test of either difference is presented, in
+neither direction. \textbf{The target portfolio is MAD-denominated} at Bank
+Al-Maghrib's official reference rate and remains \textbf{unhedged}; the
+international universe holds only USD funds and is single-currency. Sharpe
+levels are therefore not comparable across universes. On the released snapshot none of the
+1\,188 fits — four evaluated strategies, 297 rebalance dates — used an estimator
+fallback: every reported result was produced by the model its label names, a
+reproducible versioned measurement rather than an assumption. After White/SPA
+correction across the 240 reachable configurations and under forward-only
+selection, all eight paired comparisons on the frozen test
+window have intervals containing zero: \textbf{no outperformance is established},
+for either signal model against either the regime strategy or equal weighting.
+Nor is this evidence of equivalence, absent a dedicated test.
+Five independent avenues for improvement were explored and closed, establishing
+among other things that prediction accuracy and portfolio performance are
+distinct objectives. Finally, the position cap imposed as a business rule turned
+out to be the system's most effective regulariser. Deliverables include a
+two-page research dashboard and a read-only REST interface, three
+artefact-generated model cards, decision-specific explainability, and monitoring
+that is ready but deliberately not live, covered by \textbf{788 automated
+tests}. Successive dividend and base-currency corrections changed the published
+verdict; they are an engineering result in their own right because every
+revision is reconstructed, versioned, and propagated consistently to the report
+and interfaces.
+
+\vspace{0.6em}
+\noindent\textbf{Keywords:} portfolio optimisation, machine learning, hidden
+Markov model, covariance estimation, backtesting, out-of-sample validation,
+Casablanca Stock Exchange, risk management.

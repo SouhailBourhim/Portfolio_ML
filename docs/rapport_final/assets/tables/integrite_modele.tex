@@ -1,0 +1,26 @@
+% GÉNÉRÉ par scripts/build_integrity_section.py — ne pas éditer à la main.
+% Source : data/gold/fit_report_summary.json
+\newcommand{\integriteVerdict}{Sur l'instantané publié, 0 ajustement sur 1184 — 4 stratégies évaluées, 296 dates de rééquilibrage — n'a utilisé de repli : chaque résultat rapporté ici a été produit par le modèle que son étiquette désigne. La portée de cette affirmation est exactement l'ensemble compté ci-dessus.}
+\newcommand{\integriteAjustements}{1184}
+\newcommand{\integriteReplis}{0}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption[Intégrité des modèles]{Repli des estimateurs sur l'instantané publié. Un repli signifie que le résultat a été produit par un estimateur de substitution, non par le modèle nommé.}
+  \label{tab:integrite}
+  \begin{tabular}{@{}llrr@{}}
+    \toprule
+    Univers & Stratégie & Replis / rééquilibrages & Replis / jours \\
+    \midrule
+    \texttt{etf\_2017} & \texttt{dcc\_garch} & 0 / 248 & 0 / 5387 \\
+    \texttt{etf\_2017} & \texttt{regime\_conditional} & 0 / 248 & 0 / 5387 \\
+    \texttt{etf\_2017} & \texttt{rf\_signal} & 0 / 248 & 0 / 5387 \\
+    \texttt{etf\_2017} & \texttt{xgb\_signal} & 0 / 248 & 0 / 5387 \\
+    \texttt{full\_2021} & \texttt{dcc\_garch} & 0 / 48 & 0 / 1040 \\
+    \texttt{full\_2021} & \texttt{regime\_conditional} & 0 / 48 & 0 / 1040 \\
+    \texttt{full\_2021} & \texttt{rf\_signal} & 0 / 48 & 0 / 1040 \\
+    \texttt{full\_2021} & \texttt{xgb\_signal} & 0 / 48 & 0 / 1040 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
