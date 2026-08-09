@@ -104,7 +104,7 @@ C'est la première forme, et la plus discrète, du biais que le chapitre~2 a
 appelé P4.
 
 % =============================================================================
-\section{Deux univers, et un manque assumé}
+\section{Deux univers, et une frontière de données canonique}
 % =============================================================================
 
 Le portefeuille visé par EURAFRIC mêle quatre valeurs de la Bourse de Casablanca
@@ -112,13 +112,13 @@ Le portefeuille visé par EURAFRIC mêle quatre valeurs de la Bourse de Casablan
 fonds indiciels internationaux couvrant les grandes actions américaines, les
 technologiques, les marchés émergents, l'or et les obligations d'État.
 
-Un obstacle est apparu dès la première semaine~: \textbf{aucune source gratuite ne
-fournit l'historique de la Bourse de Casablanca avant la mi-2021}. Le portefeuille
-complet ne peut donc pas être étudié sur le krach de 2020, ni sur la crise de
-2008. Plutôt que de dissimuler cette limite ou d'acheter un historique, nous
-avons adopté une \textbf{double base de test} (tableau~\ref{tab:univers})~: toute
-stratégie est évaluée sur les deux univers, et les deux résultats sont publiés
-côte à côte.
+La chaîne canonique rencontre une frontière claire~: \textbf{aucune source
+gratuite, contractualisée et reproductible dans ce pipeline ne fournit l'historique
+complet de la Bourse de Casablanca avant la mi-2021}. Le portefeuille complet
+publié ne peut donc pas être étudié sur le krach de 2020, ni sur la crise de
+2008. Plutôt que de dissimuler cette limite, nous avons adopté une \textbf{double
+base de test} (tableau~\ref{tab:univers})~: toute stratégie est évaluée sur les
+deux univers, et les deux résultats sont publiés côte à côte.
 
 \begin{table}[htbp]
   \centering
@@ -143,6 +143,16 @@ et ils ne concordent pas toujours — mais il a une vertu décisive~: une conclu
 qui ne tient que sur un seul univers se voit immédiatement. Le
 chapitre~\ref{chap:resultats} montre que c'est précisément le cas du résultat
 principal.
+
+Cette frontière ne signifie pas que les données marocaines antérieures à 2021
+n'existent pas. Une étude séparée a constitué un univers BVC profond de 12 actions
+sur 2005--2024 (56\,184 lignes de panel, soit environ cinq fois le volume de
+\texttt{full\_2021}) et couvrant 2008. Elle a amélioré le coefficient
+d'information des signaux RF/XGB d'un facteur deux à quatre, sans établir un
+avantage de portefeuille net de coûts. Cet historique reste hors de la release~:
+ses prix bruts doivent encore être contractualisés, rapprochés de la période de
+recouvrement récente et ajustés des dividendes et opérations sur titres. C'est une
+limite de gouvernance des données et d'intégration, non une absence de données.
 
 \begin{remarquebox}
 L'univers ETF a été étendu de 2017 à 2004 en cours de projet, lorsque nous avons
@@ -265,7 +275,7 @@ gagne brut et perd net est un résultat, pas un incident.
 \section{Rendre les règles exécutables}
 % =============================================================================
 
-Le dépôt compte \textbf{788 tests}, exécutés hors ligne
+Le dépôt compte \textbf{plus de 780 tests}, exécutés hors ligne
 et sur des jeux de données synthétiques minuscules. Leur nombre importe moins que
 leur nature~: la majorité ne vérifie pas qu'une fonction calcule juste, mais
 qu'une \emph{règle de projet} ne peut pas être enfreinte. Ils sont d'ailleurs
@@ -352,21 +362,12 @@ aucune logique~; ses actifs appellent les fonctions du code source, inchangées.
 \subsection{MLflow — « d'où vient ce chiffre ? »}
 
 MLflow enregistre les \emph{résultats}~: pour chaque exécution, les paramètres
-employés, les métriques obtenues, le fichier source et le commit exact du code
-(figure~\ref{fig:mlflow}). C'est le registre qui permet, six semaines après, de
-répondre à la question « ce Sharpe de 1,164, sur quelles données et avec quels
-réglages~? » sans relancer un calcul.
-
-\begin{figure}[htbp]
-  \centering
-  \fbox{\includegraphics[width=0.95\textwidth]{assets/figures/mlflow_ui.png}}
-  \caption[Suivi d'expérience MLflow]{MLflow~: détail d'une exécution. Les onze
-  métriques enregistrées comprennent le ratio de Sharpe net (1,164 — la valeur de
-  référence citée au chapitre~\ref{chap:resultats}), sa contrepartie brute, le
-  drawdown, le turnover et le ratio de Sharpe déflaté. Le panneau de droite
-  conserve le fichier lancé et le commit exact du code.}
-  \label{fig:mlflow}
-\end{figure}
+employés, les métriques obtenues, le fichier source et le commit exact du code.
+C'est le registre qui permet, six semaines après, de répondre à la question
+« quel Sharpe publié, sur quelles données et avec quels réglages~? » sans relancer
+un calcul. Les valeurs de performance courantes ne sont jamais lues dans une
+capture d'écran~: elles proviennent des artefacts Gold versionnés du
+chapitre~\ref{chap:resultats}.
 
 \begin{remarquebox}
 Ce registre a lui-même révélé un défaut lors de la préparation de ce chapitre~:
@@ -437,7 +438,7 @@ documents détecte désormais.
     Dagster & Ordonnancement local et lignée des actifs. \\
     MLflow & Journal des expériences~: paramètres, métriques, code. \\
     Streamlit, FastAPI & Tableau de bord à deux pages et interface REST. \\
-    pytest & 788 tests, hors ligne, exécutés à chaque modification. \\
+    pytest & Plus de 780 tests, hors ligne, exécutés à chaque modification. \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -458,9 +459,11 @@ médaillon.
 \begin{itemize}
   \item Les données transitent par trois couches à sens unique, chacune validée à
         l'écriture~; la modélisation ne lit que la dernière.
-  \item L'absence d'historique marocain avant 2021 est une limite assumée,
-        compensée par une \textbf{double base de test} — toute stratégie est jugée
-        sur deux univers, et les désaccords entre eux sont publiés.
+  \item L'univers BVC \emph{canonique} commence en 2021. Un historique marocain
+        profond a été testé séparément~: il améliore la prédiction sans établir
+        d'avantage de portefeuille, et reste hors release tant que ses sources et
+        ses ajustements ne sont pas contractualisés. La \textbf{double base de
+        test} publie les désaccords entre univers au lieu de les masquer.
   \item Le moteur de backtest, écrit une fois et jamais modifié, est une
         \textbf{frontière de confiance}~: il découpe les données que les modèles
         reçoivent et valide les décisions qu'ils rendent. L'impossibilité de voir

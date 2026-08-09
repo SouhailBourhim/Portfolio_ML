@@ -54,10 +54,10 @@ univers, hors échantillon et net de coûts de transaction.
     Univers & Stratégie & Sharpe & Rendement & DD max. & Calmar \\
     \midrule
     \multirow{4}{*}{\shortstack[l]{Portefeuille\\EURAFRIC\\(9 actifs)}}
-      & \textbf{Système ML (régime)}      & \textbf{1,236} & 12,2~\% & $-14{,}1$~\% & 0,862 \\
-      & Markowitz Sharpe max.             & 1,164 & \textbf{13,2~\%} & $-13{,}2$~\% & \textbf{1,000} \\
-      & Équipondéré (1/N)                 & 1,160 & 11,6~\% & $-13{,}6$~\% & 0,852 \\
-      & Variance min. (Ledoit-Wolf)       & 1,074 &  9,9~\% & $\mathbf{-12{,}8}$~\% & 0,775 \\
+      & Système ML (régime)               & 0,957 &  9,4~\% & $-14{,}6$~\% & 0,641 \\
+      & \textbf{Markowitz Sharpe max.}   & \textbf{1,069} & \textbf{12,0~\%} & \textbf{$-11{,}3$~\%} & \textbf{1,060} \\
+      & Équipondéré (1/N)                 & 0,953 &  9,5~\% & $-12{,}4$~\% & 0,762 \\
+      & Variance min. (Ledoit-Wolf)       & 0,878 &  8,3~\% & $-12{,}6$~\% & 0,655 \\
     \midrule
     \multirow{4}{*}{\shortstack[l]{ETF inter-\\nationaux\\(5 actifs)}}
       & \textbf{Variance min. (Ledoit-Wolf)} & \textbf{0,953} & 10,3~\% & $-26{,}9$~\% & 0,382 \\
@@ -98,16 +98,17 @@ serait pas un système, mais une sélection.
 Le tableau~\ref{tab:headline} appelle une observation que l'honnêteté impose de
 formuler, car elle nuance le résultat principal.
 
-Sur le portefeuille EURAFRIC, le système ML l'emporte \emph{au sens du ratio de
-Sharpe} — mais il est battu par le Markowitz classique sur le rendement annualisé
-(12,2~\% contre 13,2~\%), sur le drawdown maximal ($-14{,}1$~\% contre
-$-13{,}2$~\%), sur le ratio de Calmar (0,862 contre 1,000) et sur le turnover
-(0,29 contre 0,14, soit deux fois plus de transactions).
+Sur le portefeuille EURAFRIC, le système ML est derrière le Markowitz classique
+sur les cinq mesures publiées~: Sharpe net (0,957 contre 1,069), rendement
+annualisé (9,4~\% contre 12,0~\%), drawdown maximal ($-14{,}6$~\% contre
+$-11{,}3$~\%), ratio de Calmar (0,641 contre 1,060) et turnover (0,32 contre
+0,14, soit plus de deux fois plus de transactions).
 
-Autrement dit : \textbf{le gain provient d'une réduction de la volatilité, non
-d'un supplément de rendement}, et il n'apparaît que dans la mesure qui divise par
-cette volatilité. Un gérant dont le mandat privilégie le rendement par unité de
-perte maximale — le critère de Calmar — préférerait le Markowitz classique.
+Autrement dit : \textbf{l'écart observé défavorable au système à régimes ne
+repose pas sur une seule métrique}. Il demeure néanmoins descriptif~: aucun test
+pairé de cette comparaison de pleine période n'autorise à conclure à une
+supériorité de l'approche classique. Le classement dépend aussi du protocole et
+de la fenêtre hors échantillon, comme le montre la suite du chapitre.
 
 Cette dépendance du classement au choix de la mesure est un résultat en soi. Elle
 justifie que les sections suivantes ne s'appuient pas uniquement sur le ratio de

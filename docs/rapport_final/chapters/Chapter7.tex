@@ -188,7 +188,7 @@ de services en lecture seule. L'intégration continue exécute les contrôles qu
 ne nécessitent pas les données privées de la télécommande ; les portes de
 release dépendantes de Gold restent exécutées localement avant publication.
 
-Au moment de ce rapport, \textbf{788 tests} couvrent notamment les contrats de
+Au moment de ce rapport, \textbf{plus de 780 tests} couvrent notamment les contrats de
 données, l'absence de regard vers le futur, les solveurs, les chemins de repli,
 les caches, les statistiques pairées, la correction de multiplicité, les cartes
 de modèle, les faits publiés et le texte du PDF rendu. Le nombre brut n'est pas
@@ -201,14 +201,6 @@ incidents réels et échouent si la classe d'erreur réapparaît.
   \caption{Graphe d'actifs Dagster : orchestration locale et lignage des couches
   du pipeline. L'ordonnanceur reste arrêté sur la release de soutenance.}
   \label{fig:dagster-final}
-\end{figure}
-
-\begin{figure}[p]
-  \centering
-  \includegraphics[width=0.95\textwidth]{assets/figures/mlflow_ui.png}
-  \caption{Suivi des expériences dans MLflow. Dagster décrit l'exécution des
-  actifs ; MLflow conserve le contexte et les résultats d'expérience.}
-  \label{fig:mlflow-final}
 \end{figure}
 
 % -----------------------------------------------------------------------------
@@ -245,9 +237,13 @@ Cette séparation répond à un risque classique des projets académiques : un
 notebook permet facilement d'exécuter des cellules hors ordre, d'écraser un
 résultat ou de charger un fichier local non versionné. Ici, les expériences
 canoniques vivent dans des scripts, des étapes DVC et des artefacts contrôlés ;
-le notebook devient une fenêtre de lecture. Un notebook exploratoire sur un
-historique marocain profond non ajusté reste archivé et explicitement hors
-release tant que cette donnée n'est pas rapprochée et contractualisée.
+le notebook devient une fenêtre de lecture. L'étude exploratoire sur l'historique
+marocain profond (2005--2024, 12 actions) est explicitement hors release~: elle
+a accru le coefficient d'information des signaux sans établir d'avantage de
+portefeuille. Son intégration exigerait une source contractualisée, un
+rapprochement avec la période récente, et des ajustements de dividendes et
+d'opérations sur titres. Elle sert donc de résultat de recherche, pas d'entrée
+silencieuse dans la chaîne canonique.
 
 % -----------------------------------------------------------------------------
 \section{Ce qui est livré, et ce qui ne l'est pas}

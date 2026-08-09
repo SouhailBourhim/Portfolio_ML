@@ -33,7 +33,7 @@ correction pour le nombre d'essais~; trois cartes de modèle, une couche
 d'explicabilité et une instrumentation des replis~; et deux surfaces de
 consultation — une application web à deux pages et une interface REST en lecture
 seule — partageant une couche de données unique. L'ensemble est couvert par
-\textbf{788~tests} exécutés hors ligne et par un contrôle du PDF rendu.
+\textbf{plus de 780~tests} exécutés hors ligne et par un contrôle du PDF rendu.
 
 % =============================================================================
 \section*{Ce que le projet établit}
@@ -69,11 +69,11 @@ intervalle contenant zéro ($p$ compris entre 0,066 et 0,939). \textbf{Aucune
 surperformance n'est établie}, ni pour les modèles de signal contre la stratégie à
 régimes, ni contre l'équipondéré, sur aucun des deux univers.
 
-Un cas résume l'intérêt de la démarche. Sur \texttt{full\_2021}, le signal XGB
-calibré obtient 1,308 contre 1,213 pour la stratégie à régimes~: en estimation
-ponctuelle il « bat » la référence, et l'artefact l'enregistre ainsi. Le test
-pairé donne $p = 0{,}361$. Le classement ponctuel, celui qu'on aurait rapporté
-sans ce test, n'est pas soutenu par les données.
+Un cas résume l'intérêt de la démarche. Sur \texttt{etf\_2017}, le signal RF
+calibré obtient 1,102 contre 1,093 pour la stratégie à régimes~: en estimation
+ponctuelle il « bat » la référence. Le test pairé donne pourtant $p = 0{,}326$.
+Le classement ponctuel, celui qu'on aurait rapporté sans ce test, n'est pas
+soutenu par les données.
 
 Ce n'est pas pour autant une preuve d'équivalence~: ne pas rejeter n'est pas
 accepter l'hypothèse nulle. L'établir demanderait un test d'équivalence contre une
@@ -145,20 +145,26 @@ ne sont pas satisfaites.
 Elles sont énoncées ici plutôt que laissées à découvrir.
 
 \begin{itemize}
-  \item \textbf{La taille d'échantillon est la limite dominante.} Le portefeuille
-        visé ne compte qu'environ cinq années d'historique exploitable. C'est ce
-        qui empêche de conclure, et aucun modèle supplémentaire ne le corrigera.
-  \item \textbf{L'historique marocain gratuit ne remonte pas avant 2021}, ce qui
-        exclut la crise de 2020 de l'univers principal. L'univers ETF, lui,
-        remonte désormais à novembre 2004 et couvre 2008, 2020 et 2022 ; il
-        atténue ce manque sans transformer l'univers BVC en historique long.
+  \item \textbf{La taille et la composition de l'échantillon limitent la
+        puissance, non toute conclusion.} \texttt{full\_2021} couvre environ
+        cinq années~: cela ne permet pas de départager solidement de petits écarts
+        entre stratégies. Le projet conclut toutefois, sur les protocoles
+        évalués, qu'aucun avantage ML robuste n'est établi.
+  \item \textbf{L'univers BVC canonique commence en 2021.} Un historique marocain
+        profond 2005--2024 a bien été testé séparément~: il a amélioré la qualité
+        de prédiction sans établir de gain de portefeuille. Il n'est pas intégré
+        à la release parce que source, raccordement récent, dividendes et
+        opérations sur titres doivent encore être contractualisés et reproduits.
+        L'univers ETF, lui, remonte à novembre 2004 et couvre 2008, 2020 et 2022,
+        sans se substituer à un historique BVC canonique long.
   \item \textbf{Un rendement de dividende sur quatre a dû être estimé}, la source
         publique ne le publiant pas. L'analyse de sensibilité correspondante est
         documentée, mais la donnée reste une estimation.
-  \item \textbf{La correction pour le nombre d'essais est bornée} aux 240
-        configurations atteignables de la recherche évaluée contre la référence
-        primaire. Les huit comparaisons externes et les résultats contre
-        l'équipondéré restent signalés comme multiplicité externe ou exploratoire.
+  \item \textbf{La correction pour le nombre d'essais est établie} sur les 240
+        configurations atteignables de la recherche contre la référence primaire.
+        Huit comparaisons externes demeurent non corrigées à ce niveau, et les
+        résultats contre l'équipondéré restent exploratoires~: cette frontière
+        borne explicitement les affirmations autorisées.
   \item \textbf{Le système n'a pas été exposé à des conditions d'exploitation
         réelles}~: ni exécution d'ordres, ni flux temps réel, ni couverture du
         risque de change dirham/dollar. Le monitoring est instrumenté hors ligne
@@ -171,12 +177,13 @@ Elles sont énoncées ici plutôt que laissées à découvrir.
 
 Quatre suites se dégagent, classées par rapport valeur/effort.
 
-\textbf{Étendre l'historique marocain.} C'est la seule action qui attaque la
-limite dominante. Un historique long a été obtenu manuellement pour dix-sept
-valeurs de la Bourse de Casablanca lors d'une des études~; l'industrialiser —
-raccorder cet historique profond aux données récentes sur leur période de
-recouvrement, puis l'intégrer à la chaîne — donnerait au portefeuille visé la
-profondeur dont il manque, y compris la crise de 2008.
+\textbf{Industrialiser l'historique marocain profond.} L'expérience a déjà écarté
+l'idée qu'ajouter du seul historique de prix promette mécaniquement un avantage
+de portefeuille. Elle reste néanmoins précieuse pour la puissance statistique,
+la couverture de 2008 et la représentativité de l'univers BVC. La suite est un
+travail de gouvernance et de validation des données~: contrat de source,
+rapprochement sur le recouvrement, dividendes et opérations sur titres, puis
+réévaluation complète. Ce n'est pas une promesse de performance.
 
 \textbf{Faire valider le modèle indépendamment et activer le monitoring.} Une
 validation extérieure doit challenger le protocole, les hypothèses de coûts et
