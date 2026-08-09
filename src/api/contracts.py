@@ -55,6 +55,12 @@ class PublishedAllocationResponse(BaseModel):
     provenance: SnapshotProvenance
     # Required, not optional: an allocation quoted without it omits a material
     # economic exposure that every weight in this project carries.
+    # Per-universe numeraire, REQUIRED. An allocation quoted without the currency
+    # it is denominated in omits a material fact, and there is no global default:
+    # full_2021 is MAD, etf_2017 is USD. Optional fields get dropped by consumers;
+    # required ones do not.
+    base_currency: str
+    hedge_status: str
     currency_exposure: str
     caveat: str
 

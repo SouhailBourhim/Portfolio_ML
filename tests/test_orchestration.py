@@ -37,7 +37,8 @@ def defs():
 
 EXPECTED_ASSETS = {
     "raw_etf_prices", "raw_fred_macro", "raw_bvc_prices", "raw_bam_macro",
-    "bvc_dividends", "log_returns", "log_returns_etf", "gold_layer",
+    "bvc_dividends", "bam_fx_reference",
+    "log_returns", "log_returns_etf", "gold_layer",
     "ml_features_layer",
 }
 
@@ -76,6 +77,31 @@ def test_log_returns_depends_on_the_dividend_scrape(defs):
     assert "bvc_dividends" in deps, (
         f"log_returns must depend on bvc_dividends; got {sorted(deps)}"
     )
+
+
+def test_the_mixed_universe_depends_on_the_fx_source(defs):
+    """USD/MAD converts the ETF sleeve of the 9-asset universe into the MAD
+    numéraire before returns are computed (src/currency.py), so it is an input to
+    the NUMBER, not merely a macro feature. §17.7 is exactly this: a Silver/Gold
+    input missing from the asset graph goes stale silently on every scheduled
+    run, and nobody notices until someone reads an mtime by accident."""
+    assert "bam_fx_reference" in _deps_of(defs, "log_returns"), (
+        f"log_returns must depend on bam_fx_reference; got "
+        f"{sorted(_deps_of(defs, 'log_returns'))}"
+    )
+
+
+def test_the_usd_universe_does_not_depend_on_the_fx_source(defs):
+    """The other half of the per-universe policy, and the half that must not
+    regress. `etf_2017` is five USD-denominated ETFs: one numéraire, nothing to
+    convert. It also starts in 2004-11, which no obtainable USD/MAD series
+    covers — so a spurious FX edge here would block a universe that was never
+    broken, on data that does not exist."""
+    for fx_asset in ("raw_bam_macro", "bam_fx_reference"):
+        assert fx_asset not in _deps_of(defs, "log_returns_etf"), (
+            f"log_returns_etf must NOT depend on {fx_asset}; "
+            f"got {sorted(_deps_of(defs, 'log_returns_etf'))}"
+        )
 
 
 def test_the_etf_universe_does_not_depend_on_bvc_dividends(defs):

@@ -41,6 +41,40 @@ stages:
       - data/bronze/bvc_dividends:
           persist: true
 
+  # ── Stage 1c: Bronze — official Bank Al-Maghrib USD/MAD reference rates ────
+  # The single input that makes `full_2021` a MAD portfolio rather than a sum of
+  # two currencies. It is exactly as determinative as the BVC dividend cache
+  # (§17.8) and is tracked with the same discipline: an OUTPUT, so DVC stores and
+  # pushes its contents, not a bare dep that a fresh clone could never rebuild.
+  #
+  # persist: true, for the same reasons as bvc_prices and bvc_dividends and one
+  # more that is specific here. The BAM gateway allows 5 requests per minute, so
+  # refetching this window costs ~4.4 hours. DVC deletes an output before
+  # re-running its stage; without persist, any `dvc repro` touching this stage
+  # would discard 1,225 rates and spend an afternoon re-earning them. The script
+  # is resumable and cache-first, so with persist the stage is a no-op that only
+  # refreshes the quality report.
+  #
+  # NOT a dependency of anything `etf_2017` touches: that universe is
+  # single-currency USD and must acquire no FX dependency (currency.resolve_currency_policy).
+  fetch_bam_fx:
+    cmd: python scripts/backfill_bam_fx.py
+    deps:
+      - scripts/backfill_bam_fx.py
+      - src/bam_fx.py
+    outs:
+      - data/bronze/bam_fx_reference.parquet:
+          persist: true
+      # The versioned quality control on the file above: gap structure plus the
+      # FX quality-gate verdict. Rewritten even on a no-op run so it always
+      # describes the data actually on disk.
+      - data/bronze/bam_fx_reference_quality.json:
+          persist: true
+      # Dates BAM confirms carry no publication. Provenance, and what makes a
+      # resume cheap instead of an hour of re-asking answered questions.
+      - data/bronze/bam_fx_reference_no_publication.json:
+          persist: true
+
   # ── Stage 2: Silver — clean, align, compute log-returns ────────────────────
   clean:
     cmd: python src/clean.py
@@ -48,8 +82,23 @@ stages:
       - src/clean.py
       - src/schemas.py
       - src/dividends.py
+      - src/currency.py
       - data/bronze/raw_prices.parquet
       - data/bronze/bvc_prices.parquet
+      # The OFFICIAL USD/MAD rate is a real INPUT to Silver, not just a macro
+      # feature: it is what expresses the USD-denominated ETF sleeve of the
+      # 9-asset universe in the MAD numéraire before returns are computed
+      # (src/currency.py). Undeclared, a refreshed FX fetch would change every
+      # ETF return in log_returns.parquet without `dvc repro` noticing -- the
+      # identical invisible-input bug as the undeclared BVC dividend cache
+      # (AGENTS.md §17.8).
+      #
+      # NOTE this is bam_fx_reference.parquet, NOT raw_bam_macro.parquet. The
+      # latter holds the Yahoo USDMAD=X quote, which this stage no longer reads
+      # at all: its daily CHANGES correlate with the official rate's at 0.028
+      # and it overstates FX volatility 6x. It survives as an input to the macro
+      # FEATURES only (the `features` and `ml_features` stages below).
+      - data/bronze/bam_fx_reference.parquet
       # The BVC dividend cache is a real INPUT to Silver, not a side file: it
       # is what makes the BVC series total-return rather than price-only
       # (docs/DIVIDEND_BIAS.md). Undeclared, a refreshed scrape would change
@@ -81,6 +130,10 @@ stages:
       - data/gold/log_returns_etf.parquet
       - data/gold/macro_features.parquet
       - data/gold/stationarity_report.parquet
+      # Publishes the numéraire of the two Gold returns matrices. §7 makes Gold
+      # the only layer modelling code reads, so a currency recorded solely in
+      # Silver is invisible to every consumer that matters.
+      - data/gold/currency_manifest.json
     params:
       - params.yaml:
           - features.macro_lag_days
@@ -516,6 +569,97 @@ stages:
       - data/gold/reality_check_series.parquet
       - data/gold/reality_check_results.json
 
+  # ── Nested walk-forward — Phase 5's documented stretch goal ───────────────
+  # Promoted from a hand-run experiment to a stage after it went stale
+  # invisibly: produced 2026-07-28 from a MIXED-CURRENCY full_2021, it survived
+  # the base-currency correction untouched because nothing tracked it, and
+  # Chapter 5 would have rendered its (now sign-flipped) conclusion beside
+  # rebuilt numbers. Being outside the graph is exactly why nobody noticed —
+  # the same lesson as the undeclared BVC dividend cache (AGENTS.md §17.8).
+  #
+  # Scoped to full_2021: etf_2017's test segment is already 7.6 years after the
+  # deep window and is no longer the underpowered case.
+  nested_walkforward:
+    cmd: python experiments/nested_walkforward.py
+    deps:
+      - experiments/nested_walkforward.py
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/model_selection.py
+      - src/purged_kfold.py
+      - src/ml_signals.py
+      - src/regime.py
+      - src/memo.py
+      - src/provenance.py
+      - src/run_phase4.py
+      - data/gold/log_returns.parquet
+      - data/gold/ml_features_full.parquet
+      # The numéraire this result is computed under. Declared so a currency
+      # change invalidates the experiment rather than leaving it to be spotted.
+      - data/gold/currency_manifest.json
+    outs:
+      - data/gold/nested_walkforward_results.json
+    params:
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - backtest.max_weight
+      - backtest.risk_free_annual
+      - backtest.costs_bps
+      - regime.n_states
+      - regime.n_restarts
+      - regime.random_state_base
+      - regime.covariance_type
+      - regime.min_regime_train_days
+      - ml_signals.min_train_rows
+      - ml_signals.condition_on_regime
+      - ml_signals.short_window
+      - ml_signals.long_window
+      - ml_signals.momentum_windows
+      - purged_cv.n_splits
+      - purged_cv.embargo_frac
+      - phase5.rf_grid
+      - phase5.xgb_grid
+      - phase5.shrink_grid
+      - phase5.penalty_grid
+      - phase5.bootstrap
+
+  # ── Weight-cap sweep on the deep ETF window ───────────────────────────────
+  # Tracked for the same reason as nested_walkforward: it was a hand-run
+  # experiment whose result Chapter 5 consumes, and an untracked result is one
+  # nobody can tell has gone stale.
+  #
+  # This one HAPPENS to have survived the base-currency correction intact — it
+  # is scoped to etf_2017, which is single-currency USD and did not move. That
+  # was luck rather than a property anyone could verify, which is the point:
+  # recording base_currency=USD in its provenance makes "unaffected" checkable.
+  etf_cap_sweep:
+    cmd: python experiments/etf_cap_verdict.py
+    deps:
+      - experiments/etf_cap_verdict.py
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/regime.py
+      - src/memo.py
+      - src/provenance.py
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/currency_manifest.json
+    outs:
+      - data/gold/etf_cap_verdict.json
+    params:
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - backtest.risk_free_annual
+      - backtest.costs_bps
+      - regime.n_states
+      - regime.n_restarts
+      - regime.random_state_base
+      - regime.covariance_type
+      - regime.min_regime_train_days
+      - phase5.bootstrap
+
   # ── Phase 3: offline monitoring reference ─────────────────────────────────
   # Pins the reference distributions a future drift check measures against.
   # The reference is the Phase 5 train+validation segment ONLY — including the
@@ -574,8 +718,13 @@ stages:
       - data/bronze/bvc_prices.parquet
       - data/bronze/raw_macro.parquet
       - data/bronze/raw_bam_macro.parquet
+      # The official FX rate now determines every full_2021 return, so it belongs
+      # in the release manifest beside the price and dividend inputs.
+      - data/bronze/bam_fx_reference.parquet
+      - data/bronze/bam_fx_reference_quality.json
       - data/gold/log_returns.parquet
       - data/gold/log_returns_etf.parquet
+      - data/gold/currency_manifest.json
       - data/gold/ml_features_full.parquet
       - data/gold/ml_features_etf.parquet
       - data/gold/phase2_hurdle.json

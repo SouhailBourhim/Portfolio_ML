@@ -13,6 +13,7 @@ Usage:
     python src/features.py
 """
 
+import json
 import logging
 import warnings
 from pathlib import Path
@@ -241,11 +242,69 @@ def gold_pipeline(lag_days: int = 1) -> dict[str, pd.DataFrame]:
         log.warning("No macro data available — skipping macro features.")
         macro_features = pd.DataFrame()
 
+    write_currency_manifest()
+
     return {
         "log_returns":    log_returns,
         "macro_features": macro_features,
         "stationarity":   stat_results,
     }
+
+
+def write_currency_manifest() -> dict:
+    """
+    Publish the numéraire of every Gold returns matrix, from Silver's own record.
+
+    Addresses: P1, P4 — AGENTS.md §7 makes Gold the ONLY layer modelling code
+    reads, so a fact that lives solely in a Silver report is invisible to every
+    consumer that matters. A returns matrix carries no unit of its own; without
+    this manifest a reader of `data/gold/log_returns.parquet` cannot tell
+    whether it is MAD, USD, or the mixture the pipeline used to produce.
+
+    The block is COPIED from the Silver validation reports rather than
+    recomputed. Recomputing would create a second source of truth that could
+    disagree with the artifact it describes — the failure class of §17.1.
+
+    Returns:
+        The manifest dict, also written to data/gold/currency_manifest.json.
+    """
+    universes = {
+        "full_2021": "validation_report.json",
+        "etf_2017":  "validation_report_log_returns_etf.json",
+    }
+
+    manifest: dict = {
+        "generated_at": pd.Timestamp.now().isoformat(),
+        "source": "copied verbatim from the Silver validation reports",
+        "universes": {},
+    }
+    for universe, report_name in universes.items():
+        report_path = SILVER_DIR / report_name
+        if not report_path.exists():
+            log.warning(
+                "Silver report %s absent — %s has no currency record in the "
+                "Gold manifest.", report_name, universe,
+            )
+            continue
+        report = json.loads(report_path.read_text())
+        currency = report.get("currency")
+        if currency is None:
+            # An older Silver artifact predating the conversion. Say so rather
+            # than leaving the key absent, which reads as "not applicable".
+            currency = {
+                "converted": None,
+                "note": (
+                    f"{report_name} predates the base-currency correction and "
+                    f"records no numéraire. Re-run the clean stage."
+                ),
+            }
+            log.warning("Silver report %s carries no `currency` block.", report_name)
+        manifest["universes"][universe] = currency
+
+    out_path = GOLD_DIR / "currency_manifest.json"
+    out_path.write_text(json.dumps(manifest, indent=2))
+    log.info("Gold currency manifest written → %s", out_path)
+    return manifest
 
 
 if __name__ == "__main__":

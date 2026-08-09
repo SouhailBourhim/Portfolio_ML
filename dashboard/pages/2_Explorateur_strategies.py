@@ -26,6 +26,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import sys as _sys
+_sys.path.insert(0, str(ROOT / "src"))
+from release_facts import numeraire_for  # noqa: E402
+
 from dashboard.shared import data as D
 from dashboard.shared import plots as P
 
@@ -54,6 +58,14 @@ with st.sidebar:
         format_func=lambda u: D.UNIVERSE_LABELS.get(u, u),
     )
     u = showcase["universes"][universe]
+
+    # The numeraire of the SELECTED universe, not a global caveat. full_2021 is
+    # MAD (official BAM reference rate, unhedged); etf_2017 is single-currency
+    # USD. A shared string would be wrong for both.
+    _num = numeraire_for(universe, ROOT)
+    st.metric("Numéraire", _num["base_currency"],
+              help=f"Couverture de change : {_num['hedge_status']}")
+
     available = list(u["strategies"])
     selected = st.multiselect(
         "Stratégies à comparer",
@@ -134,7 +146,12 @@ st.caption(
 )
 
 # ── Allocations ────────────────────────────────────────────────────────────
-st.subheader("Allocation cible la plus récente")
+st.caption(_num["statement"])
+st.caption(_num["cross_universe_note"])
+
+# "Allocation cible" implied something to act on. These are published
+# historical research allocations, nothing more.
+st.subheader("Dernière allocation publiée (historique de recherche)")
 alloc_strategy = st.selectbox(
     "Stratégie", options=selected, format_func=D.label, key="alloc_strategy"
 )

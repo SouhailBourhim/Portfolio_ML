@@ -24,6 +24,13 @@ env/
 # Synthetic output of the `smoke` CI wiring target — a DVC out, and not a
 # result: it must never be committed or mistaken for an evaluation artifact.
 /data/smoke/
+# Catch-all. The four lines above enumerate subdirectories, which is exactly how
+# `data/interim/` (added 2026-08-08 for the BAM coverage probe) slipped through
+# and showed up as untracked. Nothing under data/ is git-tracked — it is all
+# DVC-managed — so the safe default is to ignore the tree and let a future
+# exception be added deliberately rather than discovered. Findings that belong
+# in the record go to docs/, not here.
+/data/
 *.dvc
 # the DVC config directory itself IS tracked (its own .gitignore excludes the cache)
 !.dvc

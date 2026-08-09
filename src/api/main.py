@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 from functools import lru_cache
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -46,6 +47,8 @@ from api.contracts import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "src"))
+from release_facts import numeraire_for  # noqa: E402
 GOLD = ROOT / "data" / "gold"
 
 app = FastAPI(
@@ -59,15 +62,16 @@ app = FastAPI(
 )
 
 
-# Every portfolio figure this service returns embeds it, so it travels with the
-# figures rather than living in one page's footer.
-CURRENCY_CAVEAT = (
-    "Exposition de change USD/MAD NON COUVERTE : les actifs BVC sont libellés en "
-    "dirhams, les ETF en dollars. Les rendements étant sans unité, l'arithmétique "
-    "de portefeuille reste valide, mais tout résultat rapporté incorpore cette "
-    "exposition — c'est un risque économique matériel, pas une réserve de forme. "
-    "Aucune couverture de change n'est modélisée (hors périmètre)."
-)
+# There is NO global base currency in this project, and this service must never
+# imply one. `full_2021` is MAD (converted at the official Bank Al-Maghrib
+# reference rate, unhedged); `etf_2017` is single-currency USD and was never
+# converted. The previous single CURRENCY_CAVEAT constant described a mixed
+# USD/MAD exposure for BOTH universes and defended it with "les rendements étant
+# sans unité" — the defect the base-currency correction removed. Every response
+# now carries the numeraire of ITS OWN universe.
+def _numeraire(universe: str) -> dict:
+    """Per-universe numeraire block, attached to every universe-scoped response."""
+    return numeraire_for(universe, ROOT)
 
 
 class ArtifactsMissing(HTTPException):
@@ -368,7 +372,9 @@ def published_allocation(
         research_only=True,
         order_execution_supported=False,
         provenance=_provenance(),
-        currency_exposure=CURRENCY_CAVEAT,
+        currency_exposure=_numeraire(universe)['statement'],
+        base_currency=_numeraire(universe)['base_currency'],
+        hedge_status=_numeraire(universe)['hedge_status'],
         caveat=(
             "Published historical research allocation only; not investment advice, "
             "not a client-specific recommendation, and not an order instruction."
@@ -497,5 +503,5 @@ def compare(universe: str = Query(...)) -> dict:
         # quoting the lift dishonestly should require actively discarding a field.
         # This is a material economic exposure carried by every portfolio figure
         # the API serves, not a footnote.
-        "currency_exposure": CURRENCY_CAVEAT,
+        "numeraire": _numeraire(universe),
     }

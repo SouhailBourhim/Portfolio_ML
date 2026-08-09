@@ -58,6 +58,7 @@ from strategies import (
     MinVarianceLW,
     RegimeConditionalStrategy,
 )
+from provenance import build_provenance
 from utils import load_params
 
 logging.basicConfig(level=logging.INFO,
@@ -191,8 +192,27 @@ def main() -> None:
         log.info("  is doing the estimation-error control (Jagannathan & Ma 2003).")
 
     out = ROOT / "data" / "gold" / "etf_cap_verdict.json"
-    out.write_text(json.dumps({"caps": CAPS, "results": results, "verdicts": verdicts},
-                              indent=2))
+    # Provenance, for the same reason the nested walk-forward now carries it:
+    # this artifact was also a hand-run, untracked experiment, and an untracked
+    # result is one nobody can tell has gone stale. It happens to have SURVIVED
+    # the base-currency correction intact -- it is scoped to etf_2017, which is
+    # single-currency USD and did not move -- but that was luck, not a property
+    # anyone could verify without rerunning it. Recording base_currency=USD here
+    # is what makes "this one was unaffected" checkable rather than asserted.
+    out.write_text(json.dumps({
+        "provenance": build_provenance(
+            universe="etf_2017",
+            returns=returns,
+            source_artifacts=[
+                params["backtest"]["universes"]["etf_2017"],
+                params["ml_features"]["outputs"]["etf_2017"],
+                "data/gold/currency_manifest.json",
+                "params.yaml",
+                "experiments/etf_cap_verdict.py",
+            ],
+        ),
+        "caps": CAPS, "results": results, "verdicts": verdicts,
+    }, indent=2))
     log.info("")
     log.info("wrote %s", out)
 

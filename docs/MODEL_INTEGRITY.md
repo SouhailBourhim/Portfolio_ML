@@ -5,7 +5,7 @@
 
 Several estimators in this project degrade rather than crash: DCC-GARCH falls back to Ledoit-Wolf shrinkage on non-convergence, the ML signals fall back to the naive sample mean on a thin panel or a failed fit, and the regime strategy resolves an uncertain posterior to its defensive branch. Each is deliberate — a walk-forward loop must not die on one bad window — but each also means a result can carry a label that is not the whole truth.
 
-On the released snapshot, **0 of 1,188 fits** across **4 evaluated strategies** and **297 rebalance dates** used a fallback. Every result reported here was produced by the model named in its label.
+On the released snapshot, **0 of 1,184 fits** across **4 evaluated strategies** and **296 rebalance dates** used a fallback. Every result reported here was produced by the model named in its label.
 
 ## Audit
 
@@ -15,10 +15,10 @@ On the released snapshot, **0 of 1,188 fits** across **4 evaluated strategies** 
 | `etf_2017` | `regime_conditional` | 0 / 248 | 0 / 5387 | `regime_conditional` |
 | `etf_2017` | `rf_signal` | 0 / 248 | 0 / 5387 | `rf_signal` |
 | `etf_2017` | `xgb_signal` | 0 / 248 | 0 / 5387 | `xgb_signal` |
-| `full_2021` | `dcc_garch` | 0 / 49 | 0 / 1061 | `dcc_garch` |
-| `full_2021` | `regime_conditional` | 0 / 49 | 0 / 1061 | `regime_conditional` |
-| `full_2021` | `rf_signal` | 0 / 49 | 0 / 1061 | `rf_signal` |
-| `full_2021` | `xgb_signal` | 0 / 49 | 0 / 1061 | `xgb_signal` |
+| `full_2021` | `dcc_garch` | 0 / 48 | 0 / 1040 | `dcc_garch` |
+| `full_2021` | `regime_conditional` | 0 / 48 | 0 / 1040 | `regime_conditional` |
+| `full_2021` | `rf_signal` | 0 / 48 | 0 / 1040 | `rf_signal` |
+| `full_2021` | `xgb_signal` | 0 / 48 | 0 / 1040 | `xgb_signal` |
 
 Source artifacts, both versioned and hashed into the snapshot manifest:
 `data/gold/fit_reports.parquet` (one row per rebalance) and `data/gold/fit_report_summary.json` (aggregates). The table above is generated from the second; neither is typed by hand.

@@ -68,10 +68,14 @@ univers, hors échantillon et net de coûts de transaction.
   \end{tabular}
 \end{table}
 
-Sur le portefeuille EURAFRIC, le système obtient un ratio de Sharpe de
-\textbf{1,236} contre \textbf{1,164} pour la meilleure approche classique, soit
-un gain de \textbf{$+6{,}2$~\%}. Sur l'univers ETF, il obtient 0,937 contre
-0,953~: il \textbf{perd} de $1{,}6$~\%.
+Sur le portefeuille EURAFRIC — libellé en dirhams aux taux de référence
+officiels de Bank Al-Maghrib et non couvert contre le risque de change — la
+stratégie à régimes obtient un ratio de Sharpe net de \textbf{0,9571} contre
+\textbf{1,0690} pour la meilleure approche classique, soit un écart ponctuel de
+\textbf{$-10{,}47$~\%}. Sur l'univers ETF, mono-devise en dollars et inchangé par
+la correction, elle obtient 0,937 contre 0,953~: un écart de $-1{,}6$~\%. Ces
+écarts ne démontrent pas une supériorité de l'approche classique~: aucun test
+pairé de cette différence n'est présenté.
 
 \begin{figure}[htbp]
   \centering
@@ -113,8 +117,9 @@ Sharpe.
 \section{Ce chiffre est-il réel ? La validation hors échantillon}
 % =============================================================================
 
-Un écart de $+6{,}2$~\% mesuré sur une période unique ne dit rien tant qu'on
-ignore sa marge d'erreur. Deux protocoles ont été appliqués pour l'établir.
+Un écart ponctuel mesuré sur une période unique — ici $-10{,}47$~\% — ne dit
+rien tant qu'on ignore sa marge d'erreur. Deux protocoles ont été appliqués pour
+l'établir.
 
 \paragraph{Le test gelé.} Les derniers 35~\% de chaque univers ont été mis de
 côté avant toute calibration. Les hyperparamètres des modèles ont été choisis sur
@@ -256,20 +261,25 @@ corrige.
 Trois éléments confirment ce diagnostic plutôt qu'ils ne l'affaiblissent.
 
 D'abord, le protocole imbriqué apporte un gain de précision réel~: la largeur
-moyenne des intervalles tombe de 2,22 à 1,59, soit $-28{,}6$~\%, mieux que les
-24,3~\% qu'un simple effet de taille d'échantillon laisserait attendre. Le Sharpe
-déflaté du gagnant atteint 0,835 sur 198~configurations testées, contre 0,67 sur
-36 pour le découpage unique.
+moyenne des intervalles tombe de 2,06 à 1,52, soit $-26{,}6$~\%, mieux que les
+23,7~\% qu'un simple effet de taille d'échantillon laisserait attendre. Le ratio
+de Sharpe déflaté du meilleur candidat vaut 0,6707 sur 198~configurations
+testées. Aucun seuil n'ayant été pré-spécifié pour cette statistique, elle est
+rapportée telle quelle, sans qualificatif.
 
 Ensuite, toutes les bornes inférieures marginales deviennent positives (de 0,48
 à 0,89) dans ce protocole. C'est une description de chaque stratégie prise
 isolément ; elle ne démontre ni une rentabilité future ni un avantage relatif.
 
-Enfin — et c'est l'observation la plus instructive — \textbf{le classement change
-selon le protocole}. Le découpage unique place le signal XGB calibré en tête~; le
-protocole imbriqué replace le système à régime devant. Un classement qui change
-de sens lorsqu'on modifie le protocole d'évaluation, sans test pairé établissant
-une différence, ne doit pas être promu en verdict.
+Enfin — et c'est l'observation la plus instructive — \textbf{le classement est
+sensible au protocole d'évaluation et à la fenêtre hors échantillon associée}.
+Sur la fenêtre walk-forward complète, la meilleure approche classique devance la
+stratégie à régimes~; le protocole imbriqué, dont la fenêtre hors échantillon
+(2023-07-28~$\rightarrow$~2026-07-24, 781~lignes) diffère de celle du découpage unique, la place
+devant. Les deux facteurs sont ici confondus~: on ne peut attribuer le
+changement de signe au seul choix de protocole, puisque la période évaluée
+change en même temps. Un classement qui s'inverse ainsi, sans test pairé
+établissant une différence, ne doit pas être promu en verdict.
 
 % =============================================================================
 \section{Comportement en crise : une lecture métier descriptive (P3)}
@@ -686,10 +696,12 @@ d'attribution et ses limites d'inférence.
   \item \textbf{Exploré} — le détecteur de régime est plus souvent dans l'état
         « baissier » durant les cinq fenêtres étudiées. Le diagnostic $p = 0{,}031$
         est rapporté comme exploratoire, non confirmatoire.
-  \item \textbf{Observé, non démontré} — le système à régimes dépasse le Markowitz
-        classique de $6{,}2$~\% sur le portefeuille EURAFRIC et lui est inférieur
-        de $1{,}6$~\% sur l'univers ETF. Le classement dépend du protocole
-        d'évaluation et de la mesure retenue.
+  \item \textbf{Observé, non démontré} — sur le portefeuille EURAFRIC, libellé en
+        dirhams et non couvert, la stratégie à régimes est en retrait du
+        Markowitz classique de $10{,}47$~\%, et lui est également inférieure de
+        $1{,}6$~\% sur l'univers ETF, mono-devise en dollars. Le classement est
+        sensible au protocole d'évaluation et à la fenêtre hors échantillon
+        associée~; aucun test pairé de cette différence n'est présenté.
   \item \textbf{Testé, non établi} — sous validation strictement antérieure, les
         \textbf{huit} comparaisons pairées sur la fenêtre gelée ont un intervalle
         contenant zéro ($p$ de 0,066 à 0,939). Aucun modèle de signal n'établit de
