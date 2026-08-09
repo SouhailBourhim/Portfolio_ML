@@ -71,7 +71,10 @@ app = FastAPI(
 # now carries the numeraire of ITS OWN universe.
 def _numeraire(universe: str) -> dict:
     """Per-universe numeraire block, attached to every universe-scoped response."""
-    return numeraire_for(universe, ROOT)
+    # Use the currently configured artifact bundle. Tests and embedded clients
+    # may point GOLD at a self-contained snapshot; coupling this to ROOT made a
+    # request unexpectedly read the developer machine's full release bundle.
+    return numeraire_for(universe, GOLD.parents[1])
 
 
 class ArtifactsMissing(HTTPException):

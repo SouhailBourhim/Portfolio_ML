@@ -80,6 +80,20 @@ def client(tmp_path, monkeypatch):
         "cost_bps": {"etf": 10, "bvc": 30},
     }))
 
+    (gold / "currency_manifest.json").write_text(json.dumps({
+        "universes": {
+            "full_2021": {
+                "base_currency": "MAD", "converted": True,
+                "hedge_status": "unhedged", "fx_series": "USDMAD",
+            },
+            "etf_2017": {
+                "base_currency": "USD", "converted": False,
+                "hedge_status": "not applicable — single-currency universe",
+                "fx_series": None,
+            },
+        },
+    }))
+
     # Minimal crisis artifact so the /crisis tests exercise the real endpoint
     # instead of skipping — a skipped test guards nothing.
     (gold / "crisis_windows.json").write_text(json.dumps({

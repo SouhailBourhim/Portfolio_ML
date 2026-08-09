@@ -13,11 +13,19 @@ import re
 import shutil
 import subprocess
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORT = ROOT / "docs" / "rapport_final"
 GOLD = ROOT / "data" / "gold"
 PDF = ROOT / "output" / "pdf" / "Rapport_PFA_Final_2026.pdf"
+
+
+def _require_gold(*names: str) -> None:
+    missing = [name for name in names if not (GOLD / name).is_file()]
+    if missing:
+        pytest.skip(f"Gold artifacts absent — run `dvc pull`: {', '.join(missing)}")
 
 
 def _sources() -> str:
@@ -39,6 +47,7 @@ def test_final_report_contains_the_new_chapters_once() -> None:
 
 
 def test_final_report_uses_current_canonical_result() -> None:
+    _require_gold("dashboard_showcase.json")
     showcase = json.loads((GOLD / "dashboard_showcase.json").read_text())
     full = showcase["universes"]["full_2021"]
     regime = full["strategies"]["regime_conditional"]["sharpe_net"]
@@ -56,6 +65,7 @@ def test_final_report_headline_table_matches_the_current_mad_release() -> None:
     This specifically prevents the pre-MAD 1.236/1.164 table from coexisting
     with current prose that correctly states 0.9571/1.0690.
     """
+    _require_gold("dashboard_showcase.json")
     showcase = json.loads((GOLD / "dashboard_showcase.json").read_text())
     full = showcase["universes"]["full_2021"]["strategies"]
     chapter = (REPORT / "chapters" / "Chapter5.tex").read_text(encoding="utf-8")
@@ -106,6 +116,7 @@ def test_rendered_final_report_cannot_mix_mad_prose_with_precorrection_metrics()
 
 
 def test_final_report_states_numeraire_per_universe() -> None:
+    _require_gold("currency_manifest.json")
     manifest = json.loads((GOLD / "currency_manifest.json").read_text())
     chapter = (REPORT / "chapters" / "Chapter6.tex").read_text(encoding="utf-8")
     assert manifest["universes"]["full_2021"]["base_currency"] == "MAD"

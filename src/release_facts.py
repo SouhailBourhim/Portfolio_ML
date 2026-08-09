@@ -119,23 +119,37 @@ def _fr(x: float, n: int = 2) -> str:
     return f"{x:.{n}f}".replace(".", ",")
 
 
+def _currency_statement(universe: str, payload: dict) -> str:
+    """Render one universe's numeraire claim from the currency manifest alone.
+
+    Addresses: P4 — API endpoints that only need the currency contract must not
+    depend on the entire evaluation bundle. Besides being unnecessarily deep,
+    that coupling made hermetic API tests reach for unrelated Gold artifacts.
+    """
+    if universe == "full_2021":
+        return (
+            f"`full_2021` est libellé en {payload['base_currency']}, converti au "
+            f"taux de référence officiel de Bank Al-Maghrib ({payload['fx_series']}, "
+            f"MAD par USD). Le portefeuille reste **non couvert** : la variation "
+            f"de change réalisée est incluse dans la performance, aucun contrat "
+            f"à terme ni coût de roulement n'est modélisé."
+        )
+    if universe == "etf_2017":
+        return (
+            f"`etf_2017` est libellé en {payload['base_currency']} : cet univers ne "
+            f"contient que des ETF mono-devise, n'a donc jamais présenté de "
+            f"défaut de numéraire, et est **inchangé** par la correction."
+        )
+    raise KeyError(universe)
+
+
 def _statements(f: dict) -> dict:
     """Render the canonical sentences. Every number interpolated, none typed."""
     full, etf = f["universes"]["full_2021"], f["universes"]["etf_2017"]
     nested = f["nested"]
     return {
-        "full_2021_currency": (
-            f"`full_2021` est libellé en {full['base_currency']}, converti au "
-            f"taux de référence officiel de Bank Al-Maghrib ({full['fx_series']}, "
-            f"MAD par USD). Le portefeuille reste **non couvert** : la variation "
-            f"de change réalisée est incluse dans la performance, aucun contrat "
-            f"à terme ni coût de roulement n'est modélisé."
-        ),
-        "etf_2017_currency": (
-            f"`etf_2017` est libellé en {etf['base_currency']} : cet univers ne "
-            f"contient que des ETF mono-devise, n'a donc jamais présenté de "
-            f"défaut de numéraire, et est **inchangé** par la correction."
-        ),
+        "full_2021_currency": _currency_statement("full_2021", full),
+        "etf_2017_currency": _currency_statement("etf_2017", etf),
         "not_comparable": NOT_COMPARABLE,
         "point_difference": (
             f"Sur `full_2021`, l'écart ponctuel entre `regime_conditional` et "
@@ -179,15 +193,15 @@ def numeraire_for(universe: str, root: Path = ROOT) -> dict:
         KeyError: on an unknown universe, rather than defaulting to either
             currency — a wrong numéraire is worse than a missing one.
     """
-    u = load_facts(root)["universes"][universe]
-    key = "full_2021_currency" if universe == "full_2021" else "etf_2017_currency"
+    manifest = _load("currency_manifest.json", root)["universes"]
+    u = manifest[universe]
     return {
         "universe": universe,
         "base_currency": u["base_currency"],
         "converted": u["converted"],
         "hedge_status": u["hedge_status"],
-        "fx_series": u["fx_series"],
-        "statement": load_facts(root)["statements"][key],
+        "fx_series": u.get("fx_series"),
+        "statement": _currency_statement(universe, u),
         "cross_universe_note": NOT_COMPARABLE,
     }
 
