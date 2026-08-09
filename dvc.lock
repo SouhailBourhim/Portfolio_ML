@@ -1281,3 +1281,127 @@ stages:
       hash: md5
       md5: aa15b9ea9e84cecff0b7679327ae2fb9
       size: 1211
+  nested_walkforward:
+    cmd: python experiments/nested_walkforward.py
+    deps:
+    - path: data/gold/currency_manifest.json
+      hash: md5
+      md5: 533b17de53871eb785bb82b53ab71e74
+      size: 4040
+    - path: data/gold/log_returns.parquet
+      hash: md5
+      md5: ecd2b5115becc1fef0e752883ed81bd0
+      size: 117821
+    - path: data/gold/ml_features_full.parquet
+      hash: md5
+      md5: dcc369903acb5139b52782c098d33614
+      size: 119827
+    - path: experiments/nested_walkforward.py
+      hash: md5
+      md5: f927b54e371008f988fec35168e3a8b4
+      size: 15432
+    - path: src/backtest.py
+      hash: md5
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
+    - path: src/memo.py
+      hash: md5
+      md5: fe36eac64ccc01617c4641d6744136f1
+      size: 8618
+    - path: src/metrics.py
+      hash: md5
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
+    - path: src/ml_signals.py
+      hash: md5
+      md5: 8deb9470629e15379eff17bdf89b4b71
+      size: 40942
+    - path: src/model_selection.py
+      hash: md5
+      md5: 586e41fc323a71247e125dee54a14634
+      size: 13882
+    - path: src/provenance.py
+      hash: md5
+      md5: c94889064caa35b611042df3346ed175
+      size: 9555
+    - path: src/purged_kfold.py
+      hash: md5
+      md5: 6d40001c67cbf63bcc06ad19ff0c9992
+      size: 16026
+    - path: src/regime.py
+      hash: md5
+      md5: 23cba30454ec306ceea5c08dde3c7299
+      size: 10504
+    - path: src/run_phase4.py
+      hash: md5
+      md5: 76f45b09b4bf39097ea9c3346b8941b9
+      size: 15261
+    - path: src/strategies.py
+      hash: md5
+      md5: e14c05a35b6727c01bac51b66afcef58
+      size: 32414
+    params:
+      params.yaml:
+        backtest.costs_bps:
+          etf: 10
+          bvc: 30
+        backtest.max_weight: 0.25
+        backtest.min_train_days: 252
+        backtest.rebalance_freq: ME
+        backtest.risk_free_annual: 0.0
+        ml_signals.condition_on_regime: true
+        ml_signals.long_window: 63
+        ml_signals.min_train_rows: 504
+        ml_signals.momentum_windows:
+        - 5
+        - 21
+        - 63
+        ml_signals.short_window: 21
+        phase5.bootstrap:
+          block_len: 21
+          n_boot: 2000
+          alpha: 0.1
+          seed: 0
+        phase5.penalty_grid:
+        - 0.0
+        - 0.5
+        - 1.0
+        - 2.0
+        phase5.rf_grid:
+          max_depth:
+          - 3
+          - 4
+          - 6
+          min_samples_leaf:
+          - 10
+          - 20
+          n_estimators:
+          - 200
+        phase5.shrink_grid:
+        - 0.25
+        - 0.5
+        - 0.75
+        - 1.0
+        phase5.xgb_grid:
+          max_depth:
+          - 2
+          - 3
+          - 4
+          learning_rate:
+          - 0.03
+          - 0.05
+          - 0.1
+          n_estimators:
+          - 200
+        purged_cv.embargo_frac: 0.02
+        purged_cv.n_splits: 5
+        regime.covariance_type: diag
+        regime.min_regime_train_days: 252
+        regime.n_restarts: 5
+        regime.n_states: 2
+        regime.random_state_base: 0
+    outs:
+    - path: data/gold/nested_walkforward_results.json
+      hash: md5
+      md5: 942e4060ebf114e407551a0e934d9ef2
+      size: 7634

@@ -6,12 +6,16 @@ the results it describes.
 """
 from pathlib import Path
 import json
+import sys
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from provenance import require_current_artifact  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLD = ROOT / "data" / "gold"
@@ -28,9 +32,21 @@ plt.rcParams.update({
 })
 
 L = lambda n: json.loads((GOLD / n).read_text())
-SC, P5, NW, CW, CAP = (L("dashboard_showcase.json"), L("phase5_results.json"),
-                       L("nested_walkforward_results.json"),
-                       L("crisis_windows.json"), L("etf_cap_verdict.json"))
+
+# The nested walk-forward artifact is loaded through the provenance gate, not
+# with a bare read. It went stale invisibly once — produced 2026-07-28 from a
+# MIXED-CURRENCY full_2021, it survived the base-currency correction and would
+# have put a sign-flipped conclusion beside rebuilt numbers. The gate refuses it
+# on CONTENT (numeraire absent or not MAD, or any recorded source hash no longer
+# matching the tree), so the failure is detected instead of remembered.
+NW = require_current_artifact(
+    GOLD / "nested_walkforward_results.json",
+    expect_universe="full_2021",
+    expect_base_currency="MAD",
+    root=ROOT,
+)
+SC, P5, CW, CAP = (L("dashboard_showcase.json"), L("phase5_results.json"),
+                   L("crisis_windows.json"), L("etf_cap_verdict.json"))
 PAIRED = L("paired_comparison_results.json")
 EQ = pd.read_parquet(GOLD / "dashboard_equity.parquet")
 

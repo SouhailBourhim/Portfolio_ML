@@ -72,6 +72,7 @@ from model_selection import (                                  # noqa: E402
 from run_phase4 import build_strategies as build_phase4_strategies   # noqa: E402
 from run_phase4 import load_features, load_universe            # noqa: E402
 from strategies import RandomForestSignalStrategy, XGBoostSignalStrategy  # noqa: E402
+from provenance import build_provenance                        # noqa: E402
 from utils import load_params                                  # noqa: E402
 
 logging.basicConfig(
@@ -301,6 +302,25 @@ def main() -> dict:
 
     out = {
         "universe": UNIVERSE,
+        # This artifact went stale once and nothing noticed: produced 2026-07-28
+        # from a MIXED-CURRENCY full_2021, it survived the base-currency
+        # correction untouched because it was neither a DVC output nor said what
+        # it was computed from. Chapter 5 would have rendered a sign-flipped
+        # conclusion beside current numbers. `provenance.require_current_artifact`
+        # now refuses it on CONTENT — numéraire plus source hashes — so the same
+        # failure is detected rather than remembered.
+        "provenance": build_provenance(
+            universe=UNIVERSE,
+            returns=returns,
+            oos_index=oos_index,
+            source_artifacts=[
+                bp["universes"][UNIVERSE],
+                params["ml_features"]["outputs"][UNIVERSE],
+                "data/gold/currency_manifest.json",
+                "params.yaml",
+                "experiments/nested_walkforward.py",
+            ],
+        ),
         "design": {
             "oos_start_frac": OOS_START_FRAC,
             "reselect_every_days": RESELECT_EVERY,

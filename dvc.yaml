@@ -569,6 +569,61 @@ stages:
       - data/gold/reality_check_series.parquet
       - data/gold/reality_check_results.json
 
+  # ── Nested walk-forward — Phase 5's documented stretch goal ───────────────
+  # Promoted from a hand-run experiment to a stage after it went stale
+  # invisibly: produced 2026-07-28 from a MIXED-CURRENCY full_2021, it survived
+  # the base-currency correction untouched because nothing tracked it, and
+  # Chapter 5 would have rendered its (now sign-flipped) conclusion beside
+  # rebuilt numbers. Being outside the graph is exactly why nobody noticed —
+  # the same lesson as the undeclared BVC dividend cache (AGENTS.md §17.8).
+  #
+  # Scoped to full_2021: etf_2017's test segment is already 7.6 years after the
+  # deep window and is no longer the underpowered case.
+  nested_walkforward:
+    cmd: python experiments/nested_walkforward.py
+    deps:
+      - experiments/nested_walkforward.py
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/model_selection.py
+      - src/purged_kfold.py
+      - src/ml_signals.py
+      - src/regime.py
+      - src/memo.py
+      - src/provenance.py
+      - src/run_phase4.py
+      - data/gold/log_returns.parquet
+      - data/gold/ml_features_full.parquet
+      # The numéraire this result is computed under. Declared so a currency
+      # change invalidates the experiment rather than leaving it to be spotted.
+      - data/gold/currency_manifest.json
+    outs:
+      - data/gold/nested_walkforward_results.json
+    params:
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - backtest.max_weight
+      - backtest.risk_free_annual
+      - backtest.costs_bps
+      - regime.n_states
+      - regime.n_restarts
+      - regime.random_state_base
+      - regime.covariance_type
+      - regime.min_regime_train_days
+      - ml_signals.min_train_rows
+      - ml_signals.condition_on_regime
+      - ml_signals.short_window
+      - ml_signals.long_window
+      - ml_signals.momentum_windows
+      - purged_cv.n_splits
+      - purged_cv.embargo_frac
+      - phase5.rf_grid
+      - phase5.xgb_grid
+      - phase5.shrink_grid
+      - phase5.penalty_grid
+      - phase5.bootstrap
+
   # ── Phase 3: offline monitoring reference ─────────────────────────────────
   # Pins the reference distributions a future drift check measures against.
   # The reference is the Phase 5 train+validation segment ONLY — including the
