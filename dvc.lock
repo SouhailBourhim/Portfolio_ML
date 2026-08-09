@@ -1403,5 +1403,5 @@ stages:
     outs:
     - path: data/gold/nested_walkforward_results.json
       hash: md5
-      md5: 942e4060ebf114e407551a0e934d9ef2
-      size: 7634
+      md5: 36d39cef2963517fa7d86eb0d62a6c7b
+      size: 7628
