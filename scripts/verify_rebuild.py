@@ -14,9 +14,29 @@ GOLD = pathlib.Path("data/gold")
 # baseline; --write-baseline regenerates it from the current tree.
 DEFAULT_BASELINE = pathlib.Path("data/interim/pre_rebuild_etf2017.json")
 
+# Wall-clock instrumentation, not results. Excluded by EXPLICIT NAME and kept
+# deliberately short: the point of this gate is that a number moved, and a
+# broad "ignore anything that looks like metadata" rule would eventually hide a
+# real one. Every name here must be a measurement of the RUN, never of the data.
+#
+# Added after the first run flagged reality_check_results.json: the sole
+# leaf-level difference across the whole etf_2017 block was runtime_seconds
+# 12232.3 -> 8290.6 (a less loaded machine). All 240 candidates, every p-value
+# and every best-candidate identifier were byte-identical.
+VOLATILE_FIELDS = {"runtime_seconds", "generated_at", "elapsed_seconds", "duration_seconds"}
+
+
+def _strip_volatile(o):
+    if isinstance(o, dict):
+        return {k: _strip_volatile(v) for k, v in o.items() if k not in VOLATILE_FIELDS}
+    if isinstance(o, list):
+        return [_strip_volatile(v) for v in o]
+    return o
+
+
 def etf_sha(path: pathlib.Path):
     try:
-        d = json.loads(path.read_text())
+        d = _strip_volatile(json.loads(path.read_text()))
     except Exception:
         return None
     acc = []
