@@ -1,6 +1,6 @@
 # Portfolio ML — Optimisation de portefeuille robuste et auditable
 
-[![CI](https://github.com/SouhailBourhim/Portfolio_ML/actions/workflows/ci.yml/badge.svg)](https://github.com/SouhailBourhim/Portfolio_ML/actions/workflows/ci.yml)
+[![CI — main](https://github.com/SouhailBourhim/Portfolio_ML/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SouhailBourhim/Portfolio_ML/actions/workflows/ci.yml?query=branch%3Amain)
 ![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![DVC](https://img.shields.io/badge/Data-DVC%20%2B%20R2-945DD6)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
@@ -9,6 +9,22 @@
 **Projet de Fin d’Année — INPT × EURAFRIC Information**<br>
 **Équipe :** Souhail Bourhim · Zakarya El Wali · Yasmine Bouajine<br>
 **Encadrement :** M. Abdelmouttalib Maqil
+
+## Le projet en une minute
+
+Portfolio ML est un prototype de recherche en gestion de portefeuille. Il étudie comment répartir
+un capital entre des actions de la Bourse de Casablanca et des ETF internationaux, sous des
+contraintes de gestion réalistes : positions long-only, plafond de poids par actif et coûts de
+transaction.
+
+Le système confronte des allocations classiques de Markowitz à des enrichissements fondés sur les
+données — covariance dynamique, régimes de marché HMM et challengers Random Forest/XGBoost. La
+question n’est pas « quel modèle affiche le meilleur backtest ? », mais « quel résultat résiste à
+une évaluation strictement temporelle, aux coûts, à la sélection multiple et à la traçabilité des
+données ? ».
+
+Il s’agit d’un démonstrateur académique et de recherche : ni conseil financier, ni recommandation
+client, ni exécution d’ordres.
 
 > Une chaîne de recherche reproductible pour déterminer si la complexité ML améliore réellement
 > une allocation de portefeuille après contraintes, coûts, incertitude statistique et sélection
