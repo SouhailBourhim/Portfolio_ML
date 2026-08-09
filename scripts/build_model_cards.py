@@ -9,7 +9,7 @@ if a card and its artifact disagree.
 
 Three cards, deliberately unequal (decided with the user, 2026-08-03):
 
-    MODEL_CARD_REGIME_CONDITIONAL.md   primary reference system
+    MODEL_CARD_REGIME_CONDITIONAL.md   pre-specified White/SPA comparator
     MODEL_CARD_RF_CHALLENGER.md        exploratory challenger
     MODEL_CARD_XGB_CHALLENGER.md       exploratory challenger
 
@@ -201,7 +201,7 @@ def primary_card() -> str:
         1 for c in PAIRED["comparisons"]
         if c["sharpe_diff_ci"][0] > 0 and c["p_value_no_outperformance"] < 0.05
     )
-    return f"""{_header("Model card — `regime_conditional`", "Primary reference system · research prototype")}
+    return f"""{_header("Model card — `regime_conditional`", "Comparateur primaire pré-spécifié (White/SPA) · prototype de recherche")}
 ## Purpose
 
 Allocate capital across a fixed asset universe at a monthly rebalance, under
@@ -213,13 +213,25 @@ allocation decision to one of two already-validated Markowitz optimizers.
 entries or exits intraday, does not size positions for leverage or shorting,
 and does not produce a client-specific recommendation.
 
-## Why this is the reference system
+## Role: pre-specified primary comparator, not a reference system
+
+This strategy is the **comparateur primaire pré-spécifié** — the pre-specified
+primary comparator — for the White (2000) Reality Check and Hansen (2005) SPA
+correction. That role was fixed BEFORE the results were observed, and it is not
+rewritten now that the observed difference has changed sign. Relabelling a
+benchmark after seeing the outcome is exactly the multiple-testing abuse the
+correction exists to prevent.
+
+It is **not** a reference system, **not** a recommended candidate, and **not**
+deployed. On MAD-valued `full_2021` its observed net-Sharpe difference against
+the best classical approach is NEGATIVE, and no paired test of that difference
+is presented in either direction.
 
 Across {len(PAIRED['comparisons'])} paired comparisons on frozen test data,
 **{n_established}** established statistically supported outperformance over
-this system or over equal weighting. It is the reference not because it was
-shown to be superior, but because no challenger displaced it and its behaviour
-is fully reconstructible — see *Explainability* below.
+this comparator or over equal weighting. Its value here is that it is a fixed,
+fully reconstructible reference point — see *Explainability* below — not that it
+was shown to be better than anything.
 
 ## Supported universes
 
@@ -380,7 +392,7 @@ def challenger_card(candidate: str) -> str:
 > **Challenger status.** This model **did not establish statistically supported
 > outperformance** against `{PRIMARY}` or against `equal_weight` in the Phase 2
 > paired comparisons on frozen test data. It is documented as transparent
-> negative-result research, not as a recommended strategy. The reference system
+> negative-result research, not as a recommended strategy. The comparator
 > is `{PRIMARY}` — see `docs/MODEL_CARD_REGIME_CONDITIONAL.md`.
 
 ## Purpose

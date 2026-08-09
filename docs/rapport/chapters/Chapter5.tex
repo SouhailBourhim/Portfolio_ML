@@ -256,20 +256,25 @@ corrige.
 Trois éléments confirment ce diagnostic plutôt qu'ils ne l'affaiblissent.
 
 D'abord, le protocole imbriqué apporte un gain de précision réel~: la largeur
-moyenne des intervalles tombe de 2,22 à 1,59, soit $-28{,}6$~\%, mieux que les
-24,3~\% qu'un simple effet de taille d'échantillon laisserait attendre. Le Sharpe
-déflaté du gagnant atteint 0,835 sur 198~configurations testées, contre 0,67 sur
-36 pour le découpage unique.
+moyenne des intervalles tombe de 2,06 à 1,52, soit $-26{,}6$~\%, mieux que les
+23,7~\% qu'un simple effet de taille d'échantillon laisserait attendre. Le ratio
+de Sharpe déflaté du meilleur candidat vaut 0,6707 sur 198~configurations
+testées. Aucun seuil n'ayant été pré-spécifié pour cette statistique, elle est
+rapportée telle quelle, sans qualificatif.
 
 Ensuite, toutes les bornes inférieures marginales deviennent positives (de 0,48
 à 0,89) dans ce protocole. C'est une description de chaque stratégie prise
 isolément ; elle ne démontre ni une rentabilité future ni un avantage relatif.
 
-Enfin — et c'est l'observation la plus instructive — \textbf{le classement change
-selon le protocole}. Le découpage unique place le signal XGB calibré en tête~; le
-protocole imbriqué replace le système à régime devant. Un classement qui change
-de sens lorsqu'on modifie le protocole d'évaluation, sans test pairé établissant
-une différence, ne doit pas être promu en verdict.
+Enfin — et c'est l'observation la plus instructive — \textbf{le classement est
+sensible au protocole d'évaluation et à la fenêtre hors échantillon associée}.
+Sur la fenêtre walk-forward complète, la meilleure approche classique devance la
+stratégie à régimes~; le protocole imbriqué, dont la fenêtre hors échantillon
+(2023-07-28~$\rightarrow$~2026-07-24, 781~lignes) diffère de celle du découpage unique, la place
+devant. Les deux facteurs sont ici confondus~: on ne peut attribuer le
+changement de signe au seul choix de protocole, puisque la période évaluée
+change en même temps. Un classement qui s'inverse ainsi, sans test pairé
+établissant une différence, ne doit pas être promu en verdict.
 
 % =============================================================================
 \section{Comportement en crise : une lecture métier descriptive (P3)}

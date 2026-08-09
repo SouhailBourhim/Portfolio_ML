@@ -185,20 +185,30 @@ class TestCurrencyExposureTravelsWithEveryPortfolioFigure:
             text = path.read_text(encoding="utf-8")
             assert "USD/MAD" in text, f"{name} omits the currency exposure"
 
-    def test_the_api_ships_it_with_the_headline_comparison(self):
+    def test_the_api_ships_the_numeraire_with_the_headline_comparison(self):
+        """UPDATED, not relaxed. This used to require a single global
+        CURRENCY_CAVEAT string. That constant asserted a MIXED USD/MAD exposure
+        for both universes and defended it with "les rendements étant sans
+        unité" — which was the defect the base-currency correction removed. The
+        replacement is stricter: /compare returns the numéraire of the universe
+        it was asked about, so quoting the difference without knowing the
+        currency still requires actively discarding a field."""
         main_py = (ROOT / "src" / "api" / "main.py").read_text(encoding="utf-8")
-        assert "CURRENCY_CAVEAT" in main_py
-        assert '"currency_exposure": CURRENCY_CAVEAT' in main_py, (
-            "/compare must return the exposure alongside the lift, so quoting the "
-            "lift without it requires actively discarding a field"
+        assert "CURRENCY_CAVEAT = (" not in main_py, (
+            "a single global currency string is wrong for both universes"
         )
+        assert '"numeraire": _numeraire(universe)' in main_py, (
+            "/compare must return the per-universe numéraire alongside the difference"
+        )
+        assert "numeraire_for" in main_py
 
     def test_the_published_allocation_contract_requires_it(self):
         contracts = (ROOT / "src" / "api" / "contracts.py").read_text(encoding="utf-8")
-        assert "currency_exposure: str" in contracts, (
-            "an allocation quoted without the exposure omits a material risk; the "
-            "field must be required, not optional"
-        )
+        for field in ("currency_exposure: str", "base_currency: str", "hedge_status: str"):
+            assert field in contracts, (
+                f"an allocation quoted without {field.split(':')[0]} omits a material "
+                f"fact; the field must be required, not optional"
+            )
 
     def test_the_stakeholder_page_shows_it_above_the_results(self):
         page = ROOT / "dashboard" / "pages" / "1_Resultats_recherche.py"
@@ -207,7 +217,10 @@ class TestCurrencyExposureTravelsWithEveryPortfolioFigure:
         source = page.read_text(encoding="utf-8")
         headline = source.index("st.title(")
         first_metric = source.find("st.metric(")
-        exposure = source.index("Exposition de change USD/MAD non couverte")
+        # UPDATED: the page no longer hard-codes a currency sentence. It renders
+        # the per-universe numéraire from src/release_facts.py, which is the
+        # canonical source every other surface also quotes.
+        exposure = source.index('FACTS["statements"]["full_2021_currency"]')
         assert headline < exposure, "the exposure must follow the title"
         if first_metric != -1:
             assert exposure < first_metric, (

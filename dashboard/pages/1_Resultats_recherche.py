@@ -46,6 +46,14 @@ from dashboard.shared import plots as P
 # The single definition of "our model" for this entire page. Phase 5 showed the
 # F7 signals add no edge — attributing the win to them would be false.
 ML_STRATEGY = "regime_conditional"
+
+# Every claim on this page comes from src/release_facts.py so the dashboard, the
+# API, the README and the report cannot drift apart in WORDING the way they did
+# on 2026-08-02 (§17.11: test_artifact_consistency compares numbers, not prose).
+sys.path.insert(0, str(ROOT / "src"))
+from release_facts import load_facts          # noqa: E402
+
+FACTS = load_facts(ROOT)
 # The universe the pitch headlines: EURAFRIC's actual 9-asset business portfolio.
 HEADLINE_UNIVERSE = "full_2021"
 
@@ -75,15 +83,15 @@ st.warning(
     "présente des résultats historiques de backtesting ; elle ne fournit ni conseil "
     "d'investissement, ni recommandation client, ni exécution d'ordres."
 )
-# Promoted from the caveat list at the bottom of the page. It is a material
-# economic exposure carried by EVERY figure above and below, not one reservation
-# among several, so it sits beside the headline rather than after it.
-st.error(
-    "**Exposition de change USD/MAD non couverte.** Les actifs de la Bourse de "
-    "Casablanca sont libellés en dirhams, les ETF en dollars. Les rendements étant "
-    "sans unité, l'arithmétique de portefeuille reste valide — mais **tous les "
-    "chiffres de cette page incorporent cette exposition de change**, qui est un "
-    "risque économique matériel. Aucune couverture n'est modélisée (hors périmètre)."
+# The numéraire, stated before any figure. `full_2021` is MAD-valued at the
+# official Bank Al-Maghrib reference rate and remains UNHEDGED; `etf_2017` is
+# single-currency USD and was never affected. Previously this block claimed
+# mixed-currency arithmetic was valid because "returns are unitless" — it is
+# not, and that defect is what the correction removed.
+st.error(FACTS["statements"]["full_2021_currency"])
+st.info(
+    FACTS["statements"]["etf_2017_currency"] + "  \n\n"
+    + FACTS["statements"]["not_comparable"]
 )
 st.markdown(
     f"""
@@ -98,8 +106,13 @@ st.markdown(
 )
 st.divider()
 
-# ── 2 & 3. Markowitz vs. stratégie de référence ────────────────────────────
-st.header("Ce qui existe aujourd'hui, et ce que nous ajoutons")
+# ── 2 & 3. Les deux approches, côte à côte ─────────────────────────────────
+# Header was "Ce qui existe aujourd'hui, et ce que nous ajoutons" — a value-add
+# framing that presumed the regime strategy contributed something established.
+# On MAD-valued data its observed difference is NEGATIVE on both universes, and
+# in neither direction is a paired test presented. The section now compares two
+# approaches without asserting that either adds value.
+st.header("Les deux approches, comparées")
 
 col1, col2, col3 = st.columns(3)
 col1.metric(
@@ -117,19 +130,21 @@ col2.metric(
 col3.metric(
     "Écart observé",
     f"{u['headline_lift_absolute_sharpe']:+.3f} Sharpe",
-    help="Différence absolue de ratio de Sharpe, nette de coûts de transaction.",
+    help="Différence absolue de ratio de Sharpe, nette de coûts de transaction. "
+         "Écart descriptif : aucun test pairé de cette différence n'est présenté.",
 )
 
 st.markdown(
     f"""
     Sur le portefeuille EURAFRIC ({u['oos_start']} → {u['oos_end']}, simulation
-    walk-forward nette de coûts), la stratégie à régimes obtient un ratio de Sharpe de
-    **{best_ml['sharpe_net']:.3f}**
-    contre **{best_classical['sharpe_net']:.3f}** pour la meilleure approche classique
-    (*{D.label(best_classical['name'])}*) — soit un **écart observé de {lift_pct:+.1f} %**.
-    Cet écart descriptif n'est pas une preuve de supériorité généralisable.
+    walk-forward nette de coûts, libellée en MAD), la stratégie à régimes obtient un
+    ratio de Sharpe de **{best_ml['sharpe_net']:.3f}** contre
+    **{best_classical['sharpe_net']:.3f}** pour la meilleure approche classique
+    (*{D.label(best_classical['name'])}*).
     """
 )
+st.markdown(FACTS["statements"]["point_difference"])
+st.markdown(FACTS["statements"]["no_paired_test"])
 
 curves = {
     s: D.equity_curve(equity, HEADLINE_UNIVERSE, s, net=True)
@@ -247,7 +262,7 @@ if crisis and crisis.get("universes", {}).get("etf_2017"):
 
     n_tied = sum(1 for k in CW if _tied(CW[k]))
     st.caption(
-        f"⚠️ Attribution honnête : ce gain revient à la **contrainte de portefeuille et au "
+        f"⚠️ Attribution honnête : ce comportement revient à la **contrainte de portefeuille et au "
         f"modèle de covariance** (P1/P3), pas spécifiquement à la couche de régime. Sur "
         f"{n_tied} des {n_windows} crises les trois optimiseurs sont identiques à la décimale "
         f"près — en régime baissier la stratégie à régimes *devient* la variance minimale par "
@@ -386,19 +401,31 @@ st.markdown(
       portefeuille.** Quatre évaluations indépendantes vont dans ce sens : calibration
       honnête (Phase 5), historique marocain profond sur 20 ans, ajout de données
       fondamentales, et la ré-évaluation menée après la correction des dividendes.
-      Son estimation ponctuelle passe **au-dessus ou en dessous** de la stratégie à régimes
-      selon la fenêtre de test retenue — sur la dernière ré-évaluation elle le
-      dépasse sur `full_2021` et lui reste inférieure sur `etf_2017`, l'inverse de
-      ce qu'indiquait l'évaluation précédente. Ce **changement de signe** rend toute
-      conclusion de supériorité fragile. La stratégie à régimes et la covariance
+      Son estimation ponctuelle passe **au-dessus ou en dessous** de la stratégie à
+      régimes selon la fenêtre de test retenue. Le classement est de même sensible au
+      protocole d'évaluation et à la fenêtre hors échantillon associée : sur la
+      fenêtre complète, la stratégie à régimes est en retrait de l'approche classique,
+      tandis que le walk-forward imbriqué — dont la fenêtre OOS diffère — la place
+      devant. Ce **changement de signe** rend toute conclusion de supériorité fragile,
+      dans un sens comme dans l'autre. La stratégie à régimes et la covariance
       dynamique restent des pistes étudiées, pas une valeur ajoutée démontrée.
-    - **Exposition de change non couverte.** Les actifs BVC sont en MAD, les ETF en
-      USD ; les résultats intègrent une exposition USD/MAD non couverte.
+    - **Numéraire.** `full_2021` est libellé en MAD au taux de référence officiel de
+      Bank Al-Maghrib et reste NON COUVERT ; `etf_2017` est mono-devise USD et
+      inchangé. Les niveaux de Sharpe ne sont pas comparables entre univers.
     - **Historique BVC limité.** Les données gratuites de la Bourse de Casablanca ne
       remontent qu'à mi-2021, ce qui exclut le krach COVID de cet univers. L'univers
       ETF, lui, remonte désormais à 2004 et intègre la crise de 2008.
     """
 )
+
+st.subheader("Ce que les tests établissent, mot pour mot")
+# Rendered from src/release_facts.py so this page, the API, the README and the
+# report state the same claims in the same words.
+for _s in (FACTS["statements"]["primary_benchmark"],
+           FACTS["statements"]["multiple_testing"],
+           FACTS["statements"]["nested"],
+           FACTS["statements"]["no_recommendation"]):
+    st.markdown(f"- {_s}")
 
 st.success(
     """
