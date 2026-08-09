@@ -447,7 +447,7 @@ plt.tight_layout()
 plt.show()
 
 display(Markdown(f"""
-**Reconstruction :** biais `{local['bias']:.8f}` + contributions = prédiction `{local['prediction']:.8f}`.  
+**Reconstruction :** biais `{local['bias']:.8f}` + contributions = prédiction `{local['prediction']:.8f}`.<br>
 Erreur de reconstruction : `{local['reconstruction_error']:.3e}` — méthode : {local['method']}.
 
 La concordance classement→poids de ce cas vaut **{case['concordance de Spearman']:+.3f}**.
@@ -646,7 +646,7 @@ plt.tight_layout()
 plt.show()
 
 display(Markdown(f"""
-**DSR = {nested['best_dsr_vs_search']:.4f} sur {nested['n_search_trials']} configurations.**  
+**DSR = {nested['best_dsr_vs_search']:.4f} sur {nested['n_search_trials']} configurations.**<br>
 La valeur est reportée sans adjectif : aucun seuil d'interprétation n'a été pré-spécifié.
 Le classement observé dépend du protocole **et de la fenêtre OOS associée** ; le chevauchement
 des intervalles marginaux n'établit ni supériorité ni équivalence.
