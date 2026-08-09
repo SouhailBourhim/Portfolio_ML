@@ -624,6 +624,42 @@ stages:
       - phase5.penalty_grid
       - phase5.bootstrap
 
+  # ── Weight-cap sweep on the deep ETF window ───────────────────────────────
+  # Tracked for the same reason as nested_walkforward: it was a hand-run
+  # experiment whose result Chapter 5 consumes, and an untracked result is one
+  # nobody can tell has gone stale.
+  #
+  # This one HAPPENS to have survived the base-currency correction intact — it
+  # is scoped to etf_2017, which is single-currency USD and did not move. That
+  # was luck rather than a property anyone could verify, which is the point:
+  # recording base_currency=USD in its provenance makes "unaffected" checkable.
+  etf_cap_sweep:
+    cmd: python experiments/etf_cap_verdict.py
+    deps:
+      - experiments/etf_cap_verdict.py
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/regime.py
+      - src/memo.py
+      - src/provenance.py
+      - data/gold/log_returns_etf.parquet
+      - data/gold/ml_features_etf.parquet
+      - data/gold/currency_manifest.json
+    outs:
+      - data/gold/etf_cap_verdict.json
+    params:
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - backtest.risk_free_annual
+      - backtest.costs_bps
+      - regime.n_states
+      - regime.n_restarts
+      - regime.random_state_base
+      - regime.covariance_type
+      - regime.min_regime_train_days
+      - phase5.bootstrap
+
   # ── Phase 3: offline monitoring reference ─────────────────────────────────
   # Pins the reference distributions a future drift check measures against.
   # The reference is the Phase 5 train+validation segment ONLY — including the
