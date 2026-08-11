@@ -5,18 +5,18 @@
 
 Several estimators in this project degrade rather than crash: DCC-GARCH falls back to Ledoit-Wolf shrinkage on non-convergence, the ML signals fall back to the naive sample mean on a thin panel or a failed fit, and the regime strategy resolves an uncertain posterior to its defensive branch. Each is deliberate — a walk-forward loop must not die on one bad window — but each also means a result can carry a label that is not the whole truth.
 
-On the released snapshot, **0 of 1,184 fits** across **4 evaluated strategies** and **296 rebalance dates** used a fallback. Every result reported here was produced by the model named in its label.
+On the released data snapshot, **6 of 1,184 strategy fits** used a fallback. Results for the affected strategies are HYBRIDS of the requested model and its substitute — see the tables below.
 
 ## Audit
 
 | Universe | Strategy | Fallback rebalances | Fallback days | Effective model |
 |---|---|---:|---:|---|
 | `etf_2017` | `dcc_garch` | 0 / 248 | 0 / 5387 | `dcc_garch` |
-| `etf_2017` | `regime_conditional` | 0 / 248 | 0 / 5387 | `regime_conditional` |
+| `etf_2017` | `regime_conditional` | 3 / 248 | 63 / 5387 | `regime_conditional`, `regime_conditional [via min_variance_lw]` |
 | `etf_2017` | `rf_signal` | 0 / 248 | 0 / 5387 | `rf_signal` |
 | `etf_2017` | `xgb_signal` | 0 / 248 | 0 / 5387 | `xgb_signal` |
 | `full_2021` | `dcc_garch` | 0 / 48 | 0 / 1040 | `dcc_garch` |
-| `full_2021` | `regime_conditional` | 0 / 48 | 0 / 1040 | `regime_conditional` |
+| `full_2021` | `regime_conditional` | 3 / 48 | 65 / 1040 | `regime_conditional`, `regime_conditional [via min_variance_lw]` |
 | `full_2021` | `rf_signal` | 0 / 48 | 0 / 1040 | `rf_signal` |
 | `full_2021` | `xgb_signal` | 0 / 48 | 0 / 1040 | `xgb_signal` |
 
@@ -25,10 +25,26 @@ Source artifacts, both versioned and hashed into the snapshot manifest:
 
 ## What this does and does not say
 
-- **Does:** on this snapshot, at this revision, across the strategies and dates counted above, no fallback path was taken. The value is a reproducible, versioned measurement rather than an assumption.
+- **Does:** on this snapshot, at this revision, **6 of the 1,184 fits counted above were produced by a SUBSTITUTE estimator**, not by the model its label names. Those series are hybrids; the tables below separate them.
+- **The control that makes this credible** is that the count is witnessed twice, by two stages writing different artifacts: `tests/test_artifact_consistency.py::TestFallbackCountsAgree` requires it to equal the number of non-converged rebalances recorded independently in `dashboard_regime.parquet`. A count that only one artifact can see is what allowed this figure to read zero while the regime timeline recorded six.
+- Degraded-period and excluding-fallback tables are rendered below, because a fallback occurred.
 - **Does NOT:** claim that no model ever falls back. The fallback paths are live, tested code and a different snapshot can exercise them. The scope of the claim is exactly the fits counted above — the telemetry exists to make the wider claim TESTABLE, not to assert it.
-- **The control that makes this credible** is not the zero itself but `test_full_period_sharpe_matches_the_published_dashboard_figure`: the runner must reproduce every published Sharpe through the instrumented engine, so the telemetry cannot be auditing a differently-configured lookalike under the same name.
-- Degraded-period and excluding-fallback performance tables are omitted here **because there is nothing to show** — with zero fallback days they would repeat the full-period column. They render automatically if a future run records any fallback.
 
 **Historical context — 2026-07-20.** An earlier run recorded the DCC-GARCH Ledoit-Wolf fallback firing exactly once, on `IAM.CS` in `full_2021`, and that observation is cited in the project record as evidence the safety net worked. It does **not** reproduce on the current snapshot: the BVC dividend correction and the adoption of the deep ETF history both changed the return series the GARCH fits see. The original observation was true when made; it is retained here rather than deleted, because a superseded measurement is part of how a result came to be trusted.
 
+
+## Degraded-period performance
+
+A fallback occurred, so the split below is meaningful and is shown.
+
+| Universe | Strategy | Full period (hybrid) | Fallback periods | Excluding fallback |
+|---|---|---:|---:|---:|
+| `etf_2017` | `regime_conditional` | 0.9371 (5387d) | 2.1768 (63d) | 0.9255 (5324d) |
+| `full_2021` | `regime_conditional` | 0.9571 (1040d) | -3.1282 (65d) | 1.2288 (975d) |
+
+**Full-period figures are the HYBRID** of the requested model and its fallback, never the requested model alone. An excluding-fallback figure is withheld rather than approximated when there are too few active days.
+
+### Reasons
+
+- `etf_2017` / `regime_conditional` — 3x: HMM did not converge — dispatched to the defensive sub-strategy on a neutral 50/50 posterior
+- `full_2021` / `regime_conditional` — 3x: HMM did not converge — dispatched to the defensive sub-strategy on a neutral 50/50 posterior

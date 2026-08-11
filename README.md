@@ -73,7 +73,7 @@ d’un autre benchmark.
 | Un challenger gagne-t-il après les 240 essais ? | **Non établi** par White RC ou Hansen SPA contre le comparateur primaire pré-spécifié | Le choix du benchmark n’est pas réécrit après observation du résultat. |
 | Davantage de données marocaines suffisent-elles ? | L’IC augmente de **×2 à ×4** sur 12 actions, 2005–2024, sans gain portefeuille établi | La limite n’est pas seulement la quantité : qualité, couverture économique et transformation signal → allocation dominent. |
 | Quelle intervention est la plus robuste sur les ETF ? | Le plafond de **25 %** : Sharpe 0,9525 contre 0,8650 sans plafond | La contrainte de gestion agit comme un puissant régularisateur de l’erreur d’estimation. |
-| Les étiquettes cachent-elles des modèles dégradés ? | **0 fallback sur 1 188 fits**, 4 stratégies et 297 rebalances | Mesure versionnée sur ce snapshot, pas affirmation qu’un fallback est impossible. |
+| Les étiquettes cachent-elles des modèles dégradés ? | Voir l’énoncé « Intégrité des modèles » dans **Faits publiés** ci-dessous | Chiffre généré depuis `data/gold/fit_report_summary.json`, jamais saisi ; le compte est confronté à un second artefact (`dashboard_regime.parquet`) par `TestFallbackCountsAgree`. |
 
 ![Résultats hors échantillon, nets de coûts](docs/rapport_final/assets/figures/courbes_equity.png)
 
@@ -262,7 +262,8 @@ preuve : les données, modèles, décisions, fallbacks et claims publiés sont v
 6. `regime_conditional` demeure le comparateur primaire pré-spécifié des tests White/SPA. Ce choix a été fixé avant l'observation des résultats et n'est pas réécrit maintenant que le signe de l'écart a changé.
 7. Correction pour tests multiples (White 2000, Hansen 2005) sur les 240 configurations atteignables : aucun candidat n'établit de surperformance face au comparateur primaire pré-spécifié.
 8. Walk-forward imbriqué (fenêtre OOS 2023-07-28 → 2026-07-24, 781 lignes) : le classement est sensible au protocole d'évaluation et à la fenêtre hors échantillon associée. Ratio de Sharpe dégonflé (DSR) = 0,6707 sur 198 configurations.
-9. Aucune stratégie n'est recommandée, déployée, ni présentée comme une valeur ajoutée établie. Ce livrable est un prototype de recherche.
+9. Intégrité des modèles : 6 ajustements sur 1 184 ont emprunté un repli d'estimateur (4 stratégies évaluées, 296 dates de rééquilibrage). Sur ces rééquilibrages, le résultat a été produit par un estimateur de substitution et non par le modèle que son étiquette désigne : les séries concernées sont des HYBRIDES. La portée de cette mesure est exactement l'ensemble compté ci-dessus : elle n'affirme pas qu'aucun repli n'est possible sur un autre instantané.
+10. Aucune stratégie n'est recommandée, déployée, ni présentée comme une valeur ajoutée établie. Ce livrable est un prototype de recherche.
 
 <!-- END RELEASE FACTS -->
 

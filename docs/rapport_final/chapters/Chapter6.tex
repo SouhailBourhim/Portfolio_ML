@@ -206,13 +206,21 @@ rééquilibrage enregistre donc le modèle demandé, le modèle effectif, le sta
 la raison du repli, le nombre de lignes d'entraînement et les avertissements de
 convergence.
 
-Sur le snapshot publié, 0 des 1\,188 ajustements — quatre stratégies et 297
-dates de rééquilibrage sur les deux univers — ont utilisé un repli. Cela ne
-signifie pas qu'un modèle ne peut jamais échouer : les chemins sont testés et un
-autre snapshot peut les activer. Cela établit seulement, mais précisément, que
-chaque performance publiée sur cette version provient du modèle indiqué par son
-étiquette. Les caches réémettent la télémétrie à chaque lecture, afin qu'un cache
-chaud ne fasse pas artificiellement diminuer le taux de repli.
+Le décompte publié figure dans l'énoncé « Intégrité des modèles » du chapitre
+\emph{Faits publiés} et dans le tableau~\ref{tab:integrite} : il est produit à
+partir de \texttt{data/gold/fit\_report\_summary.json} et n'est jamais saisi
+ici. Cette mesure ne signifie pas qu'un modèle ne peut jamais échouer : les
+chemins de repli sont du code vivant et testé, et un autre snapshot peut les
+emprunter. Sa portée est exactement l'ensemble compté.
+
+Un décompte que seul l'artefact concerné peut observer ne vaut rien : le
+2026-08-10, le résumé de télémétrie annonçait zéro repli alors que
+\texttt{dashboard\_regime.parquet} enregistrait six rééquilibrages sans
+convergence, parce qu'aucun point d'instrumentation n'existait sur les chemins
+SLSQP et HMM. Le compte est désormais confronté à ce second artefact par
+\texttt{TestFallbackCountsAgree}. Les caches réémettent par ailleurs la
+télémétrie à chaque lecture, afin qu'un cache chaud ne fasse pas
+artificiellement diminuer le taux de repli.
 
 % -----------------------------------------------------------------------------
 \section{Lecture pour une organisation financière régulée}

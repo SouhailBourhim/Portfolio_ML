@@ -1137,8 +1137,8 @@ stages:
       size: 18549
     - path: src/strategies.py
       hash: md5
-      md5: e14c05a35b6727c01bac51b66afcef58
-      size: 32414
+      md5: cccacb5e85f6b7b91f909502f27d5f43
+      size: 35635
     - path: src/telemetry.py
       hash: md5
       md5: 2ae96f30d72f280cc9695ac90b9f4a72
@@ -1160,12 +1160,12 @@ stages:
     outs:
     - path: data/gold/fit_report_summary.json
       hash: md5
-      md5: 365da65e2d1e8c7b7eb73ddbf16187c6
-      size: 38790
+      md5: 6c365305a3a08225e7eb1ff989e4f2aa
+      size: 39120
     - path: data/gold/fit_reports.parquet
       hash: md5
-      md5: 24d9d36ccff8a64517f0f94224019d85
-      size: 9841
+      md5: 0df1575e3ec3d7f4a8902f0e8594642a
+      size: 10430
   reality_check:
     cmd: python src/run_reality_check.py
     deps:
