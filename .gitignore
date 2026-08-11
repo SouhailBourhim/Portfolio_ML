@@ -83,3 +83,10 @@ docs/rapport/*.toc
 docs/rapport/*.out
 docs/rapport/*.lof
 docs/rapport/*.lot
+
+# Bundled Gold snapshot — superseded by DVC + R2 (`dvc pull`).
+# A second copy of the data is a second copy that goes stale: the tracked
+# data.zip shipped pre-dividend, pre-MAD, 2017-truncated parquets long after
+# the pipeline had moved on, and an external reviewer reproduced the retracted
+# results from it.
+data.zip

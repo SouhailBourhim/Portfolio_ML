@@ -28,14 +28,30 @@ WORDING RULES, both deliberate:
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+# The verdict sentence is NOT composed here. `release_facts` is the single
+# generator for every published claim; this script renders one of them into
+# LaTeX and Markdown. Recomputing it locally is exactly how the README, the
+# report and this table were able to disagree (CLAUDE.md §17.11).
+from release_facts import fallback_counts as _fallback_counts  # noqa: E402
+from release_facts import model_integrity_statement  # noqa: E402
+
 GOLD = ROOT / "data" / "gold"
 SUMMARY_PATH = GOLD / "fit_report_summary.json"
 OUT_MD = ROOT / "docs" / "MODEL_INTEGRITY.md"
-OUT_TEX = ROOT / "docs" / "rapport" / "assets" / "tables" / "integrite_modele.tex"
-OUT_COSTS = ROOT / "docs" / "rapport" / "assets" / "tables" / "sensibilite_couts.tex"
+# Every document tree this script must keep in sync. See the note in `main()`.
+# `bilan` has no chapters/ or tables/ of its own; it consumes the macros only,
+# which is why the macro file is written for every tree but the tables are not.
+REPORT_TREES = ("rapport", "rapport_final")
+MACRO_TREES = REPORT_TREES + ("bilan",)
+# Per-tree output paths are derived from REPORT_TREES in `main()`; no single
+# tree is privileged with a module-level constant, so adding a tree cannot
+# leave one of them silently unwritten.
 
 # Kept because it happened, flagged because it no longer does.
 HISTORICAL_NOTE = (
@@ -158,24 +174,46 @@ def build_markdown(summary: dict) -> str:
         "",
         "## What this does and does not say",
         "",
-        "- **Does:** on this snapshot, at this revision, across the strategies and "
-        "dates counted above, no fallback path was taken. The value is a reproducible, "
-        "versioned measurement rather than an assumption.",
+        # NOTE: every bullet below must be inside this conditional. An earlier
+        # version left the first three unconditional and only branched the
+        # last, so a non-zero run would have printed "no fallback path was
+        # taken" directly above a table counting them.
+        *(
+            [
+                "- **Does:** on this snapshot, at this revision, across the strategies "
+                "and dates counted above, no fallback path was taken. The value is a "
+                "reproducible, versioned measurement rather than an assumption.",
+                "- **The control that makes this credible** is not the zero itself but "
+                "`test_full_period_sharpe_matches_the_published_dashboard_figure`: the "
+                "runner must reproduce every published Sharpe through the instrumented "
+                "engine, so the telemetry cannot be auditing a differently-configured "
+                "lookalike under the same name.",
+                "- Degraded-period and excluding-fallback performance tables are "
+                "omitted here **because there is nothing to show** — with zero fallback "
+                "days they would repeat the full-period column. They render "
+                "automatically if a future run records any fallback.",
+            ]
+            if clean
+            else [
+                f"- **Does:** on this snapshot, at this revision, "
+                f"**{total_fallbacks} of the {total_fits:,} fits counted above were "
+                f"produced by a SUBSTITUTE estimator**, not by the model its label "
+                f"names. Those series are hybrids; the tables below separate them.",
+                "- **The control that makes this credible** is that the count is "
+                "witnessed twice, by two stages writing different artifacts: "
+                "`tests/test_artifact_consistency.py::TestFallbackCountsAgree` requires "
+                "it to equal the number of non-converged rebalances recorded "
+                "independently in `dashboard_regime.parquet`. A count that only one "
+                "artifact can see is what allowed this figure to read zero while the "
+                "regime timeline recorded six.",
+                "- Degraded-period and excluding-fallback tables are rendered below, "
+                "because a fallback occurred.",
+            ]
+        ),
         "- **Does NOT:** claim that no model ever falls back. The fallback paths are "
         "live, tested code and a different snapshot can exercise them. The scope of the "
         "claim is exactly the fits counted above — the telemetry exists to make the "
         "wider claim TESTABLE, not to assert it.",
-        "- **The control that makes this credible** is not the zero itself but "
-        "`test_full_period_sharpe_matches_the_published_dashboard_figure`: the runner "
-        "must reproduce every published Sharpe through the instrumented engine, so the "
-        "telemetry cannot be auditing a differently-configured lookalike under the same "
-        "name.",
-        "- Degraded-period and excluding-fallback performance tables are omitted here "
-        "**because there is nothing to show** — with zero fallback days they would "
-        "repeat the full-period column. They render automatically if a future run "
-        "records any fallback."
-        if clean else
-        "- Degraded-period tables are shown below because a fallback occurred.",
         "",
         HISTORICAL_NOTE,
         "",
@@ -183,6 +221,30 @@ def build_markdown(summary: dict) -> str:
     if not clean:
         parts.append(_degraded_tables_md(results))
     return "\n".join(parts) + "\n"
+
+
+def build_macros_latex(summary: dict) -> str:
+    """The integrity counts as preamble macros.
+
+    Separate from the table on purpose: the résumé (frontmatter, loaded long
+    before Chapter 5) states the count too, and a summary that cannot cite the
+    number has to restate it by hand — which is how a stale `0 fallback`
+    survived in four frontmatter files. Defining the macros in the preamble
+    lets every surface in the document cite ONE generated value.
+    """
+    results = summary["results"]
+    counts = _fallback_counts(ROOT)
+    return "\n".join([
+        "% GÉNÉRÉ par scripts/build_integrity_section.py — ne pas éditer à la main.",
+        "% Source : data/gold/fit_report_summary.json",
+        "% Chargé dans le PRÉAMBULE : le résumé cite ces valeurs.",
+        f"\\newcommand{{\\integriteVerdict}}{{{model_integrity_statement(ROOT)}}}",
+        f"\\newcommand{{\\integriteAjustements}}{{{counts['total_fits']}}}",
+        f"\\newcommand{{\\integriteReplis}}{{{counts['total_fallbacks']}}}",
+        f"\\newcommand{{\\integriteStrategies}}{{{counts['n_strategies']}}}",
+        f"\\newcommand{{\\integriteDates}}{{{counts['n_dates']}}}",
+        "",
+    ])
 
 
 def build_latex(summary: dict) -> str:
@@ -201,27 +263,11 @@ def build_latex(summary: dict) -> str:
             f"{entry['fallback_days']} / {entry['oos_days']} \\\\"
         )
 
-    strategies = len({r["strategy_requested"] for r in results})
-    # Four strategies share each universe's rebalance calendar. Counting every
-    # fit here would call 1,188 fits "rebalance dates"; the audit statement
-    # must distinguish the two units exactly as its Markdown counterpart does.
-    dates = _distinct_rebalance_dates(results)
-    verdict = (
-        f"Sur l'instantané publié, {total_fallbacks} ajustement sur {total_fits} "
-        f"— {strategies} stratégies évaluées, {dates} dates de rééquilibrage — "
-        f"n'a utilisé de repli : chaque résultat rapporté ici a été produit par le "
-        f"modèle que son étiquette désigne. La portée de cette affirmation est "
-        f"exactement l'ensemble compté ci-dessus."
-        if total_fallbacks == 0 else
-        f"Sur l'instantané publié, {total_fallbacks} ajustements sur {total_fits} "
-        f"ont utilisé un repli ; les résultats concernés sont des HYBRIDES."
-    )
     return "\n".join([
         "% GÉNÉRÉ par scripts/build_integrity_section.py — ne pas éditer à la main.",
         "% Source : data/gold/fit_report_summary.json",
-        f"\\newcommand{{\\integriteVerdict}}{{{verdict}}}",
-        f"\\newcommand{{\\integriteAjustements}}{{{total_fits}}}",
-        f"\\newcommand{{\\integriteReplis}}{{{total_fallbacks}}}",
+        "% Les macros \\integrite* sont définies dans assets/integrite_macros.tex,",
+        "% chargé dans le préambule pour que le résumé puisse les utiliser.",
         "",
         "\\begin{table}[htbp]",
         "  \\centering",
@@ -296,14 +342,41 @@ def build_cost_latex(summary: dict) -> str:
 def main() -> None:
     summary = _load()
     OUT_MD.write_text(build_markdown(summary), encoding="utf-8")
-    OUT_TEX.parent.mkdir(parents=True, exist_ok=True)
-    OUT_TEX.write_text(build_latex(summary), encoding="utf-8")
-    OUT_COSTS.write_text(build_cost_latex(summary), encoding="utf-8")
+
+    table = build_latex(summary)
+    costs = build_cost_latex(summary)
+    macros = build_macros_latex(summary)
+
+    # BOTH report trees. `docs/rapport_final/` was outside every generator and
+    # every test until 2026-08-10, which is precisely how a hand-typed
+    # `0 fallback` claim survived there in Chapter 6 and the résumé while the
+    # managed tree was regenerated. A second copy nothing writes to is a second
+    # copy that drifts.
+    written: list[Path] = [OUT_MD]
+    for tree in MACRO_TREES:
+        # A tree absent from this branch is skipped, not conjured: creating
+        # `docs/<tree>/assets/` where no document lives would leave a stray
+        # directory behind on every run.
+        if not (ROOT / "docs" / tree).is_dir():
+            continue
+        assets = ROOT / "docs" / tree / "assets"
+        assets.mkdir(parents=True, exist_ok=True)
+        macro_path = assets / "integrite_macros.tex"
+        macro_path.write_text(macros, encoding="utf-8")
+        written.append(macro_path)
+
+        if tree not in REPORT_TREES:
+            continue
+        tables = assets / "tables"
+        tables.mkdir(parents=True, exist_ok=True)
+        (tables / "integrite_modele.tex").write_text(table, encoding="utf-8")
+        (tables / "sensibilite_couts.tex").write_text(costs, encoding="utf-8")
+        written += [tables / "integrite_modele.tex", tables / "sensibilite_couts.tex"]
+
     total = sum(r["rebalances"] for r in summary["results"])
     fallbacks = sum(r["fallback_rebalances"] for r in summary["results"])
-    print(f"  docs/MODEL_INTEGRITY.md")
-    print(f"  docs/rapport/assets/tables/integrite_modele.tex")
-    print(f"  docs/rapport/assets/tables/sensibilite_couts.tex")
+    for path in written:
+        print(f"  {path.relative_to(ROOT)}")
     print(f"  ({fallbacks}/{total} fits used a fallback; "
           f"degraded tables {'omitted' if fallbacks == 0 else 'RENDERED'})")
 

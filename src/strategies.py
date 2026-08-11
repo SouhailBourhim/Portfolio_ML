@@ -22,6 +22,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
+import telemetry
+
 log = logging.getLogger("strategies")
 
 TRADING_DAYS_PER_YEAR = 252
@@ -205,6 +207,7 @@ def _optimize_weights(
     strategy_name: str,
     w_prev: np.ndarray | None = None,
     turnover_penalty: float = 0.0,
+    n_training_rows: int = 0,
 ) -> pd.Series:
     """
     Shared SLSQP wrapper: long-only bounds (0, max_weight), Σw = 1, x0 = 1/N.
@@ -256,12 +259,39 @@ def _optimize_weights(
         start = start / start.sum()
         result = minimize(objective, start, method="SLSQP", bounds=bounds, constraints=constraints)
         if result.success:
+            # A "successful" solve can still return a vector with no positive
+            # mass, which `_as_weight_series` silently renormalizes to 1/N.
+            # That substitution is invisible in the returned Series, so it is
+            # recorded here rather than at the projection: this is the only
+            # place that still knows the request came from `strategy_name`.
+            if np.clip(np.asarray(result.x, dtype=float), 0.0, None).sum() <= 0.0:
+                telemetry.record(
+                    telemetry.FitRecord(
+                        model_requested=strategy_name,
+                        model_effective="equal_weight",
+                        fit_status=telemetry.STATUS_FALLBACK,
+                        n_training_rows=n_training_rows,
+                        fallback_reason=(
+                            "SLSQP reported success but returned a degenerate "
+                            "weight vector with no positive mass"
+                        ),
+                    )
+                )
             return Strategy._as_weight_series(result.x, assets, max_weight)
         log.debug("%s: SLSQP attempt %d failed: %s", strategy_name, attempt + 1, result.message)
 
     log.warning(
         "%s: optimizer failed twice (%s) — falling back to equal weights for this rebalance.",
         strategy_name, result.message,
+    )
+    telemetry.record(
+        telemetry.FitRecord(
+            model_requested=strategy_name,
+            model_effective="equal_weight",
+            fit_status=telemetry.STATUS_FALLBACK,
+            n_training_rows=n_training_rows,
+            fallback_reason=f"SLSQP did not converge in 2 attempts: {result.message}",
+        )
     )
     return pd.Series(1.0 / n, index=assets)
 
@@ -287,7 +317,8 @@ class MinVariance(Strategy):
     ) -> pd.Series:
         cov = train_returns.cov().to_numpy() * TRADING_DAYS_PER_YEAR
         return _optimize_weights(
-            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name
+            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name,
+            n_training_rows=len(train_returns),
         )
 
 
@@ -320,7 +351,8 @@ class MinVarianceLW(Strategy):
         lw = LedoitWolf().fit(train_returns.to_numpy())
         cov = lw.covariance_ * TRADING_DAYS_PER_YEAR
         return _optimize_weights(
-            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name
+            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name,
+            n_training_rows=len(train_returns),
         )
 
 
@@ -356,7 +388,8 @@ class MinVarianceEWMA(Strategy):
         ewm_cov = train_returns.ewm(halflife=self.halflife_days).cov()
         cov = ewm_cov.loc[train_returns.index[-1]].to_numpy() * TRADING_DAYS_PER_YEAR
         return _optimize_weights(
-            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name
+            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name,
+            n_training_rows=len(train_returns),
         )
 
 
@@ -411,7 +444,8 @@ class DCCGarchStrategy(Strategy):
             rescale_factor=self.rescale_factor,
         )
         return _optimize_weights(
-            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name
+            lambda w: float(w @ cov @ w), train_returns.columns, self.max_weight, self.name,
+            n_training_rows=len(train_returns),
         )
 
 
@@ -515,6 +549,7 @@ class MaxSharpe(Strategy):
         return _optimize_weights(
             lambda w: _neg_sharpe(w, mu, cov, self.risk_free_annual),
             train_returns.columns, self.max_weight, self.name,
+            n_training_rows=len(train_returns),
         )
 
 
@@ -646,6 +681,7 @@ class _MLSignalStrategy(Strategy):
             train_returns.columns, self.max_weight, self.name,
             w_prev=_extract_current_weights(extras, train_returns.columns),
             turnover_penalty=self.turnover_penalty,
+            n_training_rows=len(train_returns),
         )
 
 
@@ -745,6 +781,18 @@ class RegimeConditionalStrategy(Strategy):
     ) -> pd.Series:
         n = train_returns.shape[1]
         if not extras or "features" not in extras or extras["features"].empty:
+            telemetry.record(
+                telemetry.FitRecord(
+                    model_requested=self.name,
+                    model_effective="equal_weight",
+                    fit_status=telemetry.STATUS_FALLBACK,
+                    n_training_rows=len(train_returns),
+                    fallback_reason=(
+                        "no regime features supplied — the HMM was never fitted "
+                        "and no regime signal entered this allocation"
+                    ),
+                )
+            )
             return pd.Series(1.0 / n, index=train_returns.columns)
 
         from regime import fit_hmm, predict_regime_posterior
@@ -768,6 +816,24 @@ class RegimeConditionalStrategy(Strategy):
             # sub-strategy rather than an arbitrary tie-break on the
             # neutral 50/50 posterior (see class docstring).
             regime_label = "bear"
+            # The dispatch is the substitution: on this rebalance the result
+            # is produced entirely by `bear_strategy`, with no regime signal
+            # in it. Recorded here rather than in `regime.fit_hmm` because
+            # this is where the substitution happens and where the effective
+            # model has a name — `fit_hmm` is also called by F7's feature
+            # builder, where a neutral posterior is not a portfolio fallback.
+            telemetry.record(
+                telemetry.FitRecord(
+                    model_requested=self.name,
+                    model_effective=self.bear_strategy.name,
+                    fit_status=telemetry.STATUS_FALLBACK,
+                    n_training_rows=len(train_returns),
+                    fallback_reason=(
+                        "HMM did not converge — dispatched to the defensive "
+                        "sub-strategy on a neutral 50/50 posterior"
+                    ),
+                )
+            )
 
         self.regime_log.append(
             {

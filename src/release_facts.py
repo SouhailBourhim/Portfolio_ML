@@ -58,6 +58,11 @@ PRIMARY_BENCHMARK_NOTE = (
     "n'est pas réécrit maintenant que le signe de l'écart a changé."
 )
 
+FALLBACK_SCOPE_NOTE = (
+    "La portée de cette mesure est exactement l'ensemble compté ci-dessus : "
+    "elle n'affirme pas qu'aucun repli n'est possible sur un autre instantané."
+)
+
 
 def _load(name: str, root: Path = ROOT) -> dict:
     return json.loads((root / "data" / "gold" / name).read_text())
@@ -109,8 +114,93 @@ def load_facts(root: Path = ROOT) -> dict:
         "n_oos_rows": nested["provenance"]["oos_range"]["n_rows"],
         "base_currency": nested["provenance"]["base_currency"],
     }
+    facts["fallbacks"] = fallback_counts(root)
     facts["statements"] = _statements(facts)
     return facts
+
+
+def fallback_counts(root: Path = ROOT) -> dict:
+    """
+    The model-integrity counts, derived from `fit_report_summary.json` alone.
+
+    Addresses: P4 — until 2026-08-10 this claim was TYPED into nine surfaces
+    and asserted by a test, while the counter behind it could not increment:
+    `telemetry.record` had no call site on the SLSQP or HMM degradation paths,
+    and `telemetry.summarize` returns `ok` when given no records. The published
+    figure was therefore not a measurement of zero, it was the absence of a
+    measurement — which is why it is not preserved anywhere as history.
+
+    `n_dates` counts rebalance DATES, not fits: the strategies share each
+    universe's calendar, so summing every row's `rebalances` would report the
+    fit count under the wrong unit. `scripts/build_integrity_section.py`
+    imports this function rather than recomputing, so the report table and
+    these sentences cannot drift apart.
+    """
+    results = _load("fit_report_summary.json", root)["results"]
+    per_universe = {r["universe"]: r["rebalances"] for r in results}
+    reasons: dict[str, int] = {}
+    for row in results:
+        for reason, count in (row.get("fallback_reasons") or {}).items():
+            reasons[reason] = reasons.get(reason, 0) + int(count)
+    return {
+        "total_fits": sum(r["rebalances"] for r in results),
+        "total_fallbacks": sum(r["fallback_rebalances"] for r in results),
+        "n_strategies": len({r["strategy_requested"] for r in results}),
+        "n_dates": sum(per_universe.values()),
+        "reasons": reasons,
+    }
+
+
+def _fr_int(n: int) -> str:
+    """French thousands separator, as a NO-BREAK space (U+00A0).
+
+    A plain space would let a line break fall between `1` and `184`. The old
+    hand-written LaTeX used `1\\,188` for the same reason; this keeps the
+    typography without letting the number be typed.
+    """
+    return f"{n:,}".replace(",", " ")
+
+
+def _fallback_statement(counts: dict) -> str:
+    """Render the integrity claim at the strength the counts actually support."""
+    n_fb, n_fits = counts["total_fallbacks"], counts["total_fits"]
+    scope = (
+        f"{counts['n_strategies']} stratégies évaluées, "
+        f"{counts['n_dates']} dates de rééquilibrage"
+    )
+    if n_fb == 0:
+        return (
+            f"Intégrité des modèles : aucun repli d'estimateur sur les "
+            f"{_fr_int(n_fits)} ajustements de l'instantané publié "
+            f"({scope}). {FALLBACK_SCOPE_NOTE}"
+        )
+    verb = "a emprunté" if n_fb == 1 else "ont emprunté"
+    noun = "ajustement" if n_fb == 1 else "ajustements"
+    tail = (
+        "Sur ce rééquilibrage, le résultat a été produit"
+        if n_fb == 1
+        else "Sur ces rééquilibrages, le résultat a été produit"
+    )
+    series = (
+        "la série concernée est un HYBRIDE" if n_fb == 1
+        else "les séries concernées sont des HYBRIDES"
+    )
+    return (
+        f"Intégrité des modèles : {n_fb} {noun} sur {_fr_int(n_fits)} "
+        f"{verb} un repli d'estimateur ({scope}). {tail} par un estimateur de "
+        f"substitution et non par le modèle que son étiquette désigne : "
+        f"{series}. {FALLBACK_SCOPE_NOTE}"
+    )
+
+
+def model_integrity_statement(root: Path = ROOT) -> str:
+    """The integrity claim on its own, for surfaces that render only that.
+
+    Addresses: P4 — `scripts/build_integrity_section.py` imports this instead
+    of composing its own sentence, so the report table's verdict and the
+    README's published-facts block are the same string by construction.
+    """
+    return _fallback_statement(fallback_counts(root))
 
 
 def _fr(x: float, n: int = 2) -> str:
@@ -161,6 +251,7 @@ def _statements(f: dict) -> dict:
             f"échantillon associée. Ratio de Sharpe dégonflé (DSR) = "
             f"{_fr(nested['dsr'], 4)} sur {nested['n_trials']} configurations."
         ),
+        "model_integrity": _fallback_statement(f["fallbacks"]),
         "no_recommendation": NO_RECOMMENDATION,
     }
 
@@ -198,5 +289,5 @@ def statement_list(root: Path = ROOT) -> list[str]:
     return [s[k] for k in (
         "full_2021_currency", "etf_2017_currency", "not_comparable",
         "point_difference", "no_paired_test", "primary_benchmark",
-        "multiple_testing", "nested", "no_recommendation",
+        "multiple_testing", "nested", "model_integrity", "no_recommendation",
     )]

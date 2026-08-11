@@ -35,9 +35,10 @@ surperforme les méthodes classiques.
 >
 > **2. Étiquette de modèle et modèle effectif.** Plusieurs estimateurs se dégradent
 > au lieu d'échouer (DCC-GARCH → Ledoit-Wolf, signaux ML → moyenne empirique,
-> régimes → branche défensive). Sur l'instantané publié, **0 des 1 188 ajustements
-> — 4 stratégies évaluées, 297 dates de rééquilibrage — n'a utilisé de repli** :
-> chaque résultat rapporté provient du modèle que son étiquette désigne. La portée
+> régimes → branche défensive). Le décompte publié est l'énoncé « Intégrité des
+> modèles » du bloc **Faits publiés** ci-dessous : il est généré depuis
+> `data/gold/fit_report_summary.json`, jamais saisi, et confronté à un second
+> artefact (`dashboard_regime.parquet`) par `TestFallbackCountsAgree`. La portée
 > est exactement cet ensemble ; ce n'est pas l'affirmation qu'aucun modèle ne replie
 > jamais, et l'instrumentation existe pour rendre cette question vérifiable sur tout
 > instantané futur. Mesuré, pas supposé — voir
@@ -643,6 +644,7 @@ jupyter notebook notebooks/phase5_oos_evaluation.ipynb       # évaluation OOS (
 6. `regime_conditional` demeure le comparateur primaire pré-spécifié des tests White/SPA. Ce choix a été fixé avant l'observation des résultats et n'est pas réécrit maintenant que le signe de l'écart a changé.
 7. Correction pour tests multiples (White 2000, Hansen 2005) sur les 240 configurations atteignables : aucun candidat n'établit de surperformance face au comparateur primaire pré-spécifié.
 8. Walk-forward imbriqué (fenêtre OOS 2023-07-28 → 2026-07-24, 781 lignes) : le classement est sensible au protocole d'évaluation et à la fenêtre hors échantillon associée. Ratio de Sharpe dégonflé (DSR) = 0,6707 sur 198 configurations.
-9. Aucune stratégie n'est recommandée, déployée, ni présentée comme une valeur ajoutée établie. Ce livrable est un prototype de recherche.
+9. Intégrité des modèles : 6 ajustements sur 1 184 ont emprunté un repli d'estimateur (4 stratégies évaluées, 296 dates de rééquilibrage). Sur ces rééquilibrages, le résultat a été produit par un estimateur de substitution et non par le modèle que son étiquette désigne : les séries concernées sont des HYBRIDES. La portée de cette mesure est exactement l'ensemble compté ci-dessus : elle n'affirme pas qu'aucun repli n'est possible sur un autre instantané.
+10. Aucune stratégie n'est recommandée, déployée, ni présentée comme une valeur ajoutée établie. Ce livrable est un prototype de recherche.
 
 <!-- END RELEASE FACTS -->
