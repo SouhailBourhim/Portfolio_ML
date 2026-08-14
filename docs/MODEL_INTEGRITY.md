@@ -46,5 +46,5 @@ A fallback occurred, so the split below is meaningful and is shown.
 
 ### Reasons
 
-- `etf_2017` / `regime_conditional` — 3x: HMM did not converge — dispatched to the defensive sub-strategy on a neutral 50/50 posterior
-- `full_2021` / `regime_conditional` — 3x: HMM did not converge — dispatched to the defensive sub-strategy on a neutral 50/50 posterior
+- `etf_2017` / `regime_conditional` — 3x: insufficient usable history for the HMM (below min_regime_train_days) — neutral warm-up, the estimator was not fitted — dispatched to the defensive sub-strategy on a neutral 50/50 posterior
+- `full_2021` / `regime_conditional` — 3x: insufficient usable history for the HMM (below min_regime_train_days) — neutral warm-up, the estimator was not fitted — dispatched to the defensive sub-strategy on a neutral 50/50 posterior
