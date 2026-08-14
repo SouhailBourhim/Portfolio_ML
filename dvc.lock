@@ -839,7 +839,7 @@ stages:
       size: 458971
     - path: data/gold/dashboard_regime.parquet
       hash: md5
-      md5: 40a400eefcbeed8c51bb9e5a5a39ffa9
+      md5: 70456538d70909c5fe0eefed84566bf6
       size: 11991
     - path: data/gold/dashboard_showcase.json
       hash: md5
@@ -855,12 +855,12 @@ stages:
       size: 7187871
     - path: data/gold/fit_report_summary.json
       hash: md5
-      md5: 6c365305a3a08225e7eb1ff989e4f2aa
-      size: 39120
+      md5: 4bff9985b19ce267a3e1ee0cd4d58971
+      size: 39321
     - path: data/gold/fit_reports.parquet
       hash: md5
-      md5: 0df1575e3ec3d7f4a8902f0e8594642a
-      size: 10430
+      md5: a3ffcb4c91798b2f09a62f33753635bc
+      size: 10931
     - path: data/gold/log_returns.parquet
       hash: md5
       md5: ecd2b5115becc1fef0e752883ed81bd0
@@ -879,12 +879,12 @@ stages:
       size: 119827
     - path: data/gold/model_explanations.json
       hash: md5
-      md5: 7f1424a261e8910001cc97abe0b73f66
+      md5: 0421a9538bc871dd04fe61d24c77595b
       size: 36660
     - path: data/gold/monitoring_baseline.json
       hash: md5
-      md5: 185a1d80af1cba1c90606f34a808e16f
-      size: 24437
+      md5: cbf1c01d1db474550dbbea5e38a2ef27
+      size: 24641
     - path: data/gold/paired_comparison_results.json
       hash: md5
       md5: d8c78ebab055324f8a79eeb14a82dbf6
@@ -940,8 +940,8 @@ stages:
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: 4169f6e1696bd4501ed3ee93bca415c7
-      size: 9088
+      md5: 724fa9043621081dbeca800e0e098277
+      size: 9071
   smoke:
     cmd: python scripts/smoke_pipeline.py
     deps:
