@@ -105,18 +105,41 @@ Every historical row's `REGIME_BULL_PROB` at date *t* was computed using observa
 **What this is, precisely.** An in-window lookahead and a **train/serve mismatch**: the model
 trains on a cleaner version of a feature than the one it is scored with.
 
+**Measured** (`tests/test_regime_feature_smoothing.py`). Holding the fitted model **fixed**
+and varying only the window length handed to `predict_proba` — so the difference is
+attributable to the backward pass and nothing else — the effect is real but modest and highly
+localised: **max drift ~1×10⁻³** in probability units, **fewer than 10 of 141 dates move at
+all**, and the movement sits in the final rows of the window (last-10 mean 2.2×10⁻⁴ against a
+first-100 mean of 9×10⁻¹⁶). That is the signature of forward-backward smoothing: the backward
+pass carries most information where fewest future observations exist, while older rows are
+already pinned by everything that followed them.
+
+The isolation matters, and getting it wrong was the first attempt at this measurement. The
+obvious diagnostic — call `attach_regime_feature` on a short window and a long one — conflates
+smoothing with the **refit**, since that function re-estimates the HMM. A refit on more data
+moves the posteriors by ~0.7 in probability units, some of it merely relabelled states. That
+number would have overstated this defect by nearly three orders of magnitude.
+
 **What it is not.** It does **not** inflate the out-of-sample results. Nothing after τ enters
 the evaluation — the engine's slicing guarantees that, and the guarantee is tested. If
 anything it degrades live performance, because the tree learns to over-trust a variable that
 is noisier at inference time.
 
-**Honest gap.** The project's causality tests stop just short of this.
+**Honest gap.** The project's causality tests stopped just short of this.
 `test_future_returns_do_not_change_past_asset_features` covers `build_asset_features` — pure
 rolling windows — and does not extend to where the non-causal column is attached. The regime
 feature is therefore described as **exploratory** and this is not presented as a passing
 causality guarantee. The fix is filtered posteriors (a rolling `predict_proba` over expanding
 prefixes) or dropping the column from training rows; both change F7 results and neither is
 attempted this late.
+
+**How it is now marked.** `tests/test_regime_feature_smoothing.py` is a *diagnostic*, not an
+`xfail`. Its five tests pass by measuring the dependency, showing it is concentrated where
+the backward pass predicts, bounding its magnitude, proving the measurement is not an artefact
+of recomputation, and keeping the confinement result adjacent. An expected-failure test would
+have gone green while the defect stayed unmeasured; this one **fails if the defect is ever
+fixed**, and says so — a test that must be deleted when a bug is closed is a more honest
+marker than one permitted to fail forever.
 
 ---
 
