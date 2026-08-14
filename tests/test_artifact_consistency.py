@@ -48,10 +48,14 @@ these become hard assertions.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from regime import REGIME_DISPATCH_MARKER  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLD = ROOT / "data" / "gold"
@@ -386,24 +390,104 @@ class TestFallbackCountsAgree:
                 return row
         pytest.skip(f"{self.STRATEGY} absent from fit_report_summary for {universe}.")
 
+    def _regime_path_fallbacks(self, row: dict) -> int:
+        """Fallbacks attributable to the REGIME dispatch, by count not by name.
+
+        `regime_conditional` has three instrumented degradation paths and only
+        one of them is the HMM: it can also fall back when SLSQP fails and when
+        no regime features are supplied. Those are legitimate and unrelated to
+        convergence, so they must not be compared against the regime timeline.
+        The marker is imported from `regime` rather than hardcoded, so
+        rewording a reason cannot silently break the classification.
+        """
+        return sum(
+            int(count)
+            for reason, count in (row.get("fallback_reasons") or {}).items()
+            if REGIME_DISPATCH_MARKER in reason
+        )
+
     @pytest.mark.parametrize("universe", ["full_2021", "etf_2017"])
-    def test_non_convergence_is_reported_as_fallback(self, universe, regime_timeline, fit_summary):
+    def test_every_regime_non_convergence_is_reported_as_a_fallback(
+        self, universe, regime_timeline, fit_summary
+    ):
+        """The witness sets a FLOOR, not an equality.
+
+        An earlier version of this test demanded exact equality against the
+        timeline. That held on the snapshot it was written for and would have
+        failed wrongly the first time `regime_conditional` took a legitimate
+        SLSQP or missing-feature fallback — punishing correct instrumentation
+        for being more complete than the witness. The floor is the property
+        that actually matters: no non-convergence may go unreported.
+        """
         timeline = regime_timeline[regime_timeline["universe"] == universe]
         if timeline.empty:
             pytest.skip(f"No regime timeline rows for {universe}.")
 
         witnessed = int((~timeline["converged"].astype(bool)).sum())
-        reported = int(self._rows_for(fit_summary, universe)["fallback_rebalances"])
+        row = self._rows_for(fit_summary, universe)
+        reported = int(row["fallback_rebalances"])
 
-        assert reported == witnessed, (
+        assert reported >= witnessed, (
             f"[{universe}] dashboard_regime.parquet witnesses {witnessed} "
             f"non-converged rebalance(s) for {self.STRATEGY}, but "
-            f"fit_report_summary.json reports {reported} fallback rebalance(s). "
-            "These describe the same events from the same Gold inputs. A "
-            "reported count BELOW the witnessed one means a degradation path "
-            "is uninstrumented and the published integrity claim overstates "
-            "what was verified (the 2026-08-10 defect); a count ABOVE it means "
-            "the two stages ran on different data."
+            f"fit_report_summary.json reports only {reported} fallback(s) in "
+            "total. A reported count BELOW the witnessed one means a "
+            "degradation path is uninstrumented and the published integrity "
+            "claim overstates what was verified — the 2026-08-10 defect."
+        )
+
+    @pytest.mark.parametrize("universe", ["full_2021", "etf_2017"])
+    def test_regime_path_fallbacks_match_the_timeline_exactly(
+        self, universe, regime_timeline, fit_summary
+    ):
+        """Equality, but only for the subset the timeline actually witnesses.
+
+        More fallbacks than non-convergences is fine; more HMM-attributed
+        fallbacks than non-convergences is not, and neither is fewer.
+        """
+        timeline = regime_timeline[regime_timeline["universe"] == universe]
+        if timeline.empty:
+            pytest.skip(f"No regime timeline rows for {universe}.")
+
+        witnessed = int((~timeline["converged"].astype(bool)).sum())
+        row = self._rows_for(fit_summary, universe)
+        regime_path = self._regime_path_fallbacks(row)
+
+        assert regime_path == witnessed, (
+            f"[{universe}] the regime timeline witnesses {witnessed} "
+            f"non-converged rebalance(s), but {regime_path} fallback(s) carry "
+            f"the regime-dispatch marker. Reasons recorded: "
+            f"{list((row.get('fallback_reasons') or {}))}. Fewer means an HMM "
+            "fallback lost its attribution; more means the two stages ran on "
+            "different data, or a non-HMM path is being mislabelled."
+        )
+
+    @pytest.mark.parametrize("universe", ["full_2021", "etf_2017"])
+    def test_the_warm_up_path_is_not_reported_as_non_convergence(
+        self, universe, fit_summary
+    ):
+        """A published reason must not say the estimator failed when it did not.
+
+        Both neutral-posterior paths are real fallbacks and both are counted.
+        But the `min_regime_train_days` warm-up means the HMM was never fitted,
+        and calling that "did not converge" sends a reader hunting for an
+        estimator bug that does not exist. This is the 2026-08-11 correction.
+        """
+        row = self._rows_for(fit_summary, universe)
+        reasons = list((row.get("fallback_reasons") or {}))
+        if not reasons:
+            pytest.skip(f"No fallbacks recorded for {universe}.")
+
+        offenders = [
+            r for r in reasons
+            if "did not converge" in r and "insufficient usable history" not in r
+            and "no EM restart converged" not in r
+        ]
+        assert not offenders, (
+            f"[{universe}] fallback reason(s) claim non-convergence without "
+            f"naming which neutral path was taken: {offenders}. The warm-up "
+            "and a genuine EM failure are different events and must read "
+            "differently."
         )
 
     def test_generated_macros_match_the_artifact_in_every_document_tree(self, fit_summary):

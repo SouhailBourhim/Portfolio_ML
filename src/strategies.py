@@ -822,6 +822,17 @@ class RegimeConditionalStrategy(Strategy):
             # this is where the substitution happens and where the effective
             # model has a name — `fit_hmm` is also called by F7's feature
             # builder, where a neutral posterior is not a portfolio fallback.
+            #
+            # The reason names WHICH neutral path was taken. Reporting the
+            # warm-up as "the HMM did not converge" is false: on those dates
+            # the estimator was never fitted because the window was too short,
+            # which is expected rather than a malfunction.
+            from regime import FAILURE_DESCRIPTIONS, REGIME_DISPATCH_MARKER
+
+            why = FAILURE_DESCRIPTIONS.get(
+                hmm_fit.failure_reason,
+                "neutral regime posterior for an unrecorded reason",
+            )
             telemetry.record(
                 telemetry.FitRecord(
                     model_requested=self.name,
@@ -829,8 +840,8 @@ class RegimeConditionalStrategy(Strategy):
                     fit_status=telemetry.STATUS_FALLBACK,
                     n_training_rows=len(train_returns),
                     fallback_reason=(
-                        "HMM did not converge — dispatched to the defensive "
-                        "sub-strategy on a neutral 50/50 posterior"
+                        f"{why} — {REGIME_DISPATCH_MARKER} on a neutral "
+                        f"50/50 posterior"
                     ),
                 )
             )
@@ -841,6 +852,11 @@ class RegimeConditionalStrategy(Strategy):
                 "regime": regime_label,
                 "posterior": posterior,
                 "converged": hmm_fit.converged,
+                # None when converged. Otherwise names WHICH neutral path was
+                # taken, so a reader of the timeline can tell an expected
+                # warm-up from a real estimator failure without inferring it
+                # from the date.
+                "failure_reason": hmm_fit.failure_reason,
             }
         )
 
