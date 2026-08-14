@@ -188,10 +188,17 @@ docker compose up notebook         # Jupyter local
 ```
 
 `api` et `dashboard` lisent les mêmes artefacts Gold, montés en lecture seule :
-aucune des deux surfaces n'écrit ni ne réestime. Le service `api` expose une
-sonde de santé qui exige `status == "ok"` — `/health` répond 200 même lorsque le
-bundle est incomplet, un conteneur servant un bundle partiel est donc signalé
-`unhealthy` plutôt que `up`.
+aucune des deux surfaces n'écrit ni ne réestime. Les deux exécutent le même
+préflight `scripts/check_artifacts.py` avant de démarrer et **refusent de se
+lancer** sur un bundle incomplet : servir un sous-ensemble qu'un lecteur
+pourrait prendre pour l'ensemble est pire que ne rien servir.
+
+La sonde de santé du service `api` exige `status == "ok"`. Sa portée est
+volontairement étroite : comme le préflight bloque déjà le démarrage, un
+conteneur qui écoute sur 8000 a nécessairement satisfait la garde la plus
+stricte. La sonde couvre donc la vivacité ordinaire et le cas où le bundle
+change *sous* un conteneur déjà en cours d'exécution — le montage est en
+lecture seule pour le conteneur, pas pour l'hôte.
 
 Le service `test` ne monte **pas** `data/` : la suite doit passer sur un clone
 neuf. Les contrôles de cohérence des artefacts sont donc ignorés (`skip`). Pour
