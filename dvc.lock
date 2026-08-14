@@ -879,8 +879,8 @@ stages:
       size: 119827
     - path: data/gold/model_explanations.json
       hash: md5
-      md5: 0421a9538bc871dd04fe61d24c77595b
-      size: 36660
+      md5: 1545dd5fec216ace47f0c8ba56e73dbb
+      size: 37297
     - path: data/gold/monitoring_baseline.json
       hash: md5
       md5: cbf1c01d1db474550dbbea5e38a2ef27
@@ -940,8 +940,8 @@ stages:
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: 89d5c4021bb9cd74fe3b2c2440285ae5
-      size: 9071
+      md5: 4cc4a3e0494d95731d66253d03b5e5dd
+      size: 9570
   smoke:
     cmd: python scripts/smoke_pipeline.py
     deps:
@@ -1434,8 +1434,8 @@ stages:
       size: 482732
     - path: experiments/etf_cap_verdict.py
       hash: md5
-      md5: 222a16d7a3dfa273042ef06d4ba9b9a4
-      size: 10182
+      md5: 343a098aea46d64b2f2eadac81f376cd
+      size: 10415
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
@@ -1481,8 +1481,8 @@ stages:
     outs:
     - path: data/gold/etf_cap_verdict.json
       hash: md5
-      md5: 9c8508b1323443683eb68246ca09da27
-      size: 6806
+      md5: badecc9edb608d25a38d6cca8248972f
+      size: 6812
   nonsync_covariance:
     cmd: python experiments/nonsync_covariance.py
     deps:

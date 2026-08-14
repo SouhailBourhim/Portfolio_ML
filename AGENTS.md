@@ -669,9 +669,11 @@ hyperparameter artifact — a real, defensible negative result.
 >    assets with *positive weight* — which does not by itself force a corner (equal weight is
 >    feasible with nothing at the cap). Measured directly, the constraint nonetheless dominates
 >    the covariance model in practice: at cap 0.25 `min_variance_lw` produces **one** allocation
->    across 248 rebalances; at
->    0.30 it produces 169 (this experiment's own sweep; the DVC-tracked `etf_cap_verdict.json`
->    reports 171 for its separate sweep); and `min_variance_lw`/`max_sharpe`/`regime_conditional` returned
+>    across 248 rebalances; at 0.30 it produces **171** — the canonical, DVC-tracked figure from
+>    `data/gold/etf_cap_verdict.json` (stage `etf_cap_sweep`). An earlier, non-canonical sweep in
+>    `etf_deep_history.py` reported 169; that run has **no surviving artifact** and must not be
+>    quoted as a current-state number.
+>    `min_variance_lw`/`max_sharpe`/`regime_conditional` returned
 >    byte-identical weights (`max|diff| 4.4e-16`) post-2018. "Regime/covariance ML adds no value on
 >    `etf_2017`" is therefore **not falsifiable as stated** — the optimizer had nowhere to express a
 >    view. `full_2021` (9 assets) is unaffected.

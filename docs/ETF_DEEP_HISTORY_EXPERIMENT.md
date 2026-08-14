@@ -70,17 +70,26 @@ It is not a coding error. **The constraint is dominating the objective.**
 
 The cap sweep is the causal test — hold everything fixed, vary only the cap:
 
+> ⚠️ **HISTORICAL, NON-CANONICAL.** The table below is this experiment's own 2026-07-25 sweep.
+> It has **no surviving artifact** — `etf_deep_history.py` is not a DVC stage, and nothing under
+> `data/gold/` records it. The canonical, DVC-tracked cap sweep is
+> `data/gold/etf_cap_verdict.json` (stage `etf_cap_sweep`, `experiments/etf_cap_verdict.py`),
+> which reports **171** distinct allocations at cap 0.30 on its own grid. Quote 171, not 169, in
+> any current-state statement; the numbers below are kept only as the record of what this
+> experiment found at the time.
+
 | Cap | `min_variance_lw` distinct allocations | `max_sharpe` distinct allocations | min-var Sharpe |
 |---:|---:|---:|---:|
 | **0.25** (project default) | **1** | 12 | 0.953 |
-| 0.30 | 169 | 127 | 0.939 |
+| 0.30 | 169 *(historical)* | 127 | 0.939 |
 | 0.40 | 248 | 224 | 0.911 |
 | 0.60 | 248 | 248 | 0.847 |
 | 1.00 | 248 | 248 | 0.846 |
 
 At the project's own cap, **`min_variance_lw` produces exactly one allocation across all 248
 rebalances.** The Ledoit-Wolf covariance estimate is computed, and then discarded by the constraint.
-Loosening the cap by five percentage points restores 169 distinct allocations.
+Loosening the cap by five percentage points restores triple-digit allocation diversity — 171 on the
+canonical sweep, 169 on this historical one.
 
 The same degeneracy is present, less completely, on the committed `etf_2017` universe:
 `max_sharpe` sits at the degenerate corner in **91.3%** of its 103 rebalances, with only 10 distinct

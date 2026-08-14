@@ -56,6 +56,8 @@ WEIGHT") are lexically distinct.
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -128,6 +130,50 @@ def test_false_cap_arithmetic_claim_cannot_return(pattern):
         "(20% each) is feasible with nothing at the cap. Say 'empirically "
         "cap-dominated', never 'mathematically cap-determined'.\n  "
         + "\n  ".join(offenders)
+    )
+
+
+# The RENDERED surfaces a reader actually receives. Source checks are not
+# enough: the 2026-08 MAD defect survived them because live prose had been
+# fixed while a static table and a screenshot still showed old values
+# (`test_final_report.py` documents that failure). A .tex file nobody
+# recompiles is not a corrected report.
+RENDERED_PDFS = (
+    "output/pdf/Rapport_PFA_Final_2026.pdf",   # the DISTRIBUTED file, README-linked
+    "docs/rapport/main.pdf",
+    "docs/rapport_final/main.pdf",             # gitignored build output
+)
+
+
+@pytest.mark.parametrize("rel", RENDERED_PDFS)
+def test_rendered_reports_do_not_carry_the_false_cap_claim(rel):
+    """Check the PDF the reader receives, not only the source it came from.
+
+    Skips when the PDF or `pdftotext` is absent, matching the established
+    pattern in `test_final_report.py` — a fresh clone has neither.
+    """
+    pdf = ROOT / rel
+    if not pdf.is_file() or not shutil.which("pdftotext"):
+        pytest.skip(f"{rel} or pdftotext absent — rebuild the report to check it.")
+
+    result = subprocess.run(
+        ["pdftotext", "-layout", str(pdf), "-"],
+        check=True, capture_output=True, text=True, timeout=300,
+    )
+    # Collapse the hard line wrapping LaTeX introduces, so a claim split
+    # across two lines is still caught.
+    text = re.sub(r"\s+", " ", result.stdout)
+
+    offenders = [
+        match.group(0)
+        for pattern in CAP_PATTERNS
+        for match in pattern.finditer(text)
+    ]
+    assert not offenders, (
+        f"{rel} still renders the retracted cap claim: {offenders}. "
+        "Recompile the report after correcting its .tex source — and remember "
+        "output/pdf/ is a COPY, so rebuilding docs/rapport_final alone does not "
+        "update the distributed file."
     )
 
 

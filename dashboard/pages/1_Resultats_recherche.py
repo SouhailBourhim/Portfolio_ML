@@ -394,7 +394,7 @@ st.markdown(
       l'équipondération (20 % chacun) reste admissible, sans aucun actif au plafond.
       Ce qui est *mesuré*, c'est que la contrainte **domine empiriquement** l'objectif :
       à 25 % la variance minimale ne produit qu'**une seule** allocation sur
-      248 rééquilibrages ; à 30 %, elle en produit 169. L'univers à 9 actifs n'est pas
+      248 rééquilibrages ; à 30 %, elle en produit 171. L'univers à 9 actifs n'est pas
       concerné.
     - **Le test pairé a été mené, et n'établit aucune supériorité.** Les huit
       comparaisons sur la fenêtre gelée ont un intervalle contenant zéro (p de 0,066 à
