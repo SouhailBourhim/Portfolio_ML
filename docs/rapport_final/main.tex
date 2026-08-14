@@ -40,6 +40,11 @@
 \fancyhead[LO]{\small\nouppercase{\rightmark}}
 \renewcommand{\headrulewidth}{0.3pt}
 
+% Compteurs d'intégrité générés depuis data/gold/fit_report_summary.json.
+% Chargés avant \begin{document} pour que le résumé (frontmatter) cite la même
+% valeur générée que le tableau du chapitre 5, au lieu de la ressaisir.
+\input{assets/integrite_macros}
+
 \begin{document}
 
 % =============================================================================

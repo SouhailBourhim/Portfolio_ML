@@ -529,17 +529,23 @@ avant qu'aucun tableau n'en soit tiré.
 \integriteVerdict{}
 
 \begin{resultatbox}{Ce que cette mesure établit, et ce qu'elle n'établit pas}
-\textbf{Elle établit} qu'aucun repli n'a été emprunté sur l'instantané publié,
-pour les stratégies et les dates comptées ci-dessus. La valeur est une
-\emph{mesure reproductible et versionnée}, non une hypothèse — c'est là
-l'apport, davantage que le zéro lui-même.
+\textbf{Elle établit} combien de replis ont été empruntés sur l'instantané
+publié, pour les stratégies et les dates comptées ci-dessus, et lesquels : les
+\integriteReplis{} replis mesurés relèvent tous du démarrage à froid de la
+chaîne de régimes, où la fenêtre est trop courte pour ajuster le HMM. Sur ces
+rééquilibrages l'allocation provient entièrement de la sous-stratégie
+défensive, sans signal de régime. La valeur est une \emph{mesure reproductible
+et versionnée}, non une hypothèse — c'est là l'apport, davantage que le
+décompte lui-même.
 
-\textbf{Elle n'établit pas} qu'aucun modèle ne replie jamais. Les chemins de
-repli sont du code vivant et testé, et un autre instantané peut les emprunter.
+\textbf{Elle n'établit pas} qu'aucun modèle ne replie jamais, ni qu'un repli
+soit une défaillance : la non-convergence réelle de l'estimateur EM n'a, elle,
+jamais été observée sur cet instantané. Les chemins de repli sont du code
+vivant et testé, et un autre instantané peut les emprunter autrement.
 L'instrumentation existe précisément pour rendre cette question
 \emph{vérifiable}, pas pour trancher d'avance.
 
-\textbf{Le contrôle qui rend le résultat crédible} n'est pas le zéro mais le
+\textbf{Le contrôle qui rend le résultat crédible} n'est pas le décompte mais le
 test d'équivalence du runner : celui-ci doit reproduire chaque ratio de Sharpe
 publié \emph{à travers} le moteur instrumenté. Sans lui, l'instrumentation
 pourrait auditer une stratégie différemment configurée portant le même nom —

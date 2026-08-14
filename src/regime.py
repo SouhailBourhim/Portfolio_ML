@@ -39,10 +39,48 @@ log = logging.getLogger("regime")
 
 REGIME_FEATURES = ["MARKET_RETURN", "MARKET_VOL_SHORT", "AVG_PAIRWISE_CORR"]
 
+# Why a neutral posterior was returned. See `HMMFit.failure_reason`.
+FAILURE_NOT_ENOUGH_HISTORY = "NOT_ENOUGH_HISTORY"
+FAILURE_NO_RESTART_CONVERGED = "NO_RESTART_CONVERGED"
+
+# Stable substring stamped into every fallback reason that originates from the
+# regime dispatch, so a consumer can separate HMM-path fallbacks from SLSQP or
+# missing-feature ones WITHOUT pattern-matching prose that may be reworded.
+# `tests/test_artifact_consistency.py` imports this rather than hardcoding it.
+REGIME_DISPATCH_MARKER = "dispatched to the defensive sub-strategy"
+
+# Reader-facing text for each, used verbatim in the telemetry record so the
+# published `fallback_reason` and this module cannot drift apart.
+FAILURE_DESCRIPTIONS = {
+    FAILURE_NOT_ENOUGH_HISTORY: (
+        "insufficient usable history for the HMM (below min_regime_train_days) "
+        "— neutral warm-up, the estimator was not fitted"
+    ),
+    FAILURE_NO_RESTART_CONVERGED: (
+        "no EM restart converged on a window long enough to fit — genuine "
+        "estimator non-convergence"
+    ),
+}
+
 
 @dataclass(frozen=True)
 class HMMFit:
-    """A converged (or neutral-fallback) HMM fit, kept for auditability."""
+    """A converged (or neutral-fallback) HMM fit, kept for auditability.
+
+    `failure_reason` distinguishes the two ways `converged` can be False, and
+    exists because conflating them put a FALSE statement into a published
+    field. Both paths return the same neutral 50/50 posterior and both are
+    genuine fallbacks, but they mean different things to a reader:
+
+      * `NOT_ENOUGH_HISTORY` — the window held fewer usable rows than
+        `min_regime_train_days`. Expected at the start of every backtest. The
+        estimator was never given a chance to fit; nothing malfunctioned.
+      * `NO_RESTART_CONVERGED` — the window WAS long enough and every EM
+        restart failed or was degenerate. That is a real estimator failure.
+
+    Reporting the first as "the HMM did not converge" overstates it and sends
+    a reader hunting for an estimator bug that does not exist.
+    """
 
     model: object | None
     scaler: object | None
@@ -50,6 +88,7 @@ class HMMFit:
     log_likelihood: float
     seed_used: int | None
     label_map: dict[int, str] = field(default_factory=dict)
+    failure_reason: str | None = None
 
 
 def label_regimes(model, feature_names: list[str] = REGIME_FEATURES) -> dict[int, str]:
@@ -151,7 +190,8 @@ def _fit_hmm_uncached(
             "returning neutral 50/50 posterior.",
             len(clean), min_regime_train_days,
         )
-        return HMMFit(None, None, False, float("nan"), None, {})
+        return HMMFit(None, None, False, float("nan"), None, {},
+                      failure_reason=FAILURE_NOT_ENOUGH_HISTORY)
 
     from sklearn.preprocessing import StandardScaler
 
@@ -189,7 +229,8 @@ def _fit_hmm_uncached(
             "regime: no restart converged out of %d attempts — returning neutral 50/50 posterior.",
             n_restarts,
         )
-        return HMMFit(None, None, False, float("nan"), None, {})
+        return HMMFit(None, None, False, float("nan"), None, {},
+                      failure_reason=FAILURE_NO_RESTART_CONVERGED)
 
     model, ll, seed = best
     label_map = label_regimes(model, features)

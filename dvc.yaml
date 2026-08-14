@@ -660,6 +660,58 @@ stages:
       - regime.min_regime_train_days
       - phase5.bootstrap
 
+  # ── Risk-free sensitivity of the reported Sharpes ─────────────────────────
+  # `risk_free_annual: 0.0` was flagged "revisit in Phase 5" and never was.
+  # Tracked because the answer depends on BOTH the equity artifact and the
+  # Bronze policy-rate series, so a rebuild of either silently invalidates it.
+  #
+  # Note the Bronze dependency: TAUX_DIR is MAD and is applied only to the MAD
+  # universe. See the module docstring for why it is not substituted into the
+  # USD one.
+  risk_free_sensitivity:
+    cmd: python experiments/risk_free_sensitivity.py
+    deps:
+      - experiments/risk_free_sensitivity.py
+      - src/provenance.py
+      - data/gold/dashboard_equity.parquet
+      - data/bronze/raw_bam_macro.parquet
+      - data/gold/currency_manifest.json
+    outs:
+      - data/gold/risk_free_sensitivity.json
+    params:
+      - backtest.risk_free_annual
+
+  # ── Non-synchronous trading and the covariance input ──────────────────────
+  # Tracked for the same reason as nested_walkforward and etf_cap_sweep: a
+  # hand-run experiment whose result the report consumes, and an untracked
+  # result is one nobody can tell has gone stale.
+  #
+  # This one is NOT incidental to the base currency. Its whole subject is the
+  # cross-market covariance of `full_2021`, the universe the MAD conversion
+  # moved, so its numbers are only meaningful against the converted returns.
+  # Listing log_returns.parquet and currency_manifest.json as deps is what
+  # makes a re-run mandatory if either changes.
+  nonsync_covariance:
+    cmd: python experiments/nonsync_covariance.py
+    deps:
+      - experiments/nonsync_covariance.py
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/provenance.py
+      - data/gold/log_returns.parquet
+      - data/gold/log_returns_etf.parquet
+      - data/gold/currency_manifest.json
+    outs:
+      - data/gold/nonsync_covariance.json
+    params:
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - backtest.max_weight
+      - backtest.risk_free_annual
+      - backtest.costs_bps
+      - phase5.bootstrap
+
   # ── Phase 3: offline monitoring reference ─────────────────────────────────
   # Pins the reference distributions a future drift check measures against.
   # The reference is the Phase 5 train+validation segment ONLY — including the

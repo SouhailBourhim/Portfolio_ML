@@ -68,6 +68,7 @@ CLAUDE.v2.md
 AGENTS.md
 
 # ── Misc generated files ─────────────────────────────────────────────────────
+data.zip
 mlflow.db
 .pytest_cache/
 anaconda_projects/
@@ -87,3 +88,4 @@ docs/rapport/*.toc
 docs/rapport/*.out
 docs/rapport/*.lof
 docs/rapport/*.lot
+docs/rapport_final/main.pdf

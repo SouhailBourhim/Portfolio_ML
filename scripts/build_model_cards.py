@@ -29,6 +29,58 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLD = ROOT / "data" / "gold"
+
+# Markers used to classify a recorded fallback reason. Kept as substrings of
+# the descriptions `regime.FAILURE_DESCRIPTIONS` emits, so the card cannot
+# claim a different count from the artifact it is describing.
+_WARMUP_MARK = "insufficient usable history"
+_NONCONV_MARK = "no EM restart converged"
+
+
+def _regime_fallbacks_by_kind() -> tuple[dict[str, int], dict[str, int]]:
+    """Measured regime fallbacks per universe, split by cause.
+
+    Addresses: P4 — this table previously said "Fires on the first 2-3
+    rebalances of each universe, by design", typed into the generator. It
+    happened to be roughly right, and nothing would have caught it drifting.
+    A model card that states an observed frequency must read it from the
+    artifact that observed it.
+    """
+    path = GOLD / "fit_report_summary.json"
+    warm: dict[str, int] = {}
+    nonconv: dict[str, int] = {}
+    if not path.is_file():
+        return warm, nonconv
+    for row in json.loads(path.read_text(encoding="utf-8"))["results"]:
+        if row["strategy_requested"] != "regime_conditional":
+            continue
+        for reason, count in (row.get("fallback_reasons") or {}).items():
+            if _WARMUP_MARK in reason:
+                warm[row["universe"]] = warm.get(row["universe"], 0) + int(count)
+            elif _NONCONV_MARK in reason:
+                nonconv[row["universe"]] = nonconv.get(row["universe"], 0) + int(count)
+    return warm, nonconv
+
+
+def _fmt_observed(counts: dict[str, int], nothing: str) -> str:
+    if not counts:
+        return nothing
+    return "; ".join(
+        f"`{u}`: {n} rebalance{'s' if n != 1 else ''}"
+        for u, n in sorted(counts.items())
+    ) + " on the published snapshot"
+
+
+def _regime_warmup_observed() -> str:
+    warm, _ = _regime_fallbacks_by_kind()
+    return _fmt_observed(warm, "Not observed on the published snapshot")
+
+
+def _regime_nonconvergence_observed() -> str:
+    _, nonconv = _regime_fallbacks_by_kind()
+    return _fmt_observed(
+        nonconv, "**Not observed** on the published snapshot — every recorded "
+                 "regime fallback was the warm-up above")
 DOCS = ROOT / "docs"
 
 PRIMARY = "regime_conditional"
@@ -333,7 +385,8 @@ from the committed snapshot. Artifact: `data/gold/model_explanations.json`.
 
 | Condition | Behaviour | Observed |
 |---|---|---|
-| HMM fails to converge, or history < {regime['min_regime_train_days']} days | Neutral posterior resolves to the **defensive** `{regime['bear_strategy']}`, not an arbitrary tie-break | Fires on the first 2–3 rebalances of each universe, by design |
+| History < {regime['min_regime_train_days']} usable days (warm-up) | HMM is never fitted; neutral posterior resolves to the **defensive** `{regime['bear_strategy']}`, not an arbitrary tie-break | {_regime_warmup_observed()} |
+| Every EM restart fails on a window long enough to fit | Same neutral resolution, but this one is a genuine estimator failure | {_regime_nonconvergence_observed()} |
 | Per-asset GARCH non-convergence (DCC path) | Ledoit-Wolf shrinkage substituted, logged at WARNING | Fired once on `IAM.CS` in a live run |
 | Weight cap infeasible for the universe size | Raises rather than silently renormalizing | Guarded in `_as_weight_series` |
 | BVC dividend cache absent | `clean` raises `DividendDataUnavailable` | Deliberate: silently reverting to price-only returns understated BVC assets by 3.0–4.3%/yr |

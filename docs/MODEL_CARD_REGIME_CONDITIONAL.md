@@ -11,7 +11,7 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `ae87f48207d1` |
+| Code revision (artifacts) | `88c97a17bc3e` |
 | Python | 3.11.14 |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, 31 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
@@ -172,7 +172,8 @@ from the committed snapshot. Artifact: `data/gold/model_explanations.json`.
 
 | Condition | Behaviour | Observed |
 |---|---|---|
-| HMM fails to converge, or history < 252 days | Neutral posterior resolves to the **defensive** `min_variance_lw`, not an arbitrary tie-break | Fires on the first 2–3 rebalances of each universe, by design |
+| History < 252 usable days (warm-up) | HMM is never fitted; neutral posterior resolves to the **defensive** `min_variance_lw`, not an arbitrary tie-break | `etf_2017`: 3 rebalances; `full_2021`: 3 rebalances on the published snapshot |
+| Every EM restart fails on a window long enough to fit | Same neutral resolution, but this one is a genuine estimator failure | **Not observed** on the published snapshot — every recorded regime fallback was the warm-up above |
 | Per-asset GARCH non-convergence (DCC path) | Ledoit-Wolf shrinkage substituted, logged at WARNING | Fired once on `IAM.CS` in a live run |
 | Weight cap infeasible for the universe size | Raises rather than silently renormalizing | Guarded in `_as_weight_series` |
 | BVC dividend cache absent | `clean` raises `DividendDataUnavailable` | Deliberate: silently reverting to price-only returns understated BVC assets by 3.0–4.3%/yr |
@@ -211,7 +212,7 @@ a strategy that wins gross and loses net is treated as a finding.
 ## Reproducibility
 
 ```bash
-git checkout ae87f48207d1
+git checkout 88c97a17bc3e
 ./scripts/dvc.sh pull
 ./.venv/bin/python src/snapshot.py verify
 ```

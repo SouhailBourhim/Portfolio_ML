@@ -39,7 +39,9 @@ RUN useradd --create-home --uid 10001 appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
-EXPOSE 8000
+# One image serves all three surfaces; the compose service's `command` picks
+# which. 8000 API (the default CMD), 8501 Streamlit dashboard, 8888 Jupyter.
+EXPOSE 8000 8501 8888
 
 # Default to serving the API, and refuse to start against an incomplete
 # artifact bundle: every response would otherwise be a 503, or worse a subset
