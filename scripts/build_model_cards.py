@@ -392,11 +392,14 @@ from the committed snapshot. Artifact: `data/gold/model_explanations.json`.
 | BVC dividend cache absent | `clean` raises `DividendDataUnavailable` | Deliberate: silently reverting to price-only returns understated BVC assets by 3.0–4.3%/yr |
 
 A binding cap deserves separate mention. On `etf_2017`, 5 assets × a
-{bt['max_weight']:.0%} cap forces every feasible long-only portfolio to hold at
-least four assets at the cap, so the constraint — not the covariance model —
-very nearly determines the allocation. This is a documented property of the
-universe, not a defect, but any conclusion drawn from `etf_2017` about model
-choice must account for it.
+{bt['max_weight']:.0%} cap requires every feasible long-only portfolio to hold at
+least four assets with positive weight, and lets no asset exceed equal weight by
+more than five percentage points. The arithmetic alone does not force a corner —
+equal weight stays feasible, with nothing at the cap. What is measured is that
+the constraint empirically dominates the optimizer: `min_variance_lw` emitted one
+allocation across 248 rebalances at a 25% cap, versus 171 at 30%. This is a
+documented property of the universe, not a defect, but any conclusion drawn from
+`etf_2017` about model choice must account for it.
 
 ## Cost and turnover assumptions
 

@@ -56,11 +56,17 @@ Effect A produced an impossible-looking result: on the deep universe, `min_varia
 (`max|diff| = 4.4e-16`). Three genuinely different objectives cannot agree to machine precision by
 chance, so this was investigated rather than reported.
 
-It is not a coding error. **It is arithmetic.**
+It is not a coding error. **The constraint is dominating the objective.**
 
 > With 5 assets and a 25% cap, `5 × 0.25 = 1.25`. Any feasible long-only portfolio summing to 1
-> must therefore hold **at least four assets at the cap**. The optimizer's only remaining freedom
-> is *which one to drop*. Every objective lands on the same corner.
+> must therefore hold **at least four assets with positive weight**, and no asset may exceed
+> equal weight by more than five percentage points.
+>
+> ⚠️ The arithmetic alone does **not** force a corner. The feasible region stays non-empty and
+> multidimensional — equal weight (20% each) is feasible with *nothing* at the cap, as is
+> (25%, 25%, 25%, 15%, 10%). That these three objectives nonetheless land on the *same* corner
+> is an **empirical** finding about where they go under a tight cap, not a theorem. The sweep
+> below is what establishes it.
 
 The cap sweep is the causal test — hold everything fixed, vary only the cap:
 
@@ -89,8 +95,8 @@ no room for *any* optimizer to express a view — so of course a better covarian
 up in the results. It has nowhere to go.
 
 This confounds every `etf_2017` comparison in the project since Phase 2. It does **not** affect
-`full_2021`: with 9 assets, `9 × 0.25 = 2.25`, so a feasible portfolio needs only 4 of 9 at the cap
-and the optimizer retains real freedom — which is consistent with `regime_conditional` genuinely
+`full_2021`: with 9 assets, `9 × 0.25 = 2.25`, so a feasible portfolio needs only 4 of 9 holding
+positive weight and the optimizer retains real freedom — which is consistent with `regime_conditional` genuinely
 differentiating there (+14.3%).
 
 ### A second-order finding worth noting

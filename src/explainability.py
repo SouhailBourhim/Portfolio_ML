@@ -197,9 +197,14 @@ def trace_regime_decision(
             "cap_is_near_determining": bool(n_assets * max_weight < 1.5),
             "binding_note": (
                 f"{n_assets} assets x {max_weight:.0%} cap = {n_assets * max_weight:.2f}. "
-                "When this product is close to 1, every feasible long-only portfolio "
-                "must hold most assets at the cap, so the CONSTRAINT rather than the "
-                "covariance model determines the allocation."
+                f"Feasibility requires at least {-(-1 // max_weight):.0f} assets with "
+                "POSITIVE WEIGHT, and no asset may exceed equal weight by more than "
+                f"{max_weight - 1 / n_assets:.1%}. The arithmetic alone does NOT force a "
+                "corner: the feasible region stays non-empty and multidimensional (equal "
+                "weight is always feasible, with nothing at the cap). What is measured "
+                "empirically is that the tighter this product, the more the constraint "
+                "DOMINATES the optimizer: on etf_2017 min_variance_lw emitted one "
+                "allocation across 248 rebalances at a 25% cap, versus 171 at 30%."
             ),
         },
         "weights": {a: float(w) for a, w in weights.items()},

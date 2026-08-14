@@ -236,9 +236,10 @@ if cap_sweep.get("verdicts"):
     c2.metric("Système ML (régime)", f"{v['ml_sharpe']:.4f}")
     c3.metric("L'optimiseur est-il libre ?",
               "oui" if v.get("optimizer_free") else "non — plafond contraignant",
-              help="À 25 % sur 5 actifs, 5 × 0,25 = 1,25 : au moins 4 actifs sont "
-                   "forcés au plafond, et la contrainte détermine l'essentiel de "
-                   "l'allocation.")
+              help="À 25 % sur 5 actifs, 5 × 0,25 = 1,25 : au moins 4 actifs doivent "
+                   "porter un poids strictement positif. L'arithmétique seule n'impose "
+                   "pas de solution de coin, mais empiriquement la contrainte domine "
+                   "l'objectif et détermine l'essentiel de l'allocation.")
 
     swing = 100 * (base - min(x["classical_sharpe"] for x in verdicts.values())) / \
         min(x["classical_sharpe"] for x in verdicts.values())

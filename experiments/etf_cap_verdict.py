@@ -6,9 +6,12 @@ Since Phase 4 the project has concluded that regime + dynamic-covariance ML
 "adds no value on etf_2017". `docs/ETF_DEEP_HISTORY_EXPERIMENT.md` showed that
 claim is **not falsifiable as stated**: with 5 assets and a 25% cap,
 5 x 0.25 = 1.25, so any feasible long-only portfolio must hold at least four
-assets AT the cap. The constraint, not the covariance model, picks the
-portfolio — at 0.25 `min_variance_lw` produced ONE allocation across 248
-rebalances, and min-var / max-Sharpe / regime returned byte-identical weights
+assets with POSITIVE WEIGHT, and no asset may exceed equal weight by more than
+five percentage points. The arithmetic alone does not force a corner — equal
+weight stays feasible with nothing at the cap — but EMPIRICALLY the constraint
+dominates the optimizer rather than the covariance model: at 0.25
+`min_variance_lw` produced ONE allocation across 248 rebalances (versus 171 at
+0.30), and min-var / max-Sharpe / regime returned byte-identical weights
 post-2018.
 
 You cannot conclude "the model doesn't help" from a setup where the model

@@ -339,8 +339,9 @@ stages:
           - phase4c.turnover_penalty
           - phase4c.shrinkage_weight
 
-  # ── Stage 9: Phase 5 — out-of-sample evaluation (purged CV, honest tuning) ─
-  # Selects the F7 knobs leak-free (purged K-Fold for the model, validation-
+  # ── Stage 9: Phase 5 — out-of-sample evaluation (forward-only CV, honest tuning) ─
+  # Selects the F7 knobs leak-free (forward-only walk-forward CV —
+  # `PurgedWalkForwardSplit` — for the model, validation-
   # segment net Sharpe for the levers), freezes them, and reports the verdict
   # on a held-out test segment with block-bootstrap CIs. Slowest stage: fits
   # RF/XGB per CV fold per grid point, then backtests the lever grid.

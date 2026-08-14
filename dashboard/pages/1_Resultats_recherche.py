@@ -387,11 +387,15 @@ st.markdown(
       face au Markowitz classique — c'est-à-dire qu'il **perd**. Ces deux univers ne
       permettent donc pas de revendiquer une valeur généralisable du ML.
     - **Ce cas défavorable est en partie un artefact de contrainte, pas seulement
-      un verdict sur le ML.** Avec 5 actifs et un plafond de 25 %, tout portefeuille
-      admissible doit placer au moins 4 actifs *au plafond* (5 × 0,25 = 1,25) : la
-      contrainte, et non le modèle, détermine l'essentiel de l'allocation. À 25 % la
-      variance minimale ne produit qu'**une seule** allocation sur 248 rééquilibrages ;
-      à 30 %, elle en produit 169. L'univers à 9 actifs n'est pas concerné.
+      un verdict sur le ML.** Avec 5 actifs et un plafond de 25 % (5 × 0,25 = 1,25),
+      tout portefeuille admissible doit détenir au moins 4 actifs *à poids strictement
+      positif*, et aucun actif ne peut dépasser l'équipondération de plus de cinq points
+      de pourcentage. L'arithmétique seule n'impose **pas** une solution de coin :
+      l'équipondération (20 % chacun) reste admissible, sans aucun actif au plafond.
+      Ce qui est *mesuré*, c'est que la contrainte **domine empiriquement** l'objectif :
+      à 25 % la variance minimale ne produit qu'**une seule** allocation sur
+      248 rééquilibrages ; à 30 %, elle en produit 169. L'univers à 9 actifs n'est pas
+      concerné.
     - **Le test pairé a été mené, et n'établit aucune supériorité.** Les huit
       comparaisons sur la fenêtre gelée ont un intervalle contenant zéro (p de 0,066 à
       0,939). Sur `full_2021`, le signal XGB « bat » la stratégie à régimes en
