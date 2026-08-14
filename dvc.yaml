@@ -660,6 +660,27 @@ stages:
       - regime.min_regime_train_days
       - phase5.bootstrap
 
+  # ── Risk-free sensitivity of the reported Sharpes ─────────────────────────
+  # `risk_free_annual: 0.0` was flagged "revisit in Phase 5" and never was.
+  # Tracked because the answer depends on BOTH the equity artifact and the
+  # Bronze policy-rate series, so a rebuild of either silently invalidates it.
+  #
+  # Note the Bronze dependency: TAUX_DIR is MAD and is applied only to the MAD
+  # universe. See the module docstring for why it is not substituted into the
+  # USD one.
+  risk_free_sensitivity:
+    cmd: python experiments/risk_free_sensitivity.py
+    deps:
+      - experiments/risk_free_sensitivity.py
+      - src/provenance.py
+      - data/gold/dashboard_equity.parquet
+      - data/bronze/raw_bam_macro.parquet
+      - data/gold/currency_manifest.json
+    outs:
+      - data/gold/risk_free_sensitivity.json
+    params:
+      - backtest.risk_free_annual
+
   # ── Non-synchronous trading and the covariance input ──────────────────────
   # Tracked for the same reason as nested_walkforward and etf_cap_sweep: a
   # hand-run experiment whose result the report consumes, and an untracked

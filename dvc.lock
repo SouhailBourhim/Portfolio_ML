@@ -627,8 +627,8 @@ stages:
       size: 15261
     - path: src/strategies.py
       hash: md5
-      md5: e14c05a35b6727c01bac51b66afcef58
-      size: 32414
+      md5: cccacb5e85f6b7b91f909502f27d5f43
+      size: 35635
     params:
       params.yaml:
         backtest.costs_bps:
@@ -654,7 +654,7 @@ stages:
       size: 458971
     - path: data/gold/dashboard_regime.parquet
       hash: md5
-      md5: 97fe1f921c3d389365782cf354fd10ec
+      md5: 40a400eefcbeed8c51bb9e5a5a39ffa9
       size: 11991
     - path: data/gold/dashboard_showcase.json
       hash: md5
@@ -1537,3 +1537,34 @@ stages:
       hash: md5
       md5: 6e98f8cbd78c76aa8fcfe4d201f19ada
       size: 13423
+  risk_free_sensitivity:
+    cmd: python experiments/risk_free_sensitivity.py
+    deps:
+    - path: data/bronze/raw_bam_macro.parquet
+      hash: md5
+      md5: bffb98ee7acb96a4d9555b316780f6c6
+      size: 109548
+    - path: data/gold/currency_manifest.json
+      hash: md5
+      md5: 533b17de53871eb785bb82b53ab71e74
+      size: 4040
+    - path: data/gold/dashboard_equity.parquet
+      hash: md5
+      md5: f1d37aa1b87bde17990ed58d1f216e4b
+      size: 458971
+    - path: experiments/risk_free_sensitivity.py
+      hash: md5
+      md5: 6e7ae484ac1f3049ba1b0c6c2fd01ebe
+      size: 12374
+    - path: src/provenance.py
+      hash: md5
+      md5: c94889064caa35b611042df3346ed175
+      size: 9555
+    params:
+      params.yaml:
+        backtest.risk_free_annual: 0.0
+    outs:
+    - path: data/gold/risk_free_sensitivity.json
+      hash: md5
+      md5: 069988fb1e0f955c8015a682e40defd3
+      size: 9117
