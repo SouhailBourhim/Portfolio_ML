@@ -102,3 +102,48 @@ class TestTheRenderedReportMakesNoRetiredPositiveClaim:
         joined = " ".join(_normalise(p) for p in _pdf_pages()).lower()
         assert "bank al-maghrib" in joined
         assert "non couvert" in joined
+
+    def test_no_page_claims_zero_fallbacks(self):
+        """The 2026-08-10 defect, guarded at the surface a reader receives.
+
+        This assertion was deliberately NOT added when the telemetry was fixed:
+        the compiled PDFs were stale at that moment and would have failed for
+        the right reason at the wrong time. It lands with the rebuild.
+
+        The distinction matters and the regex encodes it. "Elle établit
+        qu'aucun repli n'a été emprunté" is the retracted claim. "elle
+        n'affirme pas qu'aucun repli n'est possible sur un autre instantané" is
+        the CORRECT scope note that must survive — a blanket ban on the phrase
+        "aucun repli" would delete the honest sentence along with the false one.
+        """
+        joined = _normalise(" ".join(_pdf_pages()))
+        claim = re.compile(r"aucun repli\s+n['’]a\s+été\s+emprunté", re.IGNORECASE)
+        assert not claim.search(joined), (
+            "the rendered report still asserts that NO fallback was taken. "
+            "The measured value is non-zero and generated from "
+            "fit_report_summary.json; rebuild the PDF from the current sources."
+        )
+        for retired in ("1 188", "297 dates"):
+            assert retired not in joined, (
+                f"the rendered report still carries the retired figure {retired!r}. "
+                "The fit count is 1 184 and is generated, never typed."
+            )
+
+    def test_the_fallback_count_and_its_cause_are_both_stated(self):
+        """Non-vacuity for the test above, and a check on the correction itself.
+
+        A PDF that dropped the integrity section entirely would pass a
+        ban-list. It must state the measured count AND say which neutral path
+        produced it — reporting the warm-up as estimator non-convergence was
+        the 2026-08-11 correction.
+        """
+        joined = _normalise(" ".join(_pdf_pages())).lower()
+        assert "1 184" in joined, "the rendered report omits the measured fit count"
+        assert "6 ajustements" in joined, (
+            "the rendered report omits the measured fallback count"
+        )
+        assert "démarrage à froid" in joined or "insuffisante" in joined, (
+            "the rendered report states a fallback count without naming the "
+            "neutral path that caused it — the warm-up and a genuine EM failure "
+            "are different events and must read differently."
+        )
