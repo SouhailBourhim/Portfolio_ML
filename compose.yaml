@@ -1,9 +1,14 @@
 # Portfolio ML — Docker Compose services.
 #
 #   docker compose up api               # research API on http://localhost:8000
+#   docker compose up dashboard         # Streamlit app on http://localhost:8501
 #   docker compose run --rm test        # offline test suite, zero config
 #   docker compose run --rm pipeline    # Bronze→Silver→Gold (requires .env with FRED_API_KEY)
 #   docker compose up notebook          # Jupyter on http://localhost:8888 (token in logs)
+#
+# `api` and `dashboard` both need the DVC bundle present on the host: they read
+# committed artifacts and neither one refits anything. `test` deliberately does
+# NOT mount data — see the note on that service.
 #
 # data/ and mlruns/ are mounted from the host so pipeline outputs and MLflow
 # runs persist across containers (and stay visible to DVC on the host).
@@ -18,7 +23,57 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data:ro
+    # `/health` answers 200 even when the bundle is incomplete — it reports
+    # {"status": "degraded", "missing_artifacts": [...]} rather than failing,
+    # because a caller asking "are you up?" deserves a straight answer. So the
+    # probe asserts status == "ok" instead of merely checking the HTTP code:
+    # a container serving a partial bundle is exactly the state worth catching,
+    # and it is the same condition `check_artifacts.py` gates on at startup.
+    #
+    # Written in Python because `python:3.11-slim` ships neither curl nor wget,
+    # and installing one only to health-check would grow the image for nothing.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import json, sys, urllib.request
+          with urllib.request.urlopen("http://localhost:8000/health", timeout=3) as r:
+              body = json.load(r)
+          sys.exit(0 if body.get("status") == "ok" else 1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # The startup gate reads and hashes the artifact bundle before uvicorn
+      # binds, so the first probe must not fire into a container that is
+      # legitimately still checking.
+      start_period: 20s
 
+  # The two-page Streamlit research app. It reads the SAME committed Gold
+  # artifacts as the API rather than calling it — that shared data layer is why
+  # the two surfaces cannot disagree about a number — so there is deliberately
+  # no `depends_on: api` here. Read-only mount for the same reason the API has
+  # one: neither surface writes.
+  dashboard:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data:ro
+    command: >
+      streamlit run dashboard/streamlit_app.py
+      --server.address=0.0.0.0
+      --server.port=8501
+
+  # No data mount, on purpose: the suite must pass on a fresh clone with no
+  # bundle, which is what keeps it hermetic and lets CI run it on every push.
+  #
+  # The consequence is worth stating rather than discovering: the artifact
+  # consistency, release-facts and model-integrity checks all SKIP without
+  # `data/`, so a green run here has not verified them. Mount the bundle
+  # read-only to exercise those too:
+  #   docker compose run --rm -v "$PWD/data:/app/data:ro" test
   test:
     build: .
     command: python -m pytest tests/ -q

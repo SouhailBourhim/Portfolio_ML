@@ -183,7 +183,22 @@ identifiants R2 localement puis exécutent :
 ```bash
 docker compose run --rm test       # tests hors ligne
 docker compose up api              # API, si le bundle DVC est présent
+docker compose up dashboard        # application Streamlit sur http://localhost:8501
 docker compose up notebook         # Jupyter local
+```
+
+`api` et `dashboard` lisent les mêmes artefacts Gold, montés en lecture seule :
+aucune des deux surfaces n'écrit ni ne réestime. Le service `api` expose une
+sonde de santé qui exige `status == "ok"` — `/health` répond 200 même lorsque le
+bundle est incomplet, un conteneur servant un bundle partiel est donc signalé
+`unhealthy` plutôt que `up`.
+
+Le service `test` ne monte **pas** `data/` : la suite doit passer sur un clone
+neuf. Les contrôles de cohérence des artefacts sont donc ignorés (`skip`). Pour
+les exercer aussi :
+
+```bash
+docker compose run --rm -v "$PWD/data:/app/data:ro" test
 ```
 
 ### Portes de release
