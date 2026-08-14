@@ -1483,3 +1483,57 @@ stages:
       hash: md5
       md5: 9c8508b1323443683eb68246ca09da27
       size: 6806
+  nonsync_covariance:
+    cmd: python experiments/nonsync_covariance.py
+    deps:
+    - path: data/gold/currency_manifest.json
+      hash: md5
+      md5: 533b17de53871eb785bb82b53ab71e74
+      size: 4040
+    - path: data/gold/log_returns.parquet
+      hash: md5
+      md5: ecd2b5115becc1fef0e752883ed81bd0
+      size: 117821
+    - path: data/gold/log_returns_etf.parquet
+      hash: md5
+      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      size: 317942
+    - path: experiments/nonsync_covariance.py
+      hash: md5
+      md5: f89d140f7037569737a5aafb51622742
+      size: 28041
+    - path: src/backtest.py
+      hash: md5
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
+    - path: src/metrics.py
+      hash: md5
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
+    - path: src/provenance.py
+      hash: md5
+      md5: c94889064caa35b611042df3346ed175
+      size: 9555
+    - path: src/strategies.py
+      hash: md5
+      md5: cccacb5e85f6b7b91f909502f27d5f43
+      size: 35635
+    params:
+      params.yaml:
+        backtest.costs_bps:
+          etf: 10
+          bvc: 30
+        backtest.max_weight: 0.25
+        backtest.min_train_days: 252
+        backtest.rebalance_freq: ME
+        backtest.risk_free_annual: 0.0
+        phase5.bootstrap:
+          block_len: 21
+          n_boot: 2000
+          alpha: 0.1
+          seed: 0
+    outs:
+    - path: data/gold/nonsync_covariance.json
+      hash: md5
+      md5: 6e98f8cbd78c76aa8fcfe4d201f19ada
+      size: 13423
