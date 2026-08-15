@@ -29,6 +29,7 @@ absent; nothing here hits the network.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -229,3 +230,77 @@ class TestSingleCalendarAlignment:
         coverage = json.loads(path.read_text())["coverage"]
         assert coverage["forward_filled_cells"] == 0
         assert coverage["max_zero_return_share"] < 0.02
+
+
+# ── 4. Completed evidence stays frozen, and the protocol is not a trigger ────
+
+class TestFrozenEvidenceAndProtocolLineage:
+    """Locks in the 2026-08-15 lineage migration.
+
+    What went wrong: `docs/GLOBAL_UNIVERSE_PREREGISTRATION.md` was a DVC
+    DEPENDENCY of the global_2004 stages. Committing amendment 2 to that
+    document invalidated `global_2004_data` and `global_2004_q1` as upstreams,
+    so `dvc repro global_2004_q2` silently regenerated two pieces of
+    already-frozen evidence before Q2 even started. Q2's own guard caught it
+    (the regenerated Q1 carried a dirty revision) and no candidate was ever
+    evaluated, but the evidence had already been overwritten.
+
+    A living protocol document is not a computational input. Each artifact
+    records the document's hash INTERNALLY, which is the honest way to state
+    which protocol governed a run, and the drift guard is
+    `test_config_matches_the_pre_registered_tickers` above — it fails visibly
+    instead of rebuilding evidence.
+    """
+
+    COMPLETED_STAGES = ("global_2004_data", "global_2004_q1")
+    PROTOCOL_DOC = "docs/GLOBAL_UNIVERSE_PREREGISTRATION.md"
+
+    def _stages(self) -> dict:
+        path = ROOT / "dvc.yaml"
+        if not path.is_file():
+            pytest.skip("dvc.yaml absent")
+        return yaml.safe_load(path.read_text())["stages"]
+
+    def test_completed_stages_are_frozen(self):
+        stages = self._stages()
+        for name in self.COMPLETED_STAGES:
+            assert name in stages, f"{name} missing from dvc.yaml"
+            assert stages[name].get("frozen") is True, (
+                f"{name} is run-once evidence and must be frozen so Q2 "
+                "consumes its pinned output rather than rebuilding it."
+            )
+
+    def test_q2_is_not_frozen(self):
+        """The other direction: freezing everything would be useless."""
+        stages = self._stages()
+        if "global_2004_q2" in stages:
+            assert stages["global_2004_q2"].get("frozen") is not True
+
+    @pytest.mark.parametrize(
+        "stage", ["global_2004_data", "global_2004_q1", "global_2004_q2"]
+    )
+    def test_protocol_document_is_not_a_dvc_dependency(self, stage):
+        stages = self._stages()
+        if stage not in stages:
+            pytest.skip(f"{stage} not defined")
+        deps = stages[stage].get("deps") or []
+        assert self.PROTOCOL_DOC not in deps, (
+            f"{stage} depends on the protocol document. A later amendment "
+            "would then invalidate this stage and regenerate frozen evidence "
+            "— exactly the 2026-08-15 failure. Record the document hash inside "
+            "the result artifact instead."
+        )
+
+    def test_result_artifacts_still_record_the_protocol_hash(self):
+        """Removing the DVC trigger must not lose the provenance.
+
+        Q1 records it. The readiness artifact does NOT — adding it would
+        require re-running frozen evidence, so the gap is asserted here as a
+        known, deliberate limitation rather than left to be discovered.
+        """
+        q1_path = GOLD / "global_2004_q1_results.json"
+        if not q1_path.is_file():
+            pytest.skip("Q1 artifact absent")
+        sources = json.loads(q1_path.read_text())["provenance"]["source_artifacts"]
+        assert self.PROTOCOL_DOC in sources
+        assert sources[self.PROTOCOL_DOC], "protocol hash recorded but empty"

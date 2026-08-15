@@ -832,7 +832,18 @@ stages:
       - data/bronze/raw_global_prices.parquet:
           persist: true
 
+  # FROZEN: run-once evidence for the global_2004 experiment. Q2 consumes
+  # these pinned outputs and must never rebuild them. Unfreeze only with a
+  # dated amendment recorded in the pre-registration.
+  #
+  # The protocol document is deliberately NOT a dependency of this stage. A
+  # living protocol is not a computational input: on 2026-08-15 an amendment
+  # to it invalidated this stage as an upstream and silently regenerated
+  # already-frozen evidence. The document hash is recorded INSIDE each result
+  # artifact instead, and tests/test_global_universe.py is the drift guard —
+  # it fails visibly rather than rebuilding the evidence.
   global_2004_data:
+    frozen: true
     cmd: python src/run_global_2004_data.py
     deps:
       - src/run_global_2004_data.py
@@ -842,7 +853,6 @@ stages:
       - src/backtest.py
       - src/strategies.py
       - params_global_2004.yaml
-      - docs/GLOBAL_UNIVERSE_PREREGISTRATION.md
       - data/bronze/raw_global_prices.parquet
       - data/bronze/raw_macro.parquet
     outs:
@@ -873,7 +883,18 @@ stages:
   #
   # RUN-ONCE. A technical defect permits a documented full rerun; an
   # unfavourable result does not.
+  # FROZEN: run-once evidence for the global_2004 experiment. Q2 consumes
+  # these pinned outputs and must never rebuild them. Unfreeze only with a
+  # dated amendment recorded in the pre-registration.
+  #
+  # The protocol document is deliberately NOT a dependency of this stage. A
+  # living protocol is not a computational input: on 2026-08-15 an amendment
+  # to it invalidated this stage as an upstream and silently regenerated
+  # already-frozen evidence. The document hash is recorded INSIDE each result
+  # artifact instead, and tests/test_global_universe.py is the drift guard —
+  # it fails visibly rather than rebuilding the evidence.
   global_2004_q1:
+    frozen: true
     cmd: python src/run_global_2004_q1.py
     deps:
       - src/run_global_2004_q1.py
@@ -884,7 +905,6 @@ stages:
       - src/regime.py
       - src/run_phase5.py
       - params_global_2004.yaml
-      - docs/GLOBAL_UNIVERSE_PREREGISTRATION.md
       - data/gold/log_returns_global.parquet
       - data/gold/ml_features_global.parquet
       - data/gold/global_2004_readiness.json
@@ -935,7 +955,6 @@ stages:
       - src/purged_kfold.py
       - src/run_reality_check.py
       - params_global_2004.yaml
-      - docs/GLOBAL_UNIVERSE_PREREGISTRATION.md
       - data/gold/log_returns_global.parquet
       - data/gold/ml_features_global.parquet
       - data/gold/global_2004_q1_results.json

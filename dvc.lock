@@ -1598,10 +1598,6 @@ stages:
       hash: md5
       md5: 90cafcae5d45c2eb96d191b0438fe0d8
       size: 128927
-    - path: docs/GLOBAL_UNIVERSE_PREREGISTRATION.md
-      hash: md5
-      md5: 3c74a631a4888485444a7cb895342479
-      size: 25875
     - path: params_global_2004.yaml
       hash: md5
       md5: 4e34f0070d6ce8df54862619c8934163
@@ -1677,10 +1673,6 @@ stages:
       hash: md5
       md5: 05abd318ba38fbd67974aa448502c48e
       size: 427446
-    - path: docs/GLOBAL_UNIVERSE_PREREGISTRATION.md
-      hash: md5
-      md5: 3c74a631a4888485444a7cb895342479
-      size: 25875
     - path: params_global_2004.yaml
       hash: md5
       md5: 4e34f0070d6ce8df54862619c8934163
