@@ -801,3 +801,63 @@ stages:
       - data/gold/crisis_windows.json
     outs:
       - data/gold/snapshot_manifest.json
+
+  # ── global_2004 experiment — checkpoint 1: DATA READINESS ─────────────────
+  # Builds Bronze -> Silver -> Gold for the frozen ten-instrument universe and
+  # writes the readiness artifact. Computes NO performance quantity: no Sharpe,
+  # no portfolio return, no drawdown, no turnover. The allocation-freedom and
+  # no-lookahead gates are derived from WEIGHTS ONLY.
+  #
+  # Deps include params_global_2004.yaml (the frozen instrument set and the
+  # readiness thresholds) and the pre-registration itself, because
+  # tests/test_global_universe.py asserts the shipped config still equals the
+  # frozen document — a change to either must invalidate this stage.
+  #
+  # NOT wired into any Q1/Q2 stage. Evaluation is a separate, later checkpoint
+  # and must not run until this artifact reports READY.
+  # Bronze is its own stage, mirroring `ingest`: the download is a distinct
+  # act from the transformation, and separating them means `dvc repro` on a
+  # code change does not re-hit ten Yahoo endpoints.
+  #
+  # persist: true, for the same reason as the other Bronze outputs. DVC deletes
+  # an output before re-running its stage; without persist, any repro touching
+  # this stage would discard the only local copy and re-download. The runner is
+  # cache-first, so with persist the stage is a no-op once the file exists.
+  ingest_global:
+    cmd: python -c "import sys; sys.path.insert(0, 'src'); from global_universe import ROOT, ingest_global_prices, load_global_config; cfg = load_global_config(); ingest_global_prices(cfg['tickers'], cfg['start_date'], ROOT / cfg['paths']['bronze_prices'])"
+    deps:
+      - src/global_universe.py
+      - params_global_2004.yaml
+    outs:
+      - data/bronze/raw_global_prices.parquet:
+          persist: true
+
+  global_2004_data:
+    cmd: python src/run_global_2004_data.py
+    deps:
+      - src/run_global_2004_data.py
+      - src/global_universe.py
+      - src/clean.py
+      - src/ml_features.py
+      - src/backtest.py
+      - src/strategies.py
+      - params_global_2004.yaml
+      - docs/GLOBAL_UNIVERSE_PREREGISTRATION.md
+      - data/bronze/raw_global_prices.parquet
+      - data/bronze/raw_macro.parquet
+    outs:
+      - data/silver/log_returns_global.parquet
+      - data/gold/log_returns_global.parquet
+      - data/gold/ml_features_global.parquet
+      - data/gold/ml_features_global_manifest.json
+      - data/gold/global_2004_readiness.json
+    params:
+      - backtest.max_weight
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - clean.ffill_limit
+      - ml_features.macro_lag_days
+      - ml_features.volatility_short_window
+      - ml_features.volatility_long_window
+      - ml_features.correlation_window
+      - ml_features.correlation_min_periods

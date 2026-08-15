@@ -63,6 +63,76 @@ def load_global_config(path: Path | None = None) -> dict[str, Any]:
         return dict(yaml.safe_load(handle)["global_2004"])
 
 
+# ── Data contract ────────────────────────────────────────────────────────────
+#
+# Defined HERE rather than in `src/schemas.py` for the same reason the config
+# is not in `params.yaml`: `schemas.py` is a declared DVC dependency of the
+# `ingest`, `clean` and `features` stages, so adding a contract there would
+# invalidate the entire released Gold layer and force a full pipeline rebuild
+# to add a check that applies only to this experiment. Isolation is the
+# approved design (pre-registration §10.3, amendment 2).
+
+def build_global_returns_schema(tickers: list[str]):
+    """Pandera contract for the `global_2004` Silver/Gold return matrix.
+
+    Addresses: P1, P4 — the same quality floor `LOG_RETURNS_SCHEMA` imposes on
+    the released universes: every frozen instrument present, no NaN, bounded
+    daily moves, a sorted unique DatetimeIndex, and enough history to estimate
+    a covariance matrix at all.
+
+    The ±50% daily bound is the project's existing sanity limit. It is a
+    corruption detector, not a market view: a legitimate daily log-return
+    outside it would be a once-in-history event, whereas a decimal-shifted
+    price feed produces them routinely.
+    """
+    from pandera.pandas import Check, Column, DataFrameSchema
+
+    return DataFrameSchema(
+        columns={
+            ticker: Column(
+                float,
+                checks=[Check.in_range(-0.5, 0.5, include_min=True, include_max=True)],
+                nullable=False,
+                required=True,
+            )
+            for ticker in tickers
+        },
+        index=None,
+        strict=True,        # no unexpected columns: the set is FROZEN
+        ordered=False,
+        coerce=True,
+        name="global_2004_log_returns",
+    )
+
+
+def validate_global_returns(log_returns: pd.DataFrame, tickers: list[str],
+                            min_rows: int = 5000) -> pd.DataFrame:
+    """Validate the return matrix against the contract, raising on violation.
+
+    Addresses: P4 — a contract that is defined but never invoked is
+    documentation. This is called by the runner before anything downstream
+    reads the matrix.
+    """
+    if not isinstance(log_returns.index, pd.DatetimeIndex):
+        raise ValueError("global_2004 returns must carry a DatetimeIndex.")
+    if not log_returns.index.is_monotonic_increasing:
+        raise ValueError("global_2004 returns index must be sorted.")
+    if log_returns.index.has_duplicates:
+        raise ValueError("global_2004 returns index contains duplicate dates.")
+    if len(log_returns) < min_rows:
+        raise ValueError(
+            f"global_2004 has {len(log_returns)} rows, below the {min_rows} "
+            "floor. The universe exists to provide ~21 years; a short matrix "
+            "means an instrument silently truncated the common history."
+        )
+    missing = [t for t in tickers if t not in log_returns.columns]
+    if missing:
+        raise ValueError(f"Frozen instruments absent from the matrix: {missing}")
+
+    build_global_returns_schema(tickers).validate(log_returns)
+    return log_returns
+
+
 # ── Bronze ───────────────────────────────────────────────────────────────────
 
 def ingest_global_prices(
@@ -304,44 +374,83 @@ def build_global_gold(
 
 # ── Readiness diagnostics ────────────────────────────────────────────────────
 
-def measure_synchrony(log_returns: pd.DataFrame, reference: str = "SPY") -> dict[str, Any]:
-    """Same-day vs lag-1 correlation against a reference, per asset.
+def measure_lag_dominance(log_returns: pd.DataFrame, reference: str = "SPY") -> dict[str, Any]:
+    """Per-asset lag dominance against a reference: does ρ(0) dominate ρ(±1)?
 
-    Addresses: P1 — the diagnostic that condemned `full_2021`'s covariance
-    input, applied to the new universe as an acceptance gate rather than as a
-    post-hoc explanation. Mirrors Stage A of `experiments/nonsync_covariance.py`.
+    Addresses: P1 — detects the stale-price lead/lag signature that makes a
+    daily covariance matrix understate cross-market dependence, which is the
+    defect measured on `full_2021` (`docs/NONSYNC_COVARIANCE.md`).
 
-    A non-synchronous pair shows near-zero same-day correlation and a LARGER
-    lag-1 correlation, because the later-closing market has not yet reacted.
-    Every instrument here shares the NYSE session, so the ratio should be small
-    and the signature absent.
+    For each non-reference asset `i`:
+
+        D_i = max(|ρ_i(−1)|, |ρ_i(+1)|) − |ρ_i(0)|          gate: max_i D_i ≤ 0
+
+    Contemporaneous dependence must dominate BOTH lead and lag dependence.
+
+    ⚠️ TWO EARLIER VERSIONS OF THIS GATE WERE WRONG, and both failures are
+    worth carrying here because they are easy to repeat:
+
+      1. A RATIO, `|ρ(1)/ρ(0)|`, thresholded at 0.25. It divides by a quantity
+         that is near zero for any asset genuinely uncorrelated with the
+         reference, so it exploded on GLD (ρ(0)=0.0657, ρ(1)=0.0396) and failed
+         a clean universe for being diversified.
+      2. An ABSOLUTE bound, `|ρ(1)| ≤ 0.20`. Stable, but useless: the
+         documented stale-price block in `full_2021` has a largest lag
+         correlation of only 0.0897, so it would have PASSED the known-bad
+         control. A gate that passes both the clean universe and the defective
+         control tests nothing.
+
+    Lag dominance has no denominator and no tuned threshold — the bound is
+    zero, fixed by the meaning of the statistic. Verified before adoption:
+    `global_2004` worst −0.0248, `etf_2017` worst −0.0264, `full_2021`'s four
+    BVC assets +0.0479 to +0.0807 while its four US-listed assets pass. See
+    the amendment in `docs/GLOBAL_UNIVERSE_PREREGISTRATION.md` §10.3.
+
+    WHAT IT LICENSES. "No stale-price lead/lag signature detected." NOT
+    "synchrony proven" — the statistic can only fail to find the signature it
+    is built to detect.
     """
     if reference not in log_returns.columns:
         raise ValueError(f"Reference {reference!r} not in the universe.")
 
     ref = log_returns[reference]
-    per_asset = {}
+    per_asset: dict[str, Any] = {}
     for col in log_returns.columns:
         if col == reference:
             continue
-        same_day = float(log_returns[col].corr(ref))
-        lag1 = float(log_returns[col].corr(ref.shift(1)))
+        rho0 = abs(float(log_returns[col].corr(ref)))
+        # ρ(+1): the reference leads the asset — the stale-price direction,
+        # where the later-closing market has not yet reacted.
+        rho_lag = abs(float(log_returns[col].corr(ref.shift(1))))
+        # ρ(−1): the asset leads the reference. Checked too, so the gate is
+        # symmetric and cannot be evaded by ordering the pair the other way.
+        rho_lead = abs(float(log_returns[col].corr(ref.shift(-1))))
+        dominance = max(rho_lag, rho_lead) - rho0
         per_asset[col] = {
-            "corr_same_day": round(same_day, 4),
-            "corr_lag1": round(lag1, 4),
-            "lag1_over_same_day": round(lag1 / same_day, 4) if abs(same_day) > 1e-9 else None,
-            "ar1": round(float(log_returns[col].autocorr(1)), 4),
+            "abs_corr_same_day": round(rho0, 4),
+            "abs_corr_ref_leads": round(rho_lag, 4),
+            "abs_corr_asset_leads": round(rho_lead, 4),
+            "lag_dominance": round(dominance, 4),
+            "passes": bool(dominance <= 0.0),
             "pct_zero_days": round(float((log_returns[col] == 0.0).mean()), 4),
         }
 
-    ratios = [v["lag1_over_same_day"] for v in per_asset.values() if v["lag1_over_same_day"] is not None]
+    values = [v["lag_dominance"] for v in per_asset.values()]
+    failing = sorted(k for k, v in per_asset.items() if not v["passes"])
+    worst = max(per_asset, key=lambda k: per_asset[k]["lag_dominance"]) if per_asset else None
     return {
+        "statistic": "D_i = max(|rho_i(-1)|, |rho_i(+1)|) - |rho_i(0)|",
+        "rule": "max_i D_i <= 0",
         "reference": reference,
         "per_asset": per_asset,
-        "mean_corr_same_day": round(float(np.mean([v["corr_same_day"] for v in per_asset.values()])), 4),
-        "mean_corr_lag1": round(float(np.mean([v["corr_lag1"] for v in per_asset.values()])), 4),
-        "max_abs_lag1_over_same_day": round(float(np.max(np.abs(ratios))), 4) if ratios else None,
+        "max_lag_dominance": round(float(max(values)), 4) if values else None,
+        "worst_asset": worst,
+        "failing_assets": failing,
         "mean_pct_zero_days": round(float(np.mean([v["pct_zero_days"] for v in per_asset.values()])), 4),
+        "interpretation": (
+            "max_lag_dominance <= 0 means no stale-price lead/lag signature was "
+            "detected. It does NOT prove synchrony."
+        ),
     }
 
 

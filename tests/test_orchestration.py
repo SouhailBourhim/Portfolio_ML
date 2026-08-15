@@ -40,7 +40,15 @@ EXPECTED_ASSETS = {
     "bvc_dividends", "bam_fx_reference",
     "log_returns", "log_returns_etf", "gold_layer",
     "ml_features_layer",
+    # global_2004 experiment — registered in the same change that creates its
+    # Gold outputs (§15.10, §17.7), but excluded from the nightly job below.
+    "raw_global_prices", "global_2004_data",
 }
+
+# The frozen experiment must NOT be on the daily schedule. Refreshing its data
+# nightly would move the ground underneath a committed protocol, which is the
+# opposite of what pre-registration is for.
+EXPERIMENT_ASSETS = {"raw_global_prices", "global_2004_data"}
 
 
 def test_the_code_location_imports_at_all():
@@ -108,3 +116,35 @@ def test_the_etf_universe_does_not_depend_on_bvc_dividends(defs):
     """ETFs arrive dividend-adjusted from yfinance. A spurious dependency would
     block the ETF universe on a scrape it does not need."""
     assert "bvc_dividends" not in _deps_of(defs, "log_returns_etf")
+
+
+def test_the_frozen_experiment_is_not_on_the_daily_schedule(defs):
+    """global_2004 is registered for lineage, but must never auto-refresh.
+
+    The pre-registration is committed and timestamped; a nightly job that
+    re-downloads its prices and rebuilds its Gold layer would silently change
+    the data the protocol was frozen against. Registered-but-unscheduled is
+    the correct state, and it is narrow enough to be worth asserting rather
+    than trusting.
+    """
+    # Resolve the job: `define_asset_job` returns an UNRESOLVED definition, and
+    # the distinction matters here — an unresolved job with no explicit
+    # selection silently means "every registered asset", which is exactly how
+    # registering the experiment for lineage would have put it on the schedule.
+    job = defs.get_job_def("phase1_pipeline_job")
+    selected = {k.to_user_string() for k in job.asset_layer.executable_asset_keys}
+
+    assert selected, "Could not resolve the job's asset selection."
+    leaked = EXPERIMENT_ASSETS & selected
+    assert not leaked, (
+        f"Frozen experiment assets are on the daily schedule: {sorted(leaked)}. "
+        "Re-downloading their prices nightly would move the data underneath a "
+        "committed, timestamped protocol."
+    )
+    # The other direction: the released pipeline must still be fully scheduled,
+    # so restricting the selection cannot silently drop a real asset (§17.7).
+    assert selected == EXPECTED_ASSETS - EXPERIMENT_ASSETS, (
+        f"The released pipeline's schedule drifted: missing "
+        f"{(EXPECTED_ASSETS - EXPERIMENT_ASSETS) - selected}, unexpected "
+        f"{selected - (EXPECTED_ASSETS - EXPERIMENT_ASSETS)}."
+    )

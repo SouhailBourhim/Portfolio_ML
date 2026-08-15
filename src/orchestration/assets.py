@@ -222,3 +222,72 @@ def ml_features_layer(context: AssetExecutionContext) -> None:
         )
         for universe, df in results.items()
     })
+
+
+# ── global_2004 experiment (pre-registration §9) ─────────────────────────────
+#
+# Registered here in the SAME change that creates the Gold outputs, per
+# AGENTS.md §15.10 and the §17.7 incident: an unwired universe drifts stale
+# against Bronze on every scheduled run, silently, and that has already
+# happened once to log_returns_etf and ml_features.
+#
+# Deliberately NOT added to `pipeline_job`: this is a frozen experiment, not a
+# nightly-refreshed release surface, and re-running it on a schedule would
+# change the data underneath a protocol that has been committed. It is
+# materializable on demand and visible in the asset graph, which is what the
+# lineage requirement is for.
+
+@asset(
+    group_name="global_2004",
+    description=(
+        "Bronze adjusted closes for the ten frozen global_2004 instruments "
+        "(auto_adjust=True). Separate from raw_prices.parquet — this asset "
+        "must never modify the released universes."
+    ),
+)
+def raw_global_prices(context: AssetExecutionContext) -> None:
+    import sys as _sys
+    from pathlib import Path as _Path
+
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
+    from global_universe import ROOT as _ROOT
+    from global_universe import ingest_global_prices, load_global_config
+
+    cfg = load_global_config()
+    prices = ingest_global_prices(
+        cfg["tickers"], cfg["start_date"], _ROOT / cfg["paths"]["bronze_prices"]
+    )
+    context.add_output_metadata({
+        "n_instruments": prices.shape[1],
+        "n_rows": len(prices),
+        "start": str(prices.index.min().date()),
+        "end": str(prices.index.max().date()),
+    })
+
+
+@asset(
+    group_name="global_2004",
+    deps=[raw_global_prices, raw_fred_macro],
+    description=(
+        "Silver + Gold for global_2004, plus the data-readiness artifact. "
+        "Computes NO performance quantity: the readiness checkpoint is "
+        "deliberately separate from Q1/Q2 evaluation."
+    ),
+)
+def global_2004_data(context: AssetExecutionContext) -> None:
+    import sys as _sys
+    from pathlib import Path as _Path
+
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
+    from run_global_2004_data import run as _run
+
+    artifact = _run()
+    context.add_output_metadata({
+        "verdict": artifact["verdict"],
+        "gates_passed": f"{artifact['n_gates_passed']}/{artifact['n_gates']}",
+        "window": f"{artifact['window']['start']} -> {artifact['window']['end']}",
+        "max_lag_dominance": artifact["lag_dominance"]["max_lag_dominance"],
+        "min_var_distinct_allocations": (
+            artifact["allocation_freedom"]["min_variance_lw"]["distinct_allocations"]
+        ),
+    })

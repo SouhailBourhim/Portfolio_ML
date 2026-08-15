@@ -42,7 +42,8 @@ from global_universe import (  # noqa: E402
     load_global_config,
     load_retained_macro,
     measure_allocation_freedom,
-    measure_synchrony,
+    measure_lag_dominance,
+    validate_global_returns,
     verify_no_lookahead,
 )
 from provenance import _sha256, git_revision  # noqa: E402
@@ -80,7 +81,11 @@ def _provenance(returns: pd.DataFrame, sources: list[str]) -> dict:
             "Not yet registered in data/gold/currency_manifest.json — see the "
             "docstring of _provenance() for why, and the follow-up note."
         ),
-        "hedge_status": "unhedged",
+        # NOT "unhedged": that word implies an FX exposure left open, which is
+        # the honest description of full_2021 (MAD assets against USD ones).
+        # Here every instrument is USD-denominated, so there is no currency
+        # position to hedge or leave unhedged — the concept does not apply.
+        "hedge_status": "not applicable — single-currency universe",
         "currency_converted": False,
         "data_range": {
             "start": str(returns.index.min().date()),
@@ -146,15 +151,17 @@ def _evaluate_gates(gates: dict, window: dict, coverage: dict, manifest: dict,
         "not TAUX_DIR's 3,101.",
     )
 
-    # (c) synchrony
-    ratio = synchrony.get("max_abs_lag1_over_same_day")
+    # (c) no stale-price lead/lag signature (amendment 1, 2026-08-15)
+    observed = synchrony.get("max_lag_dominance")
     check(
-        "synchronous_trading",
-        ratio is not None and ratio <= gates["max_lag1_over_same_day"],
-        ratio, gates["max_lag1_over_same_day"],
-        "Non-synchronous pairs show lag-1 correlation exceeding same-day. "
-        "full_2021's BVC block measured 19.1x; a shared NYSE session should "
-        "be far below 1.",
+        "no_lag_dominance",
+        observed is not None and observed <= gates["max_lag_dominance"],
+        observed, gates["max_lag_dominance"],
+        "D_i = max(|rho_i(-1)|, |rho_i(+1)|) - |rho_i(0)| must be <= 0 for "
+        "EVERY asset: contemporaneous dependence dominates both lead and lag. "
+        "Separates both clean USD universes (global_2004 -0.0248, etf_2017 "
+        "-0.0264) from full_2021's BVC block (+0.0479 to +0.0807). PASS means "
+        "no stale-price lead/lag signature was detected — NOT synchrony proven.",
     )
 
     # (d) no lookahead — the project's automatic-failure criterion (§18)
@@ -228,6 +235,15 @@ def run() -> dict:
         out_path=paths["silver_returns"],
     )
 
+    # Contract check BEFORE anything downstream reads the matrix. A contract
+    # invoked after the fact is a post-mortem, not a gate.
+    validate_global_returns(
+        log_returns, cfg["tickers"],
+        min_rows=int(cfg["readiness_gates"]["min_trading_days"]),
+    )
+    log.info("Pandera contract: PASSED (%d rows x %d frozen instruments)",
+             len(log_returns), log_returns.shape[1])
+
     # Gold
     macro = load_retained_macro(cfg["macro_exclude"])
     features, manifest = build_global_gold(
@@ -237,16 +253,32 @@ def run() -> dict:
         manifest_out=paths["gold_manifest"],
     )
 
+    # `binding_instrument` deliberately does NOT report the latest observed
+    # first-date. Every series was REQUESTED from the same configured cutoff,
+    # so they all begin there and the argmax is an arbitrary tie-break — the
+    # first run reported SPY, whose real inception is 1993. The binding
+    # constraint is an eligibility fact (rule E2, common history from
+    # 2004-11-18), not something observable in this download.
+    ties = [t for t, d in per_ticker_start.items() if d == min(per_ticker_start.values())]
     window = {
         "start": str(log_returns.index.min().date()),
         "end": str(log_returns.index.max().date()),
         "years": round((log_returns.index.max() - log_returns.index.min()).days / 365.25, 2),
+        "requested_start": cfg["start_date"],
         "per_ticker_first_date": per_ticker_start,
-        "binding_instrument": max(per_ticker_start, key=per_ticker_start.get),
+        "binding_instrument": "GLD",
+        "binding_instrument_basis": (
+            "GLD's inception (2004-11-18) is what fixes the common-history "
+            "start under eligibility rule E2; every other instrument predates "
+            "it. NOT derived from the download: all series were requested from "
+            f"the configured cutoff {cfg['start_date']} and therefore begin "
+            f"there ({len(ties)} of {len(per_ticker_start)} tie at the "
+            "earliest observed date)."
+        ),
     }
 
-    log.info("Measuring synchrony (Stage-A diagnostic)...")
-    synchrony = measure_synchrony(log_returns)
+    log.info("Measuring lag dominance (stale-price lead/lag detector)...")
+    synchrony = measure_lag_dominance(log_returns)
 
     log.info("Running the no-lookahead future-corruption gate on real data...")
     lookahead = verify_no_lookahead(
@@ -287,7 +319,7 @@ def run() -> dict:
         "window": window,
         "coverage": coverage,
         "feature_manifest": manifest,
-        "synchrony": synchrony,
+        "lag_dominance": synchrony,
         "no_lookahead": lookahead,
         "allocation_freedom": freedom,
         "reference_comparison": {

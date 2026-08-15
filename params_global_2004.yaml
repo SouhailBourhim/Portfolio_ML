@@ -61,9 +61,23 @@ global_2004:
     max_ffill_share: 0.02          # share of cells forward-filled
     max_zero_return_share: 0.02    # per-asset share of exact-zero return days
     max_feature_leading_nan: 400   # DXY warm-up is ~231; BAM exclusion keeps it small
-    # (c) synchrony: all instruments share the NYSE session, so the
-    #     non-synchronous signature measured on full_2021 must be ABSENT
-    max_lag1_over_same_day: 0.25   # full_2021's BVC block measured 19.1x
+    # (c) no stale-price lead/lag signature.
+    #
+    #   D_i = max(|rho_i(-1)|, |rho_i(+1)|) - |rho_i(0)|,   require max_i D_i <= 0
+    #
+    # The bound is ZERO by the meaning of the statistic — contemporaneous
+    # dependence must dominate both lead and lag — so nothing here is a tuned
+    # number. Amendment 1 (2026-08-15) in the pre-registration records the two
+    # rejected predecessors and why each failed:
+    #
+    #   ORIGINAL, mis-specified:  max_lag1_over_same_day: 0.25
+    #     A ratio whose denominator goes to zero for any asset genuinely
+    #     uncorrelated with the reference. Failed global_2004 at 0.6228 on GLD.
+    #
+    #   REJECTED repair:          max_abs_lag1: 0.20
+    #     Stable but useless — full_2021's stale-price block peaks at 0.0897,
+    #     so it would have PASSED the known-bad control.
+    max_lag_dominance: 0.0
     # (e) allocation freedom, the reason the universe exists at all.
     #     etf_2017 produces ONE distinct min_variance_lw allocation in 248
     #     rebalances; anything near that means the new universe is no better.
