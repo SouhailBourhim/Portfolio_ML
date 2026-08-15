@@ -861,3 +861,47 @@ stages:
       - ml_features.volatility_long_window
       - ml_features.correlation_window
       - ml_features.correlation_min_periods
+
+  # ── global_2004 Q1 — ONE pre-specified comparison ─────────────────────────
+  # regime_conditional vs max_sharpe, net of costs, on the frozen 35% test
+  # segment. Gated on the readiness artifact: the script refuses to run if it
+  # reports anything but READY, or if it was produced from a dirty tree.
+  #
+  # NO DSR / Reality Check / SPA here. Q1 is a single hypothesis fixed before
+  # any result existed; the correction belongs to Q2's search. Enforced by
+  # tests/test_global_2004_q1.py, which greps the artifact for those keys.
+  #
+  # RUN-ONCE. A technical defect permits a documented full rerun; an
+  # unfavourable result does not.
+  global_2004_q1:
+    cmd: python src/run_global_2004_q1.py
+    deps:
+      - src/run_global_2004_q1.py
+      - src/global_universe.py
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/regime.py
+      - src/run_phase5.py
+      - params_global_2004.yaml
+      - docs/GLOBAL_UNIVERSE_PREREGISTRATION.md
+      - data/gold/log_returns_global.parquet
+      - data/gold/ml_features_global.parquet
+      - data/gold/global_2004_readiness.json
+    outs:
+      - data/gold/global_2004_q1_results.json
+    params:
+      - backtest.max_weight
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - backtest.risk_free_annual
+      - backtest.costs_bps
+      - regime.n_states
+      - regime.n_restarts
+      - regime.random_state_base
+      - regime.covariance_type
+      - regime.min_regime_train_days
+      - regime.bull_strategy
+      - regime.bear_strategy
+      - phase5.test_frac
+      - phase5.bootstrap
