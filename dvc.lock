@@ -1644,8 +1644,8 @@ stages:
     outs:
     - path: data/gold/global_2004_readiness.json
       hash: md5
-      md5: 76a9d9731bce0eb9b5448f74e6d14862
-      size: 10995
+      md5: 1ae0e9d7b016f9de89b68d8223d7f848
+      size: 10989
     - path: data/gold/log_returns_global.parquet
       hash: md5
       md5: 55b366533a4e10f342b4f1cfd0c2728e
