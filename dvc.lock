@@ -1662,3 +1662,81 @@ stages:
       hash: md5
       md5: 55b366533a4e10f342b4f1cfd0c2728e
       size: 579858
+  global_2004_q1:
+    cmd: python src/run_global_2004_q1.py
+    deps:
+    - path: data/gold/global_2004_readiness.json
+      hash: md5
+      md5: 1ae0e9d7b016f9de89b68d8223d7f848
+      size: 10989
+    - path: data/gold/log_returns_global.parquet
+      hash: md5
+      md5: 55b366533a4e10f342b4f1cfd0c2728e
+      size: 579858
+    - path: data/gold/ml_features_global.parquet
+      hash: md5
+      md5: 05abd318ba38fbd67974aa448502c48e
+      size: 427446
+    - path: docs/GLOBAL_UNIVERSE_PREREGISTRATION.md
+      hash: md5
+      md5: 3c74a631a4888485444a7cb895342479
+      size: 25875
+    - path: params_global_2004.yaml
+      hash: md5
+      md5: 4e34f0070d6ce8df54862619c8934163
+      size: 4927
+    - path: src/backtest.py
+      hash: md5
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
+    - path: src/global_universe.py
+      hash: md5
+      md5: 7ab7a0fa415d7736801ada12dfd0c25c
+      size: 26407
+    - path: src/metrics.py
+      hash: md5
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
+    - path: src/regime.py
+      hash: md5
+      md5: d84d5bef91aa32bbec802791dc68698d
+      size: 12557
+    - path: src/run_global_2004_q1.py
+      hash: md5
+      md5: bdee21b5017edcbd1f300addc4ce0dd8
+      size: 19915
+    - path: src/run_phase5.py
+      hash: md5
+      md5: 4271e3a0ac841e7420cc4e8a908b91fb
+      size: 28280
+    - path: src/strategies.py
+      hash: md5
+      md5: a54b41030dfb63fffb6124491bfc3506
+      size: 36474
+    params:
+      params.yaml:
+        backtest.costs_bps:
+          etf: 10
+          bvc: 30
+        backtest.max_weight: 0.25
+        backtest.min_train_days: 252
+        backtest.rebalance_freq: ME
+        backtest.risk_free_annual: 0.0
+        phase5.bootstrap:
+          block_len: 21
+          n_boot: 2000
+          alpha: 0.1
+          seed: 0
+        phase5.test_frac: 0.35
+        regime.bear_strategy: min_variance_lw
+        regime.bull_strategy: max_sharpe
+        regime.covariance_type: diag
+        regime.min_regime_train_days: 252
+        regime.n_restarts: 5
+        regime.n_states: 2
+        regime.random_state_base: 0
+    outs:
+    - path: data/gold/global_2004_q1_results.json
+      hash: md5
+      md5: e01f3730a2706956066a96dc06274675
+      size: 6117

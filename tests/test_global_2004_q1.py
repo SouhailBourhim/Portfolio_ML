@@ -150,15 +150,36 @@ class TestQ1ArtifactShape:
         )
 
     def test_no_multiple_testing_correction_is_applied(self):
+        """No DSR/RC/SPA VALUE may appear — checked on keys, not on prose.
+
+        Deliberately inspects the key set rather than grepping the serialized
+        artifact: the `multiple_testing.reason` field EXPLAINS that DSR,
+        Reality Check and SPA are not computed, and a substring search cannot
+        tell an explanation from a result. That distinction bit this test on
+        its first run, and it is the same false-positive class that got a
+        significance wording-guard deleted earlier in this project.
+        """
         art = _artifact()
         assert art["multiple_testing"]["applied"] is False
 
-        blob = json.dumps(art).lower()
-        for banned in ("deflated_sharpe", "reality_check_p", "spa_p_value", "dsr"):
-            assert banned not in blob, (
-                f"{banned!r} appears in the Q1 artifact. Q1 is a single "
-                "pre-specified hypothesis; the correction belongs to Q2."
-            )
+        def _keys(node):
+            if isinstance(node, dict):
+                for k, v in node.items():
+                    yield k.lower()
+                    yield from _keys(v)
+            elif isinstance(node, list):
+                for item in node:
+                    yield from _keys(item)
+
+        banned = ("deflated_sharpe", "dsr", "reality_check", "spa_p", "hansen", "white_p")
+        offenders = [
+            k for k in _keys(art) if any(b in k for b in banned)
+        ]
+        assert not offenders, (
+            f"Multiple-testing fields present in the Q1 artifact: {offenders}. "
+            "Q1 is a single pre-specified hypothesis; the correction belongs "
+            "to Q2."
+        )
 
     def test_records_the_usd_numeraire_and_no_hedge_concept(self):
         prov = _artifact()["provenance"]
