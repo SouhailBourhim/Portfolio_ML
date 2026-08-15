@@ -403,7 +403,64 @@ in its own commit, before any affected result is calculated. An empty log is the
 
 | Date | Section | Change | Reason |
 |---|---|---|---|
-| — | — | none | — |
+| 2026-08-15 | Readiness gates (checkpoint 1) | `synchronous_trading` ratio gate **replaced** by `no_lag_dominance` | The original statistic was mis-specified. Full record below. |
+| 2026-08-15 | §9 lineage | `global_2004` config lives in `params_global_2004.yaml`, not in `params.yaml` | Approved in review. Isolating the experiment from the released runners is the correct design. |
+
+#### Amendment 1 — `synchronous_trading` → `no_lag_dominance` (2026-08-15)
+
+**Legitimacy.** No performance quantity had been computed for `global_2004` when this amendment
+was made, and this document was committed before it. The repair is therefore a protocol fix made
+in the open, not a result-driven one. It is committed **before** the code that implements it.
+
+**The original gate, preserved verbatim rather than deleted:**
+
+```yaml
+# ORIGINAL — mis-specified, superseded 2026-08-15
+max_lag1_over_same_day: 0.25   # full_2021's BVC block measured 19.1x
+```
+scored as `max_i |ρ_i(1) / ρ_i(0)|` against the reference asset `SPY`.
+
+**Why it was wrong.** The statistic divides by the contemporaneous correlation, which is near zero
+for any asset genuinely uncorrelated with the reference. On `global_2004` it observed **0.6228**
+and FAILED, driven entirely by `GLD` (ρ(0) = 0.0657, ρ(1) = 0.0396 — both tiny, the ratio
+meaningless). Gold is simply uncorrelated with equities; nothing about that is a stale-price
+problem.
+
+**Why the obvious repair was ALSO rejected.** An absolute bound `max_i |ρ_i(1)| ≤ 0.20` was
+proposed and rejected in review, correctly: the documented stale-price block in `full_2021` has a
+largest lag correlation of only **0.0897**, so that gate would have passed the known-bad control.
+**A gate that passes both the clean universe and the defective control tests nothing.** Recorded
+because the rejected repair is as informative as the accepted one.
+
+**The replacement — lag dominance.** For each non-reference asset `i`:
+
+```
+D_i = max(|ρ_i(−1)|, |ρ_i(+1)|) − |ρ_i(0)|        gate: max_i D_i ≤ 0
+```
+
+Contemporaneous dependence must dominate **both** lead and lag dependence. It has no denominator,
+so nothing explodes when ρ(0) → 0, and no numerical threshold was tuned against a result — the
+bound is zero, fixed by the meaning of the statistic rather than chosen to admit a universe.
+
+**Measured on the committed artifacts before adoption:**
+
+| Universe | Worst asset | `max D` | Verdict |
+|---|---|---:|---|
+| `global_2004` | `GLD` | **−0.0248** | pass |
+| `etf_2017` (clean control) | `GLD` | **−0.0264** | pass |
+| `full_2021` — `IAM.CS` | | **+0.0807** | **fail** |
+| `full_2021` — `CIH.CS` | | **+0.0682** | **fail** |
+| `full_2021` — `ATW.CS` | | **+0.0557** | **fail** |
+| `full_2021` — `BCP.CS` | | **+0.0479** | **fail** |
+
+It separates both clean USD universes from the documented stale-price block, and does so
+**per asset**: the four US-listed instruments inside `full_2021` pass (`TLT` −0.0931, `GLD`
+−0.1405, `EEM` −0.6208, `QQQ` −0.8929) while all four BVC assets fail. That is the discrimination
+the gate exists to provide, and it is locked in by regression tests over all three universes.
+
+**What the gate licenses you to say.** *"No stale-price lead/lag signature detected."* **Not**
+*"synchrony proven"* — the statistic can only fail to find a signature it is built to detect, and
+absence of evidence at daily frequency is not proof of simultaneous price formation.
 
 ---
 
