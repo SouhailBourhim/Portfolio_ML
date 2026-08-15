@@ -199,12 +199,14 @@ def run() -> dict:
         )
     candidate_strategy, comparator_strategy = _build_pair(params)
 
+    # `run_backtest` takes no risk-free rate: it produces return SERIES, and
+    # the rate enters only where a Sharpe is formed — in the metrics layer and
+    # in the paired bootstrap, both of which receive `rf` explicitly below.
     kwargs = dict(
         rebalance_freq=bp["rebalance_freq"],
         min_train_days=bp["min_train_days"],
         cost_bps=cost_vector,
         max_weight=bp["max_weight"],
-        risk_free_annual=rf,
         extras={"features": features},
         universe_name="global_2004",
     )
