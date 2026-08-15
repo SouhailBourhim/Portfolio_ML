@@ -176,11 +176,27 @@ def run() -> dict:
         test_start.date(), returns.index.max().date(), params["phase5"]["test_frac"],
     )
 
+    # `build_cost_vector` classifies by membership in the RELEASED universes'
+    # asset lists, so it refuses global_2004's six new tickers rather than
+    # guessing — correct behaviour, since a silent default would be a silent
+    # cost misstatement. Every instrument here is a liquid US-listed ETF by
+    # eligibility rule E1, so every one takes the existing `costs_bps.etf`
+    # rate. This is a CLASSIFICATION fix, not a cost assumption: the rate is
+    # the frozen parameter, applied to the instrument class it was defined
+    # for. The BVC rate is passed through unchanged and cannot apply, since
+    # no BVC name is in this universe.
+    etf_bps = float(bp["costs_bps"]["etf"])
     cost_vector = build_cost_vector(
         returns.columns,
-        etf_cost_bps=bp["costs_bps"]["etf"],
+        etf_cost_bps=etf_bps,
         bvc_cost_bps=bp["costs_bps"]["bvc"],
+        overrides={ticker: etf_bps for ticker in cfg["tickers"]},
     )
+    if not (cost_vector == etf_bps).all():
+        raise ValueError(
+            "Every global_2004 instrument must carry the ETF cost rate; got "
+            f"{cost_vector.to_dict()}"
+        )
     candidate_strategy, comparator_strategy = _build_pair(params)
 
     kwargs = dict(
@@ -277,6 +293,18 @@ def run() -> dict:
                     cfg["paths"]["readiness"],
                 )
             },
+        },
+        "cost_model": {
+            "one_way_bps_per_instrument": float(etf_bps),
+            "applies_to": list(cfg["tickers"]),
+            "basis": (
+                "params.yaml backtest.costs_bps.etf, unchanged. Every "
+                "instrument is a liquid US-listed ETF (eligibility rule E1), "
+                "so the ETF rate applies to all ten and the BVC rate applies "
+                "to none. Recorded explicitly because build_cost_vector "
+                "classifies by the RELEASED universes' asset lists and needed "
+                "an explicit override for the six tickers new to this universe."
+            ),
         },
         "question": "Q1",
         "hypothesis": (

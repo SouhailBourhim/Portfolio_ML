@@ -214,3 +214,33 @@ class TestQ1ArtifactShape:
             "Q1's artifact was produced from a dirty tree, so it does not "
             "identify the code that produced it."
         )
+
+
+class TestCostModel:
+    def test_every_instrument_carries_the_etf_rate(self):
+        """All ten are liquid US-listed ETFs (rule E1), so one rate applies.
+
+        Regression on a real failure: build_cost_vector classifies by the
+        RELEASED universes' asset lists and refused six of global_2004's
+        tickers outright rather than defaulting them — correct, since a silent
+        default is a silent cost misstatement. The fix is an explicit override
+        to the SAME frozen rate, not a new cost assumption.
+        """
+        from backtest import build_cost_vector
+        from global_universe import load_global_config
+
+        cfg = load_global_config()
+        etf_bps = float(load_params()["backtest"]["costs_bps"]["etf"])
+        vector = build_cost_vector(
+            cfg["tickers"], etf_cost_bps=etf_bps, bvc_cost_bps=999.0,
+            overrides={t: etf_bps for t in cfg["tickers"]},
+        )
+        assert len(vector) == 10
+        assert (vector == etf_bps).all(), vector.to_dict()
+
+    def test_artifact_records_the_cost_model_explicitly(self):
+        cost = _artifact()["cost_model"]
+        assert cost["one_way_bps_per_instrument"] == (
+            load_params()["backtest"]["costs_bps"]["etf"]
+        )
+        assert len(cost["applies_to"]) == 10
