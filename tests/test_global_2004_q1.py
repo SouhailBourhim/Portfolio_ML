@@ -139,14 +139,37 @@ class TestPairedInferenceContract:
 class TestQ1ArtifactShape:
     def test_reports_two_independent_booleans_and_no_collapsed_verdict(self):
         verdicts = _artifact()["verdicts"]
-        assert isinstance(verdicts["economically_material"], bool)
-        assert isinstance(verdicts["statistical_evidence"], bool)
+        assert isinstance(verdicts["candidate_improvement_at_least_0_05"], bool)
+        assert isinstance(verdicts["evidence_of_candidate_outperformance"], bool)
 
         forbidden = {"wins", "winner", "beats", "success", "verdict", "passed"}
         present = forbidden & set(k.lower() for k in verdicts)
         assert not present, (
-            f"Q1 must not collapse its two verdicts into {sorted(present)}. "
-            "Economic materiality and statistical evidence are independent."
+            f"Q1 must not collapse its verdicts into {sorted(present)}. "
+            "Improvement and evidence of outperformance are independent."
+        )
+
+    def test_verdict_names_are_directional(self):
+        """`economically_material` was renamed because it was ambiguous.
+
+        The observed gap here is LARGE (0.0862 > 0.05) but adverse. A reader
+        seeing `economically_material: false` would reasonably conclude the
+        difference was small. It is not; it runs the wrong way. Directional
+        names make that unmissable.
+        """
+        verdicts = _artifact()["verdicts"]
+        assert "economically_material" not in verdicts
+        assert "statistical_evidence" not in verdicts
+        assert verdicts["observed_gap_direction"] in {
+            "candidate_below_comparator", "candidate_above_comparator", "exactly_equal",
+        }
+
+    def test_absolute_gap_is_reported_so_magnitude_is_not_hidden(self):
+        """A large adverse gap must not disappear behind two false booleans."""
+        art = _artifact()
+        diff = art["observed_difference"]["net_sharpe_diff"]
+        assert art["verdicts"]["observed_absolute_sharpe_gap_at_least_0_05"] == (
+            abs(diff) >= 0.05
         )
 
     def test_no_multiple_testing_correction_is_applied(self):
@@ -197,7 +220,8 @@ class TestQ1ArtifactShape:
         for side in ("candidate", "comparator"):
             block = art[side]
             for field in (
-                "net_sharpe", "net_annual_return", "max_drawdown", "avg_turnover",
+                "net_sharpe", "gross_sharpe", "net_geometric_annual_return",
+                "max_drawdown", "avg_turnover",
                 "total_cost_fraction", "fallback_count", "effective_models",
             ):
                 assert field in block, f"{side}.{field} missing"
@@ -226,8 +250,56 @@ class TestQ1ArtifactShape:
         p = art["paired_inference"]["one_sided_null_centred_p_value"]
         alpha = art["paired_inference"]["ci_alpha"]
 
-        assert art["verdicts"]["economically_material"] == (diff >= 0.05)
-        assert art["verdicts"]["statistical_evidence"] == (p < alpha)
+        assert art["verdicts"]["candidate_improvement_at_least_0_05"] == (diff >= 0.05)
+        assert art["verdicts"]["evidence_of_candidate_outperformance"] == (p < alpha)
+
+
+class TestReturnDefinitionsAreSeparated:
+    """Arithmetic-mean and geometric returns are different quantities.
+
+    The first version of this artifact reported the bootstrap's arithmetic
+    figure under the name `annual_return_diff`, beside a strategy table of
+    GEOMETRIC returns. Differencing the table gave -0.014202 while the field
+    said -0.013605 — a silent conflation that would eventually be read as an
+    arithmetic error in one of them.
+    """
+
+    def test_both_definitions_are_present_and_named(self):
+        od = _artifact()["observed_difference"]
+        assert "annualized_mean_return_diff" in od
+        assert "geometric_annual_return_diff" in od
+        assert "annual_return_diff" not in od, (
+            "The ambiguous name must not return; it implied the geometric "
+            "quantity while carrying the arithmetic one."
+        )
+
+    def test_the_ci_belongs_to_the_arithmetic_mean_difference(self):
+        pi = _artifact()["paired_inference"]
+        assert "annualized_mean_return_diff_ci" in pi
+        assert "ann_return_diff_ci" not in pi
+
+    def test_geometric_diff_equals_the_strategy_table_difference(self):
+        """It must be derivable from the two per-strategy figures."""
+        art = _artifact()
+        expected = (art["candidate"]["net_geometric_annual_return"]
+                    - art["comparator"]["net_geometric_annual_return"])
+        assert art["observed_difference"]["geometric_annual_return_diff"] == pytest.approx(
+            expected, abs=1e-6
+        )
+
+    def test_the_two_definitions_are_not_identical(self):
+        """If they ever coincide exactly, one is being computed from the other."""
+        od = _artifact()["observed_difference"]
+        assert od["annualized_mean_return_diff"] != od["geometric_annual_return_diff"]
+
+    def test_the_reading_states_the_secondary_negative_interval(self):
+        """The mean-return CI excludes zero, so "no difference established"
+        is too broad a summary and the artifact must say so itself."""
+        reading = _artifact()["reading"]
+        assert "secondary" in reading
+        ci = _artifact()["paired_inference"]["annualized_mean_return_diff_ci"]
+        if ci[1] < 0:
+            assert "entirely negative" in reading["secondary"].lower()
 
     def test_generated_from_a_clean_revision(self):
         rev = _artifact()["provenance"]["git_revision"]

@@ -18,11 +18,14 @@ SCOPE, deliberately narrow (pre-registration §5, Q1):
     fixed in advance; correcting it over a challenger grid it was never part
     of would be over-conservative and could bury a real effect. Q2 is the
     search and carries the full correction.
-  * TWO INDEPENDENT VERDICTS. `economically_material` (an absolute
-    ΔSharpe ≥ 0.05) and `statistical_evidence` (the paired test) are reported
-    as separate booleans and never collapsed into a `wins` field. Clearing one
-    licenses nothing about the other, and a single flag would hide exactly
-    which of the two was actually met.
+  * TWO INDEPENDENT VERDICTS, both DIRECTIONAL by name.
+    `candidate_improvement_at_least_0_05` (a SIGNED ΔSharpe ≥ +0.05) and
+    `evidence_of_candidate_outperformance` (the paired test) are separate
+    booleans, never collapsed into a `wins` field. A third field,
+    `observed_absolute_sharpe_gap_at_least_0_05`, reports the MAGNITUDE, so a
+    large gap running the wrong way cannot hide behind two false booleans —
+    which is exactly what the earlier name `economically_material: false`
+    invited a reader to misread as "the difference is small".
 
 RUN-ONCE DISCIPLINE. This is executed once, from a clean committed revision.
 A technical defect permits a documented full rerun; an unfavourable result
@@ -123,8 +126,12 @@ def _describe(result, test_start: pd.Timestamp, rf: float) -> dict:
         "strategy": result.strategy_name,
         "net_sharpe": round(float(annualized_sharpe(net, risk_free_annual=rf)), 4),
         "gross_sharpe": round(float(annualized_sharpe(gross, risk_free_annual=rf)), 4),
-        "net_annual_return": round(float(annualized_return(net)), 6),
-        "gross_annual_return": round(float(annualized_return(gross)), 6),
+        # GEOMETRIC, i.e. the compounded rate actually realized. Named
+        # explicitly because the paired bootstrap reports an ARITHMETIC mean
+        # annualized differently, and the two must never be differenced
+        # against each other.
+        "net_geometric_annual_return": round(float(annualized_return(net)), 6),
+        "gross_geometric_annual_return": round(float(annualized_return(gross)), 6),
         "max_drawdown": round(float(max_drawdown(net)), 6),
         "avg_turnover": round(float(result.turnover.loc[reb].mean()), 6),
         "total_cost_fraction": round(float(result.costs.loc[reb].sum()), 6),
@@ -254,8 +261,12 @@ def run() -> dict:
     # TWO INDEPENDENT VERDICTS. Never collapsed: one asks whether the
     # difference is big enough to matter to an allocator, the other whether
     # the data can distinguish it from zero. Either can hold without the other.
-    economically_material = bool(sharpe_diff >= MATERIAL_MARGIN)
-    statistical_evidence = bool(paired["p_value_no_outperformance"] < alpha)
+    # SIGNED: an improvement BY the candidate, not a magnitude.
+    candidate_improvement = bool(sharpe_diff >= MATERIAL_MARGIN)
+    evidence_of_outperformance = bool(paired["p_value_no_outperformance"] < alpha)
+    # Magnitude, reported separately so a large ADVERSE gap is not hidden by
+    # two false booleans.
+    absolute_gap_material = bool(abs(sharpe_diff) >= MATERIAL_MARGIN)
 
     artifact = {
         "provenance": {
@@ -318,7 +329,31 @@ def run() -> dict:
         "comparator": comp_desc,
         "observed_difference": {
             "net_sharpe_diff": round(float(sharpe_diff), 4),
-            "annual_return_diff": round(float(paired["ann_return_diff"]), 6),
+            # TWO RETURN DEFINITIONS, kept apart deliberately. They are close
+            # but not equal, and an earlier version of this artifact reported
+            # the bootstrap's figure under a name that implied the other.
+            #
+            #   annualized_mean_return_diff — arithmetic daily mean x 252,
+            #     computed INSIDE the paired bootstrap. This is the quantity
+            #     its confidence interval belongs to.
+            #   geometric_annual_return_diff — difference of the compounded
+            #     rates actually realized, i.e. of the strategy table above.
+            #
+            # Differencing one against the other, or attaching the bootstrap's
+            # CI to the geometric figure, would be a category error.
+            "annualized_mean_return_diff": round(float(paired["ann_return_diff"]), 6),
+            "geometric_annual_return_diff": round(
+                float(cand_desc["net_geometric_annual_return"]
+                      - comp_desc["net_geometric_annual_return"]), 6
+            ),
+            "return_definitions_note": (
+                "annualized_mean_return_diff is the arithmetic daily mean "
+                "annualized by 252 and is the quantity the bootstrap CI "
+                "covers. geometric_annual_return_diff is the difference of "
+                "compounded realized rates. They differ because compounding "
+                "penalizes volatility; neither is wrong, and they answer "
+                "different questions."
+            ),
             "avg_turnover_diff": paired.get("avg_turnover_diff"),
             "avg_cost_diff": paired.get("avg_cost_diff"),
             "max_drawdown_diff": round(
@@ -346,7 +381,8 @@ def run() -> dict:
                 float(paired["prob_sharpe_diff_positive"]), 4
             ),
             "sharpe_diff_ci": [round(float(x), 4) for x in paired["sharpe_diff_ci"]],
-            "ann_return_diff_ci": [
+            # Belongs to the ARITHMETIC mean difference, not the geometric one.
+            "annualized_mean_return_diff_ci": [
                 round(float(x), 6) for x in paired["ann_return_diff_ci"]
             ],
             "ci_alpha": float(alpha),
@@ -355,20 +391,90 @@ def run() -> dict:
             "seed": int(boot["seed"]),
         },
         "verdicts": {
-            "economically_material": economically_material,
-            "economic_rule": (
-                f"net_sharpe_diff >= {MATERIAL_MARGIN} ABSOLUTE Sharpe points "
-                "(not a percentage)"
+            # DIRECTIONAL BY NAME. An earlier version called this
+            # `economically_material`, which was ambiguous to the point of
+            # being misleading here: the observed gap IS large (0.0862 >
+            # 0.05), it simply runs the wrong way. A reader could take
+            # "economically_material: false" to mean "the difference is
+            # small". It is not; it is adverse.
+            "candidate_improvement_at_least_0_05": candidate_improvement,
+            "candidate_improvement_rule": (
+                f"net_sharpe_diff >= +{MATERIAL_MARGIN} ABSOLUTE Sharpe points, "
+                "SIGNED — an improvement BY the candidate. Not a percentage, "
+                "and not a magnitude."
             ),
-            "statistical_evidence": statistical_evidence,
-            "statistical_rule": f"one-sided null-centred p < {alpha}",
+            "evidence_of_candidate_outperformance": evidence_of_outperformance,
+            "evidence_rule": (
+                f"one-sided null-centred p < {alpha}, H1: candidate > comparator"
+            ),
+            # Reported so the magnitude is never lost behind a false flag: the
+            # gap cleared the materiality bar in size while failing it in sign.
+            "observed_absolute_sharpe_gap_at_least_0_05": absolute_gap_material,
+            "observed_gap_direction": (
+                "candidate_below_comparator" if sharpe_diff < 0
+                else "candidate_above_comparator" if sharpe_diff > 0
+                else "exactly_equal"
+            ),
             "note": (
-                "These are INDEPENDENT and are deliberately not collapsed into "
-                "a single 'wins' field. Economic materiality asks whether the "
-                "difference is large enough to matter; statistical evidence "
-                "asks whether the data can distinguish it from zero. Either "
-                "can hold without the other, and reporting one flag would hide "
-                "which."
+                "The first two are INDEPENDENT and are deliberately not "
+                "collapsed into a single 'wins' field: one asks whether the "
+                "candidate improved on the comparator by enough to matter, the "
+                "other whether the data support outperformance at all. Either "
+                "can hold without the other. The third is a magnitude, not a "
+                "verdict, and exists so a large adverse gap cannot hide behind "
+                "two false booleans."
+            ),
+        },
+        "reading": {
+            "primary": (
+                "No Sharpe outperformance is established. The observed net "
+                "Sharpe difference is NEGATIVE and the paired interval spans "
+                "zero, so the candidate is not shown to beat the comparator "
+                "and the comparator is not shown to beat the candidate."
+            ),
+            "secondary": (
+                "As a SECONDARY result, the paired bootstrap interval for the "
+                "ANNUALIZED MEAN return difference is entirely negative. Do "
+                "not therefore say 'no difference established' without "
+                "qualification: that is true of the Sharpe comparison, which "
+                "is the registered question, and false of this interval."
+            ),
+            "costs_did_not_create_the_result": (
+                "Transaction costs worsened the gap but did not cause it. The "
+                "candidate's GROSS Sharpe was already lower — "
+                f"{cand_desc['gross_sharpe']} versus {comp_desc['gross_sharpe']} "
+                "— so this is not a story about an informative signal priced "
+                "out by trading friction."
+            ),
+            "turnover": (
+                f"The regime layer turned over "
+                f"{round(cand_desc['avg_turnover'] / comp_desc['avg_turnover'], 1)}x "
+                "as much as the comparator "
+                f"({cand_desc['avg_turnover']} versus {comp_desc['avg_turnover']})."
+            ),
+            "not_worse_on_every_dimension": (
+                "The candidate had a SMALLER maximum drawdown — "
+                f"{round(100 * cand_desc['max_drawdown'], 2)}% versus "
+                f"{round(100 * comp_desc['max_drawdown'], 2)}%. It did not "
+                "lose on every risk dimension, and reporting only the Sharpe "
+                "comparison would omit that."
+            ),
+            "trustworthiness": (
+                f"Zero fallbacks on both sides across "
+                f"{cand_desc['n_rebalances_in_test']} rebalances: every number "
+                "was produced by the model its label names, so no part of this "
+                "comparison is a substitute wearing another model's name."
+            ),
+            "bearing_on_etf_2017": (
+                "The 25% cap made the old five-ETF result WEAK FOR "
+                "ATTRIBUTION: with the constraint dominating the objective, "
+                "that experiment could not test a regime advantage cleanly. "
+                "This universe removes that limitation — 249 distinct "
+                "allocations in 249 rebalances — and still finds no regime "
+                "advantage. Cap dominance was therefore not the sole "
+                "explanation for the earlier negative result. Do NOT write "
+                "that the cap 'masked' an advantage: nothing here shows an "
+                "advantage was there to mask."
             ),
         },
         "multiple_testing": {
@@ -418,11 +524,19 @@ def run() -> dict:
              artifact["paired_inference"]["sharpe_diff_ci"])
     log.info("  one-sided p (null)    : %.4f", paired["p_value_no_outperformance"])
     log.info("  P(dSharpe > 0)        : %.4f", paired["prob_sharpe_diff_positive"])
-    log.info("  d annual return       : %+.4f", paired["ann_return_diff"])
+    log.info("  d ann MEAN return     : %+.6f  CI %s", paired["ann_return_diff"],
+             [round(float(x), 6) for x in paired["ann_return_diff_ci"]])
+    log.info("  d GEOMETRIC ann return: %+.6f  (different definition, no CI)",
+             cand_desc["net_geometric_annual_return"]
+             - comp_desc["net_geometric_annual_return"])
     log.info("")
-    log.info("  economically_material : %s  (>= %.2f absolute)",
-             economically_material, MATERIAL_MARGIN)
-    log.info("  statistical_evidence  : %s  (p < %.2f)", statistical_evidence, alpha)
+    log.info("  candidate_improvement_at_least_0_05  : %s  (signed, >= +%.2f)",
+             candidate_improvement, MATERIAL_MARGIN)
+    log.info("  evidence_of_candidate_outperformance : %s  (p < %.2f)",
+             evidence_of_outperformance, alpha)
+    log.info("  observed_absolute_gap_at_least_0_05  : %s  (magnitude %.4f, %s)",
+             absolute_gap_material, abs(sharpe_diff),
+             "candidate below comparator" if sharpe_diff < 0 else "candidate above")
     log.info("")
     log.info("  Q1 complete -> %s", out_path)
     log.info("  Q2 is a SEPARATE step. Commit this artifact before starting it.")
