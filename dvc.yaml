@@ -905,3 +905,63 @@ stages:
       - regime.bear_strategy
       - phase5.test_frac
       - phase5.bootstrap
+
+  # ── global_2004 Q2 — the SEARCH, with full RC/SPA correction ──────────────
+  # 240 reachable RF/XGBoost x lever configurations against regime_conditional.
+  # The composite null is "no candidate in the searched family outperforms".
+  #
+  # Interpretation is frozen by amendment 2 (pre-registration §10.3): primary
+  # endpoint is the net-Sharpe differential, secondary is the annualized mean
+  # return, alpha = 0.10 inherited, RC and SPA reported SEPARATELY, and
+  # concordance requires BOTH to reject on the PRIMARY endpoint. All four
+  # cells are persisted; the verdict may not read the smallest.
+  #
+  # Depends on the Q1 artifact: the runner refuses to start without it and
+  # asserts the benchmark reproduces Q1's metrics exactly, so the two
+  # questions are answered against the identical benchmark realization.
+  #
+  # RUN-ONCE. Roughly 4-5 hours: 240 walk-forward backtests with per-rebalance
+  # model refits on a 5,467-row, 10-asset panel.
+  global_2004_q2:
+    cmd: python src/run_global_2004_q2.py
+    deps:
+      - src/run_global_2004_q2.py
+      - src/run_global_2004_q1.py
+      - src/global_universe.py
+      - src/backtest.py
+      - src/strategies.py
+      - src/metrics.py
+      - src/model_selection.py
+      - src/purged_kfold.py
+      - src/run_reality_check.py
+      - params_global_2004.yaml
+      - docs/GLOBAL_UNIVERSE_PREREGISTRATION.md
+      - data/gold/log_returns_global.parquet
+      - data/gold/ml_features_global.parquet
+      - data/gold/global_2004_q1_results.json
+    outs:
+      - data/gold/global_2004_q2_results.json
+      - data/gold/global_2004_q2_series.parquet
+    params:
+      - backtest.max_weight
+      - backtest.rebalance_freq
+      - backtest.min_train_days
+      - backtest.risk_free_annual
+      - backtest.costs_bps
+      - ml_signals.min_train_rows
+      - ml_signals.short_window
+      - ml_signals.long_window
+      - ml_signals.momentum_windows
+      - ml_signals.condition_on_regime
+      - regime.n_states
+      - regime.n_restarts
+      - regime.random_state_base
+      - regime.covariance_type
+      - regime.min_regime_train_days
+      - phase5.test_frac
+      - phase5.rf_grid
+      - phase5.xgb_grid
+      - phase5.shrink_grid
+      - phase5.penalty_grid
+      - phase5.bootstrap
+      - walk_forward_cv
