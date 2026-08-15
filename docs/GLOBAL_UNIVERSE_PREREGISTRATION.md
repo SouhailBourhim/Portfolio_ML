@@ -405,6 +405,7 @@ in its own commit, before any affected result is calculated. An empty log is the
 |---|---|---|---|
 | 2026-08-15 | Readiness gates (checkpoint 1) | `synchronous_trading` ratio gate **replaced** by `no_lag_dominance` | The original statistic was mis-specified. Full record below. |
 | 2026-08-15 | §9 lineage | `global_2004` config lives in `params_global_2004.yaml`, not in `params.yaml` | Approved in review. Isolating the experiment from the released runners is the correct design. |
+| 2026-08-15 | §5 Q2 | Endpoint hierarchy and RC/SPA disagreement rule frozen | §5 named the tests but not how to read them. Full record below. |
 
 #### Amendment 1 — `synchronous_trading` → `no_lag_dominance` (2026-08-15)
 
@@ -461,6 +462,55 @@ the gate exists to provide, and it is locked in by regression tests over all thr
 **What the gate licenses you to say.** *"No stale-price lead/lag signature detected."* **Not**
 *"synchrony proven"* — the statistic can only fail to find a signature it is built to detect, and
 absence of evidence at daily frequency is not proof of simultaneous price formation.
+
+#### Amendment 2 — Q2 endpoint hierarchy and RC/SPA disagreement rule (2026-08-15)
+
+**Legitimacy.** Committed before Q2's implementation and before any Q2 return has been computed.
+Q1 is already frozen and is not touched by this amendment.
+
+**What was under-specified.** §5 Q2 named White (2000) Reality Check and Hansen (2005) SPA, and
+required the full reachable candidate ledger. It did **not** say which statistic is the endpoint,
+nor how to read the two tests when they disagree. Left open, that is a researcher degree of
+freedom exercised *after* seeing results — the precise thing this document exists to remove. It is
+closed now, in advance.
+
+**1. Endpoint hierarchy.**
+
+| | Endpoint | Status |
+|---|---|---|
+| Primary | **net-Sharpe differential** vs the benchmark | the registered question |
+| Secondary | **annualized mean-return differential** | reported, labelled SECONDARY, never promoted |
+
+The secondary endpoint is reported because it is informative — in Q1 its interval was entirely
+negative while the Sharpe interval spanned zero — but it can never substitute for the primary. A
+result significant only on the mean-return endpoint is **not** family outperformance.
+
+**2. Significance level.** `α = 0.10`, inherited unchanged from the existing evaluation
+(`params.yaml phase5.bootstrap.alpha`). Not re-chosen for Q2.
+
+**3. Both tests reported separately.** White RC and Hansen SPA are reported as distinct p-values
+per endpoint. Neither is presented as "the" answer, and the artifact never reports a single
+p-value for the family.
+
+**4. The concordance rule.**
+
+```
+concordant_evidence_of_family_outperformance = (RC rejects at α) AND (SPA rejects at α)
+                                                on the PRIMARY Sharpe endpoint
+```
+
+- **Both reject** → concordant evidence of family outperformance.
+- **Exactly one rejects** → **"test-dependent evidence"**. Reported as such, explicitly NOT as
+  established outperformance. SPA is the more powerful test by construction (it discards
+  irrelevant poor candidates), so RC-rejects-while-SPA-does-not is the more surprising direction
+  and must be reported, not resolved.
+- **Neither rejects** → no evidence of family outperformance.
+
+**5. No statistic shopping.** The reported conclusion may **not** be taken from whichever test or
+endpoint yields the smaller p-value. All four cells (2 tests × 2 endpoints) are computed and
+persisted; the verdict reads only the primary-endpoint pair, under the rule above. This is stated
+because the failure mode is silent: with four p-values in an artifact, quoting the smallest is a
+single sentence away and looks like reporting.
 
 ---
 
