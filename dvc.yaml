@@ -942,7 +942,10 @@ stages:
   #
   # RUN-ONCE. Roughly 4-5 hours: 240 walk-forward backtests with per-rebalance
   # model refits on a 5,467-row, 10-asset panel.
+  # FROZEN: run-once evidence. 240 candidates, 6.1 hours. Q2 must never be
+  # rebuilt — the interpretation stage below reads its outputs additively.
   global_2004_q2:
+    frozen: true
     cmd: python src/run_global_2004_q2.py
     deps:
       - src/run_global_2004_q2.py
@@ -984,3 +987,21 @@ stages:
       - phase5.penalty_grid
       - phase5.bootstrap
       - walk_forward_cv
+
+  # ── global_2004 — additive interpretation of the FROZEN Q2 evidence ───────
+  # Recovers the honestly-selected challengers' frozen-test performance from
+  # the persisted per-candidate series, and states the telemetry accurately.
+  # Reads frozen artifacts; re-runs no model and rebuilds no evidence. It is
+  # NOT frozen itself: it may be regenerated freely because it derives from,
+  # rather than produces, evidence.
+  global_2004_interpretation:
+    cmd: python src/run_global_2004_interpretation.py
+    deps:
+      - src/run_global_2004_interpretation.py
+      - data/gold/global_2004_q1_results.json
+      - data/gold/global_2004_q2_results.json
+      - data/gold/global_2004_q2_series.parquet
+    outs:
+      - data/gold/global_2004_interpretation.json
+    params:
+      - backtest.risk_free_annual

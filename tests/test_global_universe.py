@@ -252,7 +252,13 @@ class TestFrozenEvidenceAndProtocolLineage:
     instead of rebuilding evidence.
     """
 
-    COMPLETED_STAGES = ("global_2004_data", "global_2004_q1")
+    # All three evidence-producing stages, frozen once each has run.
+    # global_2004_q2 joined this list after its single 6.1-hour run.
+    COMPLETED_STAGES = ("global_2004_data", "global_2004_q1", "global_2004_q2")
+    # Derived from the evidence rather than producing it, so it stays
+    # regenerable — freezing it would make the reading harder to correct than
+    # the measurement, which is backwards.
+    DERIVED_STAGE = "global_2004_interpretation"
     PROTOCOL_DOC = "docs/GLOBAL_UNIVERSE_PREREGISTRATION.md"
 
     def _stages(self) -> dict:
@@ -266,15 +272,38 @@ class TestFrozenEvidenceAndProtocolLineage:
         for name in self.COMPLETED_STAGES:
             assert name in stages, f"{name} missing from dvc.yaml"
             assert stages[name].get("frozen") is True, (
-                f"{name} is run-once evidence and must be frozen so Q2 "
-                "consumes its pinned output rather than rebuilding it."
+                f"{name} is run-once evidence and must be frozen, so a later "
+                "repro consumes its pinned output rather than rebuilding it."
             )
 
-    def test_q2_is_not_frozen(self):
-        """The other direction: freezing everything would be useless."""
+    def test_the_derived_interpretation_stage_is_not_frozen(self):
+        """The other direction: freezing everything would be wrong.
+
+        The interpretation stage READS frozen evidence and writes a reading of
+        it. Readings get corrected — the Q1 verdict names were corrected once
+        already — so it must stay regenerable. Freezing it would make the
+        interpretation harder to fix than the measurement.
+        """
         stages = self._stages()
-        if "global_2004_q2" in stages:
-            assert stages["global_2004_q2"].get("frozen") is not True
+        if self.DERIVED_STAGE in stages:
+            assert stages[self.DERIVED_STAGE].get("frozen") is not True
+
+    def test_the_interpretation_stage_produces_no_new_evidence(self):
+        """It may depend only on already-frozen artifacts and its own source.
+
+        If it ever gained a returns matrix or a model dependency it would be
+        producing evidence under a name that promises it only reads.
+        """
+        stages = self._stages()
+        if self.DERIVED_STAGE not in stages:
+            pytest.skip("interpretation stage not defined")
+        allowed_suffixes = ("_q1_results.json", "_q2_results.json",
+                            "_q2_series.parquet", "run_global_2004_interpretation.py")
+        for dep in stages[self.DERIVED_STAGE].get("deps") or []:
+            assert dep.endswith(allowed_suffixes), (
+                f"{dep} is not a frozen result artifact; the interpretation "
+                "stage must read evidence, never generate it."
+            )
 
     @pytest.mark.parametrize(
         "stage", ["global_2004_data", "global_2004_q1", "global_2004_q2"]

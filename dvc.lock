@@ -1863,3 +1863,30 @@ stages:
       hash: md5
       md5: 791d656d7bb82313c282798f095a95ef
       size: 4620871
+  global_2004_interpretation:
+    cmd: python src/run_global_2004_interpretation.py
+    deps:
+    - path: data/gold/global_2004_q1_results.json
+      hash: md5
+      md5: 26835d3913244131fb400825a67babec
+      size: 8774
+    - path: data/gold/global_2004_q2_results.json
+      hash: md5
+      md5: 0da6b78411531fc583bfd3e0aafca8d4
+      size: 67398
+    - path: data/gold/global_2004_q2_series.parquet
+      hash: md5
+      md5: 791d656d7bb82313c282798f095a95ef
+      size: 4620871
+    - path: src/run_global_2004_interpretation.py
+      hash: md5
+      md5: ce2b18b63f826d6d5baf9ee4418d64ec
+      size: 10798
+    params:
+      params.yaml:
+        backtest.risk_free_annual: 0.0
+    outs:
+    - path: data/gold/global_2004_interpretation.json
+      hash: md5
+      md5: 4a5c820d86821d8e0f1fe30ab24de263
+      size: 4907
