@@ -32,8 +32,15 @@ client, ni exécution d’ordres.
 
 [Rapport final — PDF](output/pdf/Rapport_PFA_Final_2026.pdf) ·
 [Présentation de soutenance — PowerPoint](output/presentation/Soutenance_PFA_Portfolio_ML_INPT_EURAFRIC.pptx) ·
+[Notebook exécuté — preuve `global_2004`](notebooks/phase10_global_2004_evidence.ipynb) ·
 [Model governance](docs/MODEL_GOVERNANCE.md) ·
 [Documentation d’explicabilité](docs/EXPLAINABILITY.md)
+
+**État final de la recherche.** Les trois évaluations sont terminées. Sur les deux univers de la
+release comme sur l’extension pré-enregistrée `global_2004`, aucune couche ML n’établit une
+surperformance face à son comparateur primaire. Le résultat central n’est donc pas un modèle
+« gagnant », mais une chaîne de preuve capable de distinguer un maximum de backtest séduisant
+d’un avantage qui résiste aux coûts, au temps et au data snooping.
 
 ![Les quatre problèmes traités par le projet](docs/rapport_final/assets/figures/quatre_problemes.png)
 
@@ -62,7 +69,7 @@ d’un autre benchmark.
 - Bootstrap apparié, White Reality Check et Hansen SPA.
 - Explicabilité exacte, télémétrie par fit, model cards et politique challenger.
 - Dashboard Streamlit, API FastAPI read-only, Docker, CI et portes de release.
-- **792 tests** automatisés dans l’état final du dépôt.
+- **891 tests** automatisés dans l’état final du dépôt.
 
 ## Résultats essentiels
 
@@ -71,6 +78,8 @@ d’un autre benchmark.
 | Le système à régimes bat-il Markowitz sur `full_2021` ? | Sharpe net **0,9571** contre **1,0690**, écart observé **−10,47 %** | Résultat descriptif défavorable au ML ; aucun test pairé de cette différence n’établit la supériorité inverse. |
 | Le système à régimes bat-il la meilleure référence ETF ? | **0,9371** contre **0,9525**, écart observé **−1,62 %** | Le ML ne crée pas de gain observé sur cet univers. |
 | Un challenger gagne-t-il après les 240 essais ? | **Non établi** par White RC ou Hansen SPA contre le comparateur primaire pré-spécifié | Le choix du benchmark n’est pas réécrit après observation du résultat. |
+| Le système à régimes gagne-t-il lorsque l’univers peut réellement exprimer l’allocation ? | Sur `global_2004` : **0,8923** contre **0,9785**, ΔSharpe **−0,0862**, IC 90 % **[−0,2133 ; +0,0414]** | Q1 n’établit aucune surperformance Sharpe dans un univers de 10 ETF produisant 249 allocations distinctes sur 249. L’intervalle ne démontre pas davantage la supériorité inverse. |
+| Le meilleur résultat d’une nouvelle recherche de 240 challengers est-il crédible ? | Maximum brut **+0,0930**, mais White RC **p = 0,9045** et Hansen SPA **p = 0,8656** | Q2 montre pourquoi le meilleur candidat observé ne doit pas être transformé en résultat après sélection. |
 | Davantage de données marocaines suffisent-elles ? | L’IC augmente de **×2 à ×4** sur 12 actions, 2005–2024, sans gain portefeuille établi | La limite n’est pas seulement la quantité : qualité, couverture économique et transformation signal → allocation dominent. |
 | Quelle intervention est la plus robuste sur les ETF ? | Le plafond de **25 %** : Sharpe 0,9525 contre 0,8650 sans plafond | La contrainte de gestion agit comme un puissant régularisateur de l’erreur d’estimation. |
 | Les étiquettes cachent-elles des modèles dégradés ? | Voir l’énoncé « Intégrité des modèles » dans **Faits publiés** ci-dessous | Chiffre généré depuis `data/gold/fit_report_summary.json`, jamais saisi ; le compte est confronté à un second artefact (`dashboard_regime.parquet`) par `TestFallbackCountsAgree`. |
@@ -83,9 +92,10 @@ d’un autre benchmark.
 |---|---|---|---|---|
 | `full_2021` | 4 actions BVC + 5 ETF | 2021-07-29 → 2026-07 | **MAD**, conversion causale au taux officiel BAM | Univers principal mixte ; exposition USD/MAD non couverte. |
 | `etf_2017` | SPY, QQQ, EEM, GLD, TLT | 2004-11 → 2026-07 | **USD** | Historique profond couvrant 2008, 2020 et 2022. |
+| `global_2004` | 10 ETF américains multi-classes | 2004-11 → 2026-08 | **USD** | Extension de recherche pré-enregistrée ; hors API et dashboard. |
 
-Les deux univers sont évalués séparément. Leurs niveaux de Sharpe ne sont pas comparables entre
-eux : devise, fenêtre et nombre d’actifs diffèrent. L’exposition USD/MAD non couverte de
+Les univers sont évalués séparément. Leurs niveaux de Sharpe ne sont pas directement comparables
+entre eux : devise, fenêtre, composition et nombre d’actifs diffèrent. L’exposition USD/MAD non couverte de
 `full_2021` constitue un **risque économique matériel** ; elle est intégrée aux performances
 réalisées, sans contrat de couverture ni coût de roulement.
 
@@ -168,6 +178,12 @@ pourtant la référence de **+0,093 de Sharpe** — les corrections de White
 (*p* = 0,905) et de Hansen (*p* = 0,866) refusent cette valeur, car elle est le
 maximum d'une recherche de 240 configurations.
 
+Les challengers effectivement sélectionnés sans accès au segment final affichent eux aussi un
+Sharpe net observé plus bas : **−0,0657** pour RF et **−0,0898** pour XGBoost relativement à
+`regime_conditional`. C’est un diagnostic opérationnel descriptif, **pas** une preuve statistique
+de sous-performance : aucun test pairé individuel de ces deux différences n’avait été
+pré-spécifié.
+
 > Une fois les deux défauts d'identification levés, les modèles complexes ont
 > enfin reçu un test équitable — et n'ont toujours pas établi d'avantage. La
 > contribution est la preuve auditable montrant pourquoi le gagnant brut,
@@ -176,7 +192,8 @@ maximum d'une recherche de 240 configurations.
 📄 **[Résultats détaillés — `GLOBAL_2004_RESULTS.md`](docs/GLOBAL_2004_RESULTS.md)**
 (document généré depuis les artefacts) ·
 [protocole pré-enregistré](docs/GLOBAL_UNIVERSE_PREREGISTRATION.md) ·
-chapitre 8 du rapport final.
+[notebook de synthèse exécuté](notebooks/phase10_global_2004_evidence.ipynb) ·
+chapitre 8 du rapport final · cinq planches dans la présentation de soutenance.
 
 ⚠️ `etf_2017` et `global_2004` partagent cinq instruments et des périodes
 largement recouvrantes : ce sont **deux évaluations distinctes mais
@@ -212,6 +229,17 @@ source .venv/bin/activate
 pip install -r requirements.lock.txt
 pytest -q
 ```
+
+Le notebook de synthèse final est déjà exécuté et ne relance ni ingestion, ni sélection, ni
+backtest :
+
+```bash
+jupyter notebook notebooks/phase10_global_2004_evidence.ipynb
+```
+
+Sa source est reconstruite par `scripts/build_visualization_notebooks.py`. Les tests vérifient
+qu’elle ne lit que les artefacts Gold versionnés, que toutes les cellules ont été exécutées et
+qu’aucun accès réseau ou entraînement ne se glisse dans cette couche de présentation.
 
 La suite de tests est hors ligne. Les données de marché ne sont pas distribuées dans Git. Le
 remote DVC est privé en raison des licences de données ; les membres autorisés configurent leurs
@@ -271,7 +299,7 @@ dashboard/           application Streamlit à deux vues
 data/                artefacts Bronze/Silver/Gold gérés par DVC
 experiments/         expériences de robustesse séparées de la release
 notebooks/           notebooks exécutés, reconstruits depuis les artefacts finaux
-tests/               792 tests unitaires, d’intégration et de gouvernance
+tests/               891 tests unitaires, d’intégration et de gouvernance
 docs/                livrables, model cards et documentation
 docs/rapport_final/  SOURCE MAINTENUE du rapport de soumission
 docs/rapport/        version historique et courte — archive, non maintenue
@@ -286,6 +314,9 @@ compose.yaml         API, pipeline, tests et notebooks conteneurisés
 
 - [Rapport final du PFA](output/pdf/Rapport_PFA_Final_2026.pdf)
 - [Présentation de soutenance](output/presentation/Soutenance_PFA_Portfolio_ML_INPT_EURAFRIC.pptx)
+- [Notebook exécuté — synthèse `global_2004`](notebooks/phase10_global_2004_evidence.ipynb)
+- [Résultats générés de `global_2004`](docs/GLOBAL_2004_RESULTS.md)
+- [Protocole pré-enregistré de `global_2004`](docs/GLOBAL_UNIVERSE_PREREGISTRATION.md)
 - [Model governance](docs/MODEL_GOVERNANCE.md)
 - [Model integrity](docs/MODEL_INTEGRITY.md)
 - [Explainability](docs/EXPLAINABILITY.md)
@@ -302,6 +333,10 @@ compose.yaml         API, pipeline, tests et notebooks conteneurisés
 - Un rendement de dividende BVC reste estimé et documenté par analyse de sensibilité.
 - La correction multiple porte sur la famille définie de 240 configurations ; les huit
   comparaisons externes constituent un niveau de multiplicité distinct.
+- Sur `global_2004`, Q2 change simultanément la coupe d’actifs et la politique de variables macro ;
+  son résultat ne peut pas être attribué au seul élargissement de l’univers. White RC et Hansen
+  SPA corrigent la recherche de stratégies, pas la décision externe de construire ce troisième
+  univers après diagnostic des deux premiers.
 - Il n’existe ni exécution d’ordres, ni modèle de capacité/impact marché, ni stratégie de
   couverture USD/MAD.
 - Le monitoring est instrumenté **hors ligne** mais volontairement non actif tant que la

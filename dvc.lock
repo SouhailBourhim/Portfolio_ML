@@ -927,12 +927,12 @@ stages:
       size: 10489
     - path: requirements.lock.txt
       hash: md5
-      md5: ab5a746d0bd42b36a086c3ca7636bb95
-      size: 5950
+      md5: 9173abab1f03c7cfa598a358f6f8cbe8
+      size: 5969
     - path: requirements.txt
       hash: md5
-      md5: c4ade0a04a1cfb5195b04f4cceb0b754
-      size: 3794
+      md5: 5a5afe4223e81912162c8e1ce24b53f7
+      size: 4313
     - path: src/snapshot.py
       hash: md5
       md5: 47049978415bf70c923002e3675f3d39
@@ -940,7 +940,7 @@ stages:
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: 2fe570c08559a2ce8c0b63ecfc34ee5c
+      md5: 7829e17998f74e6a8ebe9160774bd281
       size: 10018
   smoke:
     cmd: python scripts/smoke_pipeline.py

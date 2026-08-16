@@ -37,6 +37,13 @@ NOTEBOOKS = {
         "monitoring_baseline.json",
         "snapshot_manifest.json",
     },
+    "phase10_global_2004_evidence.ipynb": {
+        "global_2004_readiness.json",
+        "global_2004_q1_results.json",
+        "global_2004_q2_results.json",
+        "global_2004_q2_series.parquet",
+        "snapshot_manifest.json",
+    },
 }
 
 
@@ -113,6 +120,19 @@ def test_currency_notebook_keeps_the_two_numeraires_separate() -> None:
     assert "ne sont jamais agrégés" in source
 
 
+def test_global_2004_notebook_preserves_the_licensed_interpretation() -> None:
+    source = "\n".join(
+        cell.source
+        for cell in _load("phase10_global_2004_evidence.ipynb").cells
+    )
+    lowered = source.casefold()
+    assert "deux évaluations distinctes mais statistiquement recouvrantes" in lowered
+    assert "aucun test pairé individuel" in lowered
+    assert "sharpe net observé inférieur" in lowered
+    assert "indépendantes" not in lowered
+    assert "masqué un avantage" not in lowered
+
+
 def test_generator_and_generated_sources_are_in_sync(tmp_path: Path) -> None:
     before = {
         name: (ROOT / "notebooks" / name).read_bytes() for name in NOTEBOOKS
@@ -125,6 +145,7 @@ def test_generator_and_generated_sources_are_in_sync(tmp_path: Path) -> None:
         "phase7_model_decision_explainability.ipynb": "build_explainability_notebook",
         "phase8_validation_and_statistical_evidence.ipynb": "build_validation_notebook",
         "phase9_risk_cost_and_robustness.ipynb": "build_risk_notebook",
+        "phase10_global_2004_evidence.ipynb": "build_global_2004_notebook",
     }.items()}
     for name, notebook in rebuilt.items():
         # Execution outputs are intentionally absent from the deterministic source builder.
