@@ -40,11 +40,21 @@ run_gate() {
 # 1. Data matches dvc.lock. Everything downstream assumes this, so it goes
 #    first: a stale artifact makes every later gate meaningless rather than
 #    failing honestly.
+#    FROZEN-STAGE WARNINGS. `dvc status` prints one
+#    "WARNING: stage: '<name>' is frozen." line per frozen stage, on stderr,
+#    even when everything is up to date. The global_2004 stages are frozen on
+#    purpose — they are run-once evidence that must never be rebuilt — so those
+#    lines are EXPECTED output, not a defect. They are echoed for the reader
+#    but stripped before the equality check, which otherwise can never pass
+#    once any stage is frozen. (That is exactly how this gate broke on the
+#    2026-08-16 merge to main.)
 gate_dvc_status() {
-    local out
+    local out checked
     out="$($DVC status 2>&1)" || { echo "$out"; return 1; }
     echo "$out"
-    [ "$out" = "Data and pipelines are up to date." ]
+    checked="$(printf '%s\n' "$out" \
+        | grep -v "^WARNING: stage: '.*' is frozen\." || true)"
+    [ "$checked" = "Data and pipelines are up to date." ]
 }
 
 # 2. The manifest identifies the code that produced these artifacts, was
