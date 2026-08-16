@@ -77,7 +77,7 @@ shown to a selector.
 | `rf_signal_tuned` | 0.8266 | -0.0657 | 7.78% | 0 |
 | `xgb_signal_tuned` | 0.8025 | -0.0898 | 8.05% | 0 |
 
-Both honestly selected challengers UNDERPERFORM the benchmark on the frozen test segment. That is a different and stronger statement than the family verdict: the family test says the BEST of 240 cannot be believed, while this says the ones a disciplined practitioner would actually have chosen, using only training data, did worse.
+The honestly selected RF and XGBoost challengers had LOWER OBSERVED net Sharpe on the frozen test segment: -0.0657 and -0.0898 relative to regime_conditional. This is an operationally relevant DESCRIPTIVE result, not statistical evidence of underperformance — no individual paired test of these differences was pre-specified. It is a complementary operational diagnostic alongside the family verdict, not a stronger version of it: the family test asks whether the best of 240 can be believed, this describes what a disciplined practitioner would have held.
 
 ## 5. Q2 — the 240-candidate family test
 

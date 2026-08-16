@@ -1880,13 +1880,13 @@ stages:
       size: 4620871
     - path: src/run_global_2004_interpretation.py
       hash: md5
-      md5: ce2b18b63f826d6d5baf9ee4418d64ec
-      size: 10798
+      md5: 5c9c3bdeda16ea5db5a4f6944b743127
+      size: 11587
     params:
       params.yaml:
         backtest.risk_free_annual: 0.0
     outs:
     - path: data/gold/global_2004_interpretation.json
       hash: md5
-      md5: 4a5c820d86821d8e0f1fe30ab24de263
-      size: 4907
+      md5: 710570750534340a510817c05de8d1b1
+      size: 5488

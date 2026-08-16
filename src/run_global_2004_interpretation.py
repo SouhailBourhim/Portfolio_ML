@@ -193,12 +193,24 @@ def run() -> dict:
         },
         "reading": {
             "selected_vs_family": (
-                "Both honestly selected challengers UNDERPERFORM the benchmark "
-                "on the frozen test segment. That is a different and stronger "
-                "statement than the family verdict: the family test says the "
-                "BEST of 240 cannot be believed, while this says the ones a "
-                "disciplined practitioner would actually have chosen, using "
-                "only training data, did worse."
+                "The honestly selected RF and XGBoost challengers had LOWER "
+                "OBSERVED net Sharpe on the frozen test segment: -0.0657 and "
+                "-0.0898 relative to regime_conditional. This is an "
+                "operationally relevant DESCRIPTIVE result, not statistical "
+                "evidence of underperformance — no individual paired test of "
+                "these differences was pre-specified. It is a complementary "
+                "operational diagnostic alongside the family verdict, not a "
+                "stronger version of it: the family test asks whether the best "
+                "of 240 can be believed, this describes what a disciplined "
+                "practitioner would have held."
+            ),
+            "selected_vs_family_wording_note": (
+                "An earlier version of this field said the selected challengers "
+                "'UNDERPERFORM' and 'did worse', and called it a 'stronger "
+                "statement'. That over-claimed: lower observed Sharpe is not "
+                "established underperformance without a paired test, and none "
+                "was pre-specified for these two comparisons. Corrected "
+                "2026-08-16."
             ),
             "overlap_caveat": (
                 "etf_2017 and global_2004 are TWO DISTINCT BUT STATISTICALLY "

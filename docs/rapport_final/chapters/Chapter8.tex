@@ -170,15 +170,26 @@ segment de test n'étant jamais montré à un sélecteur — donnent~:
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\textwidth]{assets/figures/global_2004_sharpes.pdf}
-  \caption[Sharpe des stratégies retenues]{Sur le segment de test gelé, les deux
-  challengers honnêtement sélectionnés se situent \emph{sous} la stratégie à
-  régimes, elle-même sous le comparateur classique.}
+  \caption[Sharpe des stratégies retenues]{Sharpe net \emph{observé} sur le
+  segment de test gelé. Les deux challengers honnêtement sélectionnés y
+  affichent une valeur inférieure à celle de la stratégie à régimes,
+  elle-même inférieure à celle du comparateur classique. Aucun test pairé
+  individuel n'a été pré-spécifié pour ces écarts~: ce sont des grandeurs
+  descriptives.}
   \label{fig:g2004sharpes}
 \end{figure}
 
-C'est un énoncé plus fort que le verdict de famille~: celui-ci dit que le
-meilleur de 240 n'est pas crédible, tandis que celui-là constate que les
-configurations réellement déployables ont fait moins bien.
+Les challengers RF et XGBoost honnêtement sélectionnés affichent un Sharpe net
+observé inférieur de respectivement $0{,}0657$ et $0{,}0898$ à celui de
+\texttt{regime\_conditional}. Ce constat descriptif est pertinent pour la
+sélection opérationnelle, mais ne constitue pas une preuve statistique de
+sous-performance~: \textbf{aucun test pairé individuel de ces écarts n'a été
+pré-spécifié}.
+
+C'est donc un \emph{diagnostic opérationnel complémentaire} du verdict de
+famille, et non une version plus forte de celui-ci~: le test de famille demande
+si le meilleur de 240 est crédible, tandis que ce constat décrit ce qu'un
+praticien discipliné aurait effectivement détenu.
 
 \textbf{Ce résultat n'est pas un artefact de repli.} La télémétrie enregistre
 \emph{un} repli sur 59\,760~ajustements de la famille, trois sur 249 pour la
