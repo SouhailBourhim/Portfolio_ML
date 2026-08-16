@@ -879,8 +879,8 @@ stages:
       size: 119827
     - path: data/gold/model_explanations.json
       hash: md5
-      md5: 0421a9538bc871dd04fe61d24c77595b
-      size: 36660
+      md5: 1545dd5fec216ace47f0c8ba56e73dbb
+      size: 37297
     - path: data/gold/monitoring_baseline.json
       hash: md5
       md5: cbf1c01d1db474550dbbea5e38a2ef27
@@ -935,13 +935,13 @@ stages:
       size: 3794
     - path: src/snapshot.py
       hash: md5
-      md5: f9c4661f53a183eceb2ec6cdb2a30967
-      size: 13811
+      md5: 47049978415bf70c923002e3675f3d39
+      size: 15155
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: 89d5c4021bb9cd74fe3b2c2440285ae5
-      size: 9071
+      md5: 2fe570c08559a2ce8c0b63ecfc34ee5c
+      size: 10018
   smoke:
     cmd: python scripts/smoke_pipeline.py
     deps:
@@ -1012,8 +1012,8 @@ stages:
       size: 3907
     - path: src/explainability.py
       hash: md5
-      md5: d8a3b64150defee9665f21a0dd2e08f7
-      size: 15954
+      md5: 13277dc202b0f3d58277110c99851530
+      size: 16420
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
@@ -1051,8 +1051,8 @@ stages:
     outs:
     - path: data/gold/model_explanations.json
       hash: md5
-      md5: 0421a9538bc871dd04fe61d24c77595b
-      size: 36660
+      md5: 1545dd5fec216ace47f0c8ba56e73dbb
+      size: 37297
   monitoring_baseline:
     cmd: python src/run_monitoring_baseline.py
     deps:
@@ -1434,8 +1434,8 @@ stages:
       size: 482732
     - path: experiments/etf_cap_verdict.py
       hash: md5
-      md5: 222a16d7a3dfa273042ef06d4ba9b9a4
-      size: 10182
+      md5: 343a098aea46d64b2f2eadac81f376cd
+      size: 10415
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
@@ -1481,8 +1481,8 @@ stages:
     outs:
     - path: data/gold/etf_cap_verdict.json
       hash: md5
-      md5: 9c8508b1323443683eb68246ca09da27
-      size: 6806
+      md5: badecc9edb608d25a38d6cca8248972f
+      size: 6812
   nonsync_covariance:
     cmd: python experiments/nonsync_covariance.py
     deps:
@@ -1568,3 +1568,325 @@ stages:
       hash: md5
       md5: 069988fb1e0f955c8015a682e40defd3
       size: 9117
+  ingest_global:
+    cmd: python -c "import sys; sys.path.insert(0, 'src'); from global_universe 
+      import ROOT, ingest_global_prices, load_global_config; cfg = 
+      load_global_config(); ingest_global_prices(cfg['tickers'], 
+      cfg['start_date'], ROOT / cfg['paths']['bronze_prices'])"
+    deps:
+    - path: params_global_2004.yaml
+      hash: md5
+      md5: 4e34f0070d6ce8df54862619c8934163
+      size: 4927
+    - path: src/global_universe.py
+      hash: md5
+      md5: 7ab7a0fa415d7736801ada12dfd0c25c
+      size: 26407
+    outs:
+    - path: data/bronze/raw_global_prices.parquet
+      hash: md5
+      md5: 13ea02a5dfd41c088443d6808af3bd0f
+      size: 439401
+  global_2004_data:
+    cmd: python src/run_global_2004_data.py
+    deps:
+    - path: data/bronze/raw_global_prices.parquet
+      hash: md5
+      md5: 13ea02a5dfd41c088443d6808af3bd0f
+      size: 439401
+    - path: data/bronze/raw_macro.parquet
+      hash: md5
+      md5: 90cafcae5d45c2eb96d191b0438fe0d8
+      size: 128927
+    - path: params_global_2004.yaml
+      hash: md5
+      md5: 4e34f0070d6ce8df54862619c8934163
+      size: 4927
+    - path: src/backtest.py
+      hash: md5
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
+    - path: src/clean.py
+      hash: md5
+      md5: 154aefdfbe7d64d7ed2e3a67fa280ad9
+      size: 25934
+    - path: src/global_universe.py
+      hash: md5
+      md5: 7ab7a0fa415d7736801ada12dfd0c25c
+      size: 26407
+    - path: src/ml_features.py
+      hash: md5
+      md5: f25bfc8e5c15060dbdd2fbe43b113083
+      size: 18483
+    - path: src/run_global_2004_data.py
+      hash: md5
+      md5: 0994aa561c75683359db23b5d0348939
+      size: 15130
+    - path: src/strategies.py
+      hash: md5
+      md5: a54b41030dfb63fffb6124491bfc3506
+      size: 36474
+    params:
+      params.yaml:
+        backtest.max_weight: 0.25
+        backtest.min_train_days: 252
+        backtest.rebalance_freq: ME
+        clean.ffill_limit: 5
+        ml_features.correlation_min_periods: 42
+        ml_features.correlation_window: 63
+        ml_features.macro_lag_days: 1
+        ml_features.volatility_long_window: 63
+        ml_features.volatility_short_window: 21
+    outs:
+    - path: data/gold/global_2004_readiness.json
+      hash: md5
+      md5: 1ae0e9d7b016f9de89b68d8223d7f848
+      size: 10989
+    - path: data/gold/log_returns_global.parquet
+      hash: md5
+      md5: 55b366533a4e10f342b4f1cfd0c2728e
+      size: 579858
+    - path: data/gold/ml_features_global.parquet
+      hash: md5
+      md5: 05abd318ba38fbd67974aa448502c48e
+      size: 427446
+    - path: data/gold/ml_features_global_manifest.json
+      hash: md5
+      md5: 696809e218bbbbedb58a107d1cdf81db
+      size: 1312
+    - path: data/silver/log_returns_global.parquet
+      hash: md5
+      md5: 55b366533a4e10f342b4f1cfd0c2728e
+      size: 579858
+  global_2004_q1:
+    cmd: python src/run_global_2004_q1.py
+    deps:
+    - path: data/gold/global_2004_readiness.json
+      hash: md5
+      md5: 1ae0e9d7b016f9de89b68d8223d7f848
+      size: 10989
+    - path: data/gold/log_returns_global.parquet
+      hash: md5
+      md5: 55b366533a4e10f342b4f1cfd0c2728e
+      size: 579858
+    - path: data/gold/ml_features_global.parquet
+      hash: md5
+      md5: 05abd318ba38fbd67974aa448502c48e
+      size: 427446
+    - path: params_global_2004.yaml
+      hash: md5
+      md5: 4e34f0070d6ce8df54862619c8934163
+      size: 4927
+    - path: src/backtest.py
+      hash: md5
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
+    - path: src/global_universe.py
+      hash: md5
+      md5: 7ab7a0fa415d7736801ada12dfd0c25c
+      size: 26407
+    - path: src/metrics.py
+      hash: md5
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
+    - path: src/regime.py
+      hash: md5
+      md5: d84d5bef91aa32bbec802791dc68698d
+      size: 12557
+    - path: src/run_global_2004_q1.py
+      hash: md5
+      md5: e63107fc7010bd0ade0bd3772e9baffd
+      size: 26858
+    - path: src/run_phase5.py
+      hash: md5
+      md5: 4271e3a0ac841e7420cc4e8a908b91fb
+      size: 28280
+    - path: src/strategies.py
+      hash: md5
+      md5: a54b41030dfb63fffb6124491bfc3506
+      size: 36474
+    params:
+      params.yaml:
+        backtest.costs_bps:
+          etf: 10
+          bvc: 30
+        backtest.max_weight: 0.25
+        backtest.min_train_days: 252
+        backtest.rebalance_freq: ME
+        backtest.risk_free_annual: 0.0
+        phase5.bootstrap:
+          block_len: 21
+          n_boot: 2000
+          alpha: 0.1
+          seed: 0
+        phase5.test_frac: 0.35
+        regime.bear_strategy: min_variance_lw
+        regime.bull_strategy: max_sharpe
+        regime.covariance_type: diag
+        regime.min_regime_train_days: 252
+        regime.n_restarts: 5
+        regime.n_states: 2
+        regime.random_state_base: 0
+    outs:
+    - path: data/gold/global_2004_q1_results.json
+      hash: md5
+      md5: 26835d3913244131fb400825a67babec
+      size: 8774
+  global_2004_q2:
+    cmd: python src/run_global_2004_q2.py
+    deps:
+    - path: data/gold/global_2004_q1_results.json
+      hash: md5
+      md5: 26835d3913244131fb400825a67babec
+      size: 8774
+    - path: data/gold/log_returns_global.parquet
+      hash: md5
+      md5: 55b366533a4e10f342b4f1cfd0c2728e
+      size: 579858
+    - path: data/gold/ml_features_global.parquet
+      hash: md5
+      md5: 05abd318ba38fbd67974aa448502c48e
+      size: 427446
+    - path: params_global_2004.yaml
+      hash: md5
+      md5: 4e34f0070d6ce8df54862619c8934163
+      size: 4927
+    - path: src/backtest.py
+      hash: md5
+      md5: 33b264c68692a63a937944418bb0e1f5
+      size: 15621
+    - path: src/global_universe.py
+      hash: md5
+      md5: 7ab7a0fa415d7736801ada12dfd0c25c
+      size: 26407
+    - path: src/metrics.py
+      hash: md5
+      md5: a7a9578c1b4daeaf27a2ba9656307de4
+      size: 36258
+    - path: src/model_selection.py
+      hash: md5
+      md5: 586e41fc323a71247e125dee54a14634
+      size: 13882
+    - path: src/purged_kfold.py
+      hash: md5
+      md5: 6d40001c67cbf63bcc06ad19ff0c9992
+      size: 16026
+    - path: src/run_global_2004_q1.py
+      hash: md5
+      md5: e63107fc7010bd0ade0bd3772e9baffd
+      size: 26858
+    - path: src/run_global_2004_q2.py
+      hash: md5
+      md5: eb00773b1c2591c3fd9a485bc37c1517
+      size: 21235
+    - path: src/run_reality_check.py
+      hash: md5
+      md5: 78d618ad52ebce89ef6f08fd06548320
+      size: 16648
+    - path: src/strategies.py
+      hash: md5
+      md5: a54b41030dfb63fffb6124491bfc3506
+      size: 36474
+    params:
+      params.yaml:
+        backtest.costs_bps:
+          etf: 10
+          bvc: 30
+        backtest.max_weight: 0.25
+        backtest.min_train_days: 252
+        backtest.rebalance_freq: ME
+        backtest.risk_free_annual: 0.0
+        ml_signals.condition_on_regime: true
+        ml_signals.long_window: 63
+        ml_signals.min_train_rows: 504
+        ml_signals.momentum_windows:
+        - 5
+        - 21
+        - 63
+        ml_signals.short_window: 21
+        phase5.bootstrap:
+          block_len: 21
+          n_boot: 2000
+          alpha: 0.1
+          seed: 0
+        phase5.penalty_grid:
+        - 0.0
+        - 0.5
+        - 1.0
+        - 2.0
+        phase5.rf_grid:
+          max_depth:
+          - 3
+          - 4
+          - 6
+          min_samples_leaf:
+          - 10
+          - 20
+          n_estimators:
+          - 200
+        phase5.shrink_grid:
+        - 0.25
+        - 0.5
+        - 0.75
+        - 1.0
+        phase5.test_frac: 0.35
+        phase5.xgb_grid:
+          max_depth:
+          - 2
+          - 3
+          - 4
+          learning_rate:
+          - 0.03
+          - 0.05
+          - 0.1
+          n_estimators:
+          - 200
+        regime.covariance_type: diag
+        regime.min_regime_train_days: 252
+        regime.n_restarts: 5
+        regime.n_states: 2
+        regime.random_state_base: 0
+        walk_forward_cv:
+          min_train_dates: 378
+          val_dates: 63
+          n_splits: 5
+          embargo_dates: 5
+          label_horizon: 1
+          mode: expanding
+          step_dates:
+    outs:
+    - path: data/gold/global_2004_q2_results.json
+      hash: md5
+      md5: 0da6b78411531fc583bfd3e0aafca8d4
+      size: 67398
+    - path: data/gold/global_2004_q2_series.parquet
+      hash: md5
+      md5: 791d656d7bb82313c282798f095a95ef
+      size: 4620871
+  global_2004_interpretation:
+    cmd: python src/run_global_2004_interpretation.py
+    deps:
+    - path: data/gold/global_2004_q1_results.json
+      hash: md5
+      md5: 26835d3913244131fb400825a67babec
+      size: 8774
+    - path: data/gold/global_2004_q2_results.json
+      hash: md5
+      md5: 0da6b78411531fc583bfd3e0aafca8d4
+      size: 67398
+    - path: data/gold/global_2004_q2_series.parquet
+      hash: md5
+      md5: 791d656d7bb82313c282798f095a95ef
+      size: 4620871
+    - path: src/run_global_2004_interpretation.py
+      hash: md5
+      md5: 5c9c3bdeda16ea5db5a4f6944b743127
+      size: 11587
+    params:
+      params.yaml:
+        backtest.risk_free_annual: 0.0
+    outs:
+    - path: data/gold/global_2004_interpretation.json
+      hash: md5
+      md5: 710570750534340a510817c05de8d1b1
+      size: 5488

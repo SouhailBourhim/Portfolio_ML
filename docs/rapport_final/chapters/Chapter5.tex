@@ -433,10 +433,14 @@ apporter.}
 
 Le nombre d'allocations distinctes éclaire le mécanisme~: à 25~\% sur cinq
 actifs, $5 \times 0{,}25 = 1{,}25$, si bien que tout portefeuille admissible doit
-placer au moins quatre actifs au plafond. La variance minimale n'émet alors
-qu'\textbf{une seule} allocation sur 248~rééquilibrages~; à 30~\%, elle en émet
-171. Sur cet univers, la contrainte — et non le modèle — détermine l'essentiel de
-l'allocation.
+détenir au moins quatre actifs à \emph{poids strictement positif}, aucun actif ne
+pouvant dépasser l'équipondération de plus de cinq points de pourcentage.
+L'arithmétique seule n'impose \textbf{pas} de solution de coin~: l'équipondération
+(20~\% chacun) demeure admissible, sans aucun actif au plafond. Ce qui est
+\emph{mesuré}, en revanche, c'est que la contrainte domine empiriquement
+l'objectif~: la variance minimale n'émet qu'\textbf{une seule} allocation sur
+248~rééquilibrages~; à 30~\%, elle en émet 171. Sur cet univers, la contrainte —
+et non le modèle — détermine en pratique l'essentiel de l'allocation.
 
 \begin{remarquebox}
 À présenter comme un résultat, non comme une limite~: le contrôle du risque le

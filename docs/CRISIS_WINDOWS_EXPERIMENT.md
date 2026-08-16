@@ -69,8 +69,10 @@ explain it, and both are already documented elsewhere in this project:
 1. **`regime_conditional` *becomes* `min_variance_lw` in a bear regime** — that is its
    `bear_strategy` by construction. Since the HMM flags 92% of crisis rebalances as bear (below),
    during a crisis the two strategies are largely the *same portfolio*, not two competing ones.
-2. **Cap degeneracy** (CLAUDE.md §10.1): with 5 assets and a 25% cap, `5 × 0.25 = 1.25` forces
-   ≥4 assets to the cap, so `max_sharpe` collapses onto the same allocation too.
+2. **Cap dominance** (CLAUDE.md §10.1): with 5 assets and a 25% cap, `5 × 0.25 = 1.25` requires
+   ≥4 assets to carry positive weight. That does not by itself force a corner, but empirically
+   the constraint dominates the objective here and `max_sharpe` collapses onto the same
+   allocation too.
 
 So the correct claim is **"constrained optimization protects in crises; 1/N does not"** — a P1/P3
 result about the *constraint and the covariance model*, not a win for the regime layer. The one

@@ -203,10 +203,14 @@ def diagnose_cap_degeneracy(returns: pd.DataFrame, features: pd.DataFrame,
 
     Surfaced by Effect A: on the deep universe `min_variance_lw`,
     `max_sharpe` and `regime_conditional` returned BYTE-IDENTICAL weights
-    after 2018. That is not a coding error, it is arithmetic. With 5 assets
-    and a 25% cap, 5 x 0.25 = 1.25, so ANY feasible long-only portfolio must
-    hold at least four assets, and the optimizer's only remaining freedom is
-    which one to drop. Every objective lands on the same corner.
+    after 2018. That is not a coding error, it is the constraint dominating
+    the objective. With 5 assets and a 25% cap, 5 x 0.25 = 1.25, so ANY
+    feasible long-only portfolio must hold at least four assets with positive
+    weight, and no asset may exceed equal weight by more than five percentage
+    points. The arithmetic alone does NOT force a corner — equal weight is
+    feasible with nothing at the cap — so the observed collapse onto one
+    corner is an EMPIRICAL finding about where these objectives land under a
+    tight cap, which is exactly what the sweep below tests.
 
     This sweep is the causal test: hold everything fixed and vary only the
     cap. If the degeneracy is caused by the constraint, loosening it must

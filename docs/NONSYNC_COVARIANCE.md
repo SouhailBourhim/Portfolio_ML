@@ -94,11 +94,12 @@ shifting by up to **20 percentage points** — against a 25% cap. That is not a 
 difference; it is a different portfolio.
 
 **The control, again.** On `etf_2017` all three estimators return **byte-identical** results
-(0.9525, 0% of rebalances differing). This is the cap degeneracy already documented in
-AGENTS.md §10.1 — with 5 assets and a 25% cap, `5 × 0.25 = 1.25` forces at least four
-positions to the cap, so the constraint picks the portfolio and the covariance model has
-nowhere to express a view. It is worth being explicit that **the control's Stage B is
-therefore uninformative about the estimator**; the control's weight rests entirely on Stage A.
+(0.9525, 0% of rebalances differing). This is the cap dominance already documented in
+AGENTS.md §10.1 — with 5 assets and a 25% cap, `5 × 0.25 = 1.25` requires at least four
+positions to carry positive weight; the arithmetic does not force a corner, but empirically
+the constraint picks the portfolio and the covariance model has nowhere to express a view.
+It is worth being explicit that **the control's Stage B is therefore uninformative about the
+estimator**; the control's weight rests entirely on Stage A.
 
 ---
 

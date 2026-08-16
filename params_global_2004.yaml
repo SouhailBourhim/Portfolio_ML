@@ -1,0 +1,85 @@
+# Configuration for the `global_2004` universe experiment.
+#
+# WHY THIS IS A SEPARATE FILE, and not new keys in params.yaml. Two reasons,
+# both load-bearing:
+#
+#   1. params.yaml is hashed BY FILE BYTES by four committed research artifacts
+#      (etf_cap_verdict, nonsync_covariance, nested_walkforward,
+#      risk_free_sensitivity). Adding a key would invalidate all four and force
+#      multi-hour recomputation for a change that alters none of their numbers —
+#      the same trap that made the Phase 5 comment corrections unaffordable.
+#
+#   2. `backtest.universes` is ITERATED by run_backtest.py, run_phase4.py,
+#      run_phase4b/4c.py and run_phase5.py. Adding `global_2004` there would
+#      silently make every released runner evaluate the new universe. A frozen
+#      protocol for a new experiment must not change what the released pipeline
+#      computes.
+#
+# The pre-registration (docs/GLOBAL_UNIVERSE_PREREGISTRATION.md §9) named
+# `params.yaml` keys. This file satisfies that requirement's intent — the
+# universe is declared in configuration, never hardcoded in a module — while
+# avoiding both hazards above. Recorded as a disclosed deviation.
+
+global_2004:
+  # ── The FROZEN instrument set (pre-registration §2) ──────────────────────
+  # Frozen at commit c20e606. tests/test_global_universe.py parses the
+  # pre-registration and asserts this list still equals it, so the freeze is
+  # executable rather than a promise.
+  tickers: ["SPY", "QQQ", "IWM", "EFA", "EEM", "IEF", "TLT", "LQD", "IYR", "GLD"]
+
+  # GLD's inception is binding; every other instrument predates it.
+  start_date: "2004-11-18"
+
+  # ── Macro-feature policy (pre-registration §3) ───────────────────────────
+  # The Bank Al-Maghrib block is excluded: the universe is US-listed and
+  # USD-denominated, so a Moroccan policy rate and MAD cross-rates have no
+  # economic role in it. Retaining TAUX_DIR alone would push the first fully
+  # dense feature row to 2017-01-04 and discard twelve of the twenty-one years.
+  macro_exclude: ["TAUX_DIR", "EURMAD", "USDMAD"]
+  macro_retain: ["VIX", "US10Y", "CREDIT_SPREAD", "DXY"]
+
+  # ── Artifact paths (pre-registration §9) ─────────────────────────────────
+  paths:
+    bronze_prices: "data/bronze/raw_global_prices.parquet"
+    silver_returns: "data/silver/log_returns_global.parquet"
+    silver_report: "data/silver/validation_report_log_returns_global.json"
+    gold_returns: "data/gold/log_returns_global.parquet"
+    gold_features: "data/gold/ml_features_global.parquet"
+    gold_manifest: "data/gold/ml_features_global_manifest.json"
+    readiness: "data/gold/global_2004_readiness.json"
+
+  # ── Data-readiness gates (checkpoint 1) ──────────────────────────────────
+  # These decide whether the universe is worth evaluating AT ALL. They are
+  # design-validity checks computed from prices and WEIGHTS only — no Sharpe,
+  # no portfolio return, no performance quantity of any kind is produced at
+  # this checkpoint. Thresholds are declared here, before the run.
+  readiness_gates:
+    # (a) the 2004 window is genuinely preserved, not silently truncated
+    max_start_date: "2004-12-31"
+    min_trading_days: 5000
+    # (b) coverage: this is a liquid US-listed set, so gaps should be rare
+    max_ffill_share: 0.02          # share of cells forward-filled
+    max_zero_return_share: 0.02    # per-asset share of exact-zero return days
+    max_feature_leading_nan: 400   # DXY warm-up is ~231; BAM exclusion keeps it small
+    # (c) no stale-price lead/lag signature.
+    #
+    #   D_i = max(|rho_i(-1)|, |rho_i(+1)|) - |rho_i(0)|,   require max_i D_i <= 0
+    #
+    # The bound is ZERO by the meaning of the statistic — contemporaneous
+    # dependence must dominate both lead and lag — so nothing here is a tuned
+    # number. Amendment 1 (2026-08-15) in the pre-registration records the two
+    # rejected predecessors and why each failed:
+    #
+    #   ORIGINAL, mis-specified:  max_lag1_over_same_day: 0.25
+    #     A ratio whose denominator goes to zero for any asset genuinely
+    #     uncorrelated with the reference. Failed global_2004 at 0.6228 on GLD.
+    #
+    #   REJECTED repair:          max_abs_lag1: 0.20
+    #     Stable but useless — full_2021's stale-price block peaks at 0.0897,
+    #     so it would have PASSED the known-bad control.
+    max_lag_dominance: 0.0
+    # (e) allocation freedom, the reason the universe exists at all.
+    #     etf_2017 produces ONE distinct min_variance_lw allocation in 248
+    #     rebalances; anything near that means the new universe is no better.
+    min_distinct_allocation_share: 0.50   # of rebalances, for min_variance_lw
+    max_mean_assets_at_cap: 3.5

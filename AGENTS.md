@@ -474,16 +474,20 @@ Two things follow, and both are results in their own right:
    constraint is mathematically equivalent to shrinking the covariance matrix, so the cap is doing
    the estimation-error control (P1) that the ML was introduced to do. The constraint is not a
    handicap we worked around; it is the best-performing risk control we have.
-2. **At 0.25 the cap is very nearly the whole allocation decision.** With 5 assets,
-   `5 × 0.25 = 1.25`, so every feasible long-only portfolio must hold ≥4 assets *at the cap*.
-   `min_variance_lw` therefore emits **one** allocation across all 248 rebalances; at 0.30 it emits
-   171. `min_variance`, `min_variance_lw` and `regime_conditional` returned byte-identical weights
+2. **At 0.25 the cap empirically dominates the allocation decision.** With 5 assets,
+   `5 × 0.25 = 1.25`, so every feasible long-only portfolio must hold ≥4 assets with *positive
+   weight*, and no asset may exceed equal weight by more than five percentage points.
+   ⚠️ **The arithmetic alone does NOT force a corner** — the feasible region stays non-empty and
+   multidimensional (equal weight at 20% each is feasible with nothing at the cap). What is
+   *measured* is that under this cap the constraint dominates the objective: `min_variance_lw`
+   emits **one** allocation across all 248 rebalances; at 0.30 it emits 171. `min_variance`,
+   `min_variance_lw` and `regime_conditional` returned byte-identical weights
    post-2018 (`max|diff| 4.4e-16`). This is why `phase2_hurdle.json` and `dashboard_showcase.json`
    can name *different* winners on `etf_2017` at the same Sharpe (0.9525) — the tie is real, not a
-   bug.
+   bug. Say **empirically cap-dominated**, never "mathematically cap-determined".
 
 **Scope of the claim.** `full_2021` is not affected: with 9 assets `9 × 0.25 = 2.25`, so only 4 of
-9 need be at the cap and the optimizer keeps real freedom. And the cap is NOT why Phase 4's
+9 need carry positive weight and the optimizer keeps real freedom. And the cap is NOT why Phase 4's
 `etf_2017` conclusion held — that was re-tested at every non-binding cap and regime ML lost at all
 of them (§12, "SETTLED"). The cap made the conclusion *unfalsifiable as originally stated*; it did
 not make it wrong.
@@ -662,9 +666,14 @@ hyperparameter artifact — a real, defensible negative result.
 >    (§5.1). The reasoning above rests on a premise that no longer holds.
 > 2. **The `etf_2017` non-response is largely a CONSTRAINT artefact, not a mispricing story.** With
 >    5 assets and a 25% cap, `5 × 0.25 = 1.25`, so any feasible long-only portfolio must hold ≥4
->    assets *at the cap*: the constraint, not the covariance model, picks the portfolio. Measured
->    directly — at cap 0.25 `min_variance_lw` produces **one** allocation across 248 rebalances; at
->    0.30 it produces 169; and `min_variance_lw`/`max_sharpe`/`regime_conditional` returned
+>    assets with *positive weight* — which does not by itself force a corner (equal weight is
+>    feasible with nothing at the cap). Measured directly, the constraint nonetheless dominates
+>    the covariance model in practice: at cap 0.25 `min_variance_lw` produces **one** allocation
+>    across 248 rebalances; at 0.30 it produces **171** — the canonical, DVC-tracked figure from
+>    `data/gold/etf_cap_verdict.json` (stage `etf_cap_sweep`). An earlier, non-canonical sweep in
+>    `etf_deep_history.py` reported 169; that run has **no surviving artifact** and must not be
+>    quoted as a current-state number.
+>    `min_variance_lw`/`max_sharpe`/`regime_conditional` returned
 >    byte-identical weights (`max|diff| 4.4e-16`) post-2018. "Regime/covariance ML adds no value on
 >    `etf_2017`" is therefore **not falsifiable as stated** — the optimizer had nowhere to express a
 >    view. `full_2021` (9 assets) is unaffected.

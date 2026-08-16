@@ -137,6 +137,51 @@ Les huit comparaisons appariées publiées contiennent zéro dans leur intervall
 aucune surperformance sur les deux univers et les deux statistiques. Les résultats contre
 l’équipondéré restent exploratoires et ne prouvent pas une valeur ajoutée de la couche ML.
 
+## Extension de recherche — l'univers `global_2004`
+
+> ⚠️ **Expérience de recherche, hors système livré.** `global_2004` n'est raccordé
+> ni à l'API, ni au tableau de bord, ni à aucune allocation destinée à la
+> production, et aucun résultat publié ci-dessus n'en dépend. Cette section décrit
+> une extension menée *après* la clôture du système, pour lever une faiblesse
+> d'identification commune aux deux univers publiés.
+
+**Le problème.** Sur `etf_2017`, la variance minimale n'émet qu'**une seule
+allocation distincte sur 248 rééquilibrages** : à cinq actifs sous un plafond de
+25 %, c'est empiriquement la contrainte, et non le modèle, qui choisit le
+portefeuille. Sur `full_2021`, la covariance quotidienne est biaisée par des
+séances non recouvrantes et des prix figés. Dans les deux cas, il était
+impossible de distinguer « le modèle n'apporte rien » de « le dispositif ne lui
+permet pas de s'exprimer ».
+
+**Le dispositif.** Dix ETF américains libellés en dollars, sur 21,7 ans, **à
+contrainte strictement identique** (même plafond de 25 %, mêmes coûts, même
+moteur), spécifiés dans un pré-enregistrement horodaté *avant* toute ingestion,
+puis validés par dix critères de préparation des données.
+
+| | `etf_2017` | `global_2004` |
+|---|---:|---:|
+| allocations distinctes (variance minimale) | **1 / 248** | **249 / 249** |
+
+**Le résultat.** Ni la couche de régimes (Q1) ni la famille de 240 configurations
+RF/XGBoost (Q2) n'établit d'avantage. Le meilleur candidat brut dépassait
+pourtant la référence de **+0,093 de Sharpe** — les corrections de White
+(*p* = 0,905) et de Hansen (*p* = 0,866) refusent cette valeur, car elle est le
+maximum d'une recherche de 240 configurations.
+
+> Une fois les deux défauts d'identification levés, les modèles complexes ont
+> enfin reçu un test équitable — et n'ont toujours pas établi d'avantage. La
+> contribution est la preuve auditable montrant pourquoi le gagnant brut,
+> pourtant séduisant, ne doit pas être cru.
+
+📄 **[Résultats détaillés — `GLOBAL_2004_RESULTS.md`](docs/GLOBAL_2004_RESULTS.md)**
+(document généré depuis les artefacts) ·
+[protocole pré-enregistré](docs/GLOBAL_UNIVERSE_PREREGISTRATION.md) ·
+chapitre 8 du rapport final.
+
+⚠️ `etf_2017` et `global_2004` partagent cinq instruments et des périodes
+largement recouvrantes : ce sont **deux évaluations distinctes mais
+statistiquement recouvrantes**, non des confirmations indépendantes.
+
 ## Dashboard et API
 
 ![Dashboard — résultats de recherche](docs/rapport_final/assets/figures/dashboard_page1.png)
@@ -227,8 +272,10 @@ data/                artefacts Bronze/Silver/Gold gérés par DVC
 experiments/         expériences de robustesse séparées de la release
 notebooks/           notebooks exécutés, reconstruits depuis les artefacts finaux
 tests/               792 tests unitaires, d’intégration et de gouvernance
-docs/                livrables, model cards et rapport source
-output/pdf/          rapport final de PFA
+docs/                livrables, model cards et documentation
+docs/rapport_final/  SOURCE MAINTENUE du rapport de soumission
+docs/rapport/        version historique et courte — archive, non maintenue
+output/pdf/          rapport final de PFA (copie de docs/rapport_final/main.pdf)
 output/presentation/ présentation finale de soutenance
 dvc.yaml             graphe de production reproductible
 params.yaml          paramètres de données, modèles et validation

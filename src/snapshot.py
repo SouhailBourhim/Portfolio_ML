@@ -82,6 +82,26 @@ SNAPSHOT_FILES = (
     Path("data/gold/dashboard_weights.parquet"),
     Path("data/gold/dashboard_regime.parquet"),
     Path("data/gold/crisis_windows.json"),
+    # ── global_2004 research extension ───────────────────────────────────────
+    # A research experiment, NOT part of the released system: it drives no API
+    # response, no dashboard figure and no production allocation. It is hashed
+    # here anyway, because it is published — it has a README section, a report
+    # chapter, defense slides and a generated results document, and anything a
+    # reader can be shown must be reconstructible from the manifest.
+    #
+    # The readiness artifact is included for the same reason the fit reports
+    # are: it is the evidence that the universe passed its ten pre-registered
+    # gates, and a Q1/Q2 number without it cannot be audited for whether the
+    # data was ever fit to be evaluated.
+    Path("data/gold/global_2004_readiness.json"),
+    Path("data/gold/global_2004_q1_results.json"),
+    Path("data/gold/global_2004_q2_results.json"),
+    # The 240 per-candidate frozen-test series behind the correction. Same
+    # rule as reality_check_series above: a corrected p-value and the search it
+    # corrects for must travel together, or the correction stops describing
+    # the actual search.
+    Path("data/gold/global_2004_q2_series.parquet"),
+    Path("data/gold/global_2004_interpretation.json"),
 )
 
 

@@ -56,25 +56,40 @@ Effect A produced an impossible-looking result: on the deep universe, `min_varia
 (`max|diff| = 4.4e-16`). Three genuinely different objectives cannot agree to machine precision by
 chance, so this was investigated rather than reported.
 
-It is not a coding error. **It is arithmetic.**
+It is not a coding error. **The constraint is dominating the objective.**
 
 > With 5 assets and a 25% cap, `5 × 0.25 = 1.25`. Any feasible long-only portfolio summing to 1
-> must therefore hold **at least four assets at the cap**. The optimizer's only remaining freedom
-> is *which one to drop*. Every objective lands on the same corner.
+> must therefore hold **at least four assets with positive weight**, and no asset may exceed
+> equal weight by more than five percentage points.
+>
+> ⚠️ The arithmetic alone does **not** force a corner. The feasible region stays non-empty and
+> multidimensional — equal weight (20% each) is feasible with *nothing* at the cap, as is
+> (25%, 25%, 25%, 15%, 10%). That these three objectives nonetheless land on the *same* corner
+> is an **empirical** finding about where they go under a tight cap, not a theorem. The sweep
+> below is what establishes it.
 
 The cap sweep is the causal test — hold everything fixed, vary only the cap:
+
+> ⚠️ **HISTORICAL, NON-CANONICAL.** The table below is this experiment's own 2026-07-25 sweep.
+> It has **no surviving artifact** — `etf_deep_history.py` is not a DVC stage, and nothing under
+> `data/gold/` records it. The canonical, DVC-tracked cap sweep is
+> `data/gold/etf_cap_verdict.json` (stage `etf_cap_sweep`, `experiments/etf_cap_verdict.py`),
+> which reports **171** distinct allocations at cap 0.30 on its own grid. Quote 171, not 169, in
+> any current-state statement; the numbers below are kept only as the record of what this
+> experiment found at the time.
 
 | Cap | `min_variance_lw` distinct allocations | `max_sharpe` distinct allocations | min-var Sharpe |
 |---:|---:|---:|---:|
 | **0.25** (project default) | **1** | 12 | 0.953 |
-| 0.30 | 169 | 127 | 0.939 |
+| 0.30 | 169 *(historical)* | 127 | 0.939 |
 | 0.40 | 248 | 224 | 0.911 |
 | 0.60 | 248 | 248 | 0.847 |
 | 1.00 | 248 | 248 | 0.846 |
 
 At the project's own cap, **`min_variance_lw` produces exactly one allocation across all 248
 rebalances.** The Ledoit-Wolf covariance estimate is computed, and then discarded by the constraint.
-Loosening the cap by five percentage points restores 169 distinct allocations.
+Loosening the cap by five percentage points restores triple-digit allocation diversity — 171 on the
+canonical sweep, 169 on this historical one.
 
 The same degeneracy is present, less completely, on the committed `etf_2017` universe:
 `max_sharpe` sits at the degenerate corner in **91.3%** of its 103 rebalances, with only 10 distinct
@@ -89,8 +104,8 @@ no room for *any* optimizer to express a view — so of course a better covarian
 up in the results. It has nowhere to go.
 
 This confounds every `etf_2017` comparison in the project since Phase 2. It does **not** affect
-`full_2021`: with 9 assets, `9 × 0.25 = 2.25`, so a feasible portfolio needs only 4 of 9 at the cap
-and the optimizer retains real freedom — which is consistent with `regime_conditional` genuinely
+`full_2021`: with 9 assets, `9 × 0.25 = 2.25`, so a feasible portfolio needs only 4 of 9 holding
+positive weight and the optimizer retains real freedom — which is consistent with `regime_conditional` genuinely
 differentiating there (+14.3%).
 
 ### A second-order finding worth noting

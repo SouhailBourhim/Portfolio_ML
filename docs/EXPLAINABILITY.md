@@ -45,10 +45,17 @@ Seven steps, each a function of data available at the decision date τ:
 ### Why step 6 is a first-class field
 
 On `etf_2017` the current trace reports **4 of 5 assets at the cap** and one at
-zero, with `cap_is_near_determining: true`. The artifact states the arithmetic:
-5 assets × 25% = 1.25, so every feasible long-only portfolio must hold most
-assets at the cap. On that universe the constraint, not the covariance model,
-picks the portfolio.
+zero — an observed allocation, not a forced one. The artifact states the
+arithmetic honestly: 5 assets × 25% = 1.25, so feasibility requires at least
+four assets with *positive weight* and caps any asset five percentage points
+above equal weight. That does **not** force a corner — equal weight is feasible
+with nothing at the cap. What the flag records is the empirical finding that on
+this universe the constraint *dominates* the objective: the observed corner is
+where every objective landed, measured, not derived.
+
+⚠️ The field is still named `cap_is_near_determining` for artifact-schema
+stability. "Dominating" is the accurate word; renaming the key is tracked as a
+follow-up because it would change a Gold artifact's schema.
 
 This is the most important honest caveat in the project's results, and burying
 it in prose would be a choice. It is computed and reported per decision.
