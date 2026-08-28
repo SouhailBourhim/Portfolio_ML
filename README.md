@@ -1,225 +1,215 @@
-# Portfolio ML — Optimisation de portefeuille robuste et auditable
+# Portfolio ML — Robust, auditable portfolio optimisation
 
 [![CI — main](https://github.com/SouhailBourhim/Portfolio_ML/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SouhailBourhim/Portfolio_ML/actions/workflows/ci.yml?query=branch%3Amain)
 ![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![DVC](https://img.shields.io/badge/Data-DVC%20%2B%20R2-945DD6)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Dashboard-Streamlit-FF4B4B?logo=streamlit&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-891-success)
 
-**Projet de Fin d’Année — INPT × EURAFRIC Information**<br>
-**Équipe :** Souhail Bourhim · Zakarya El Wali · Yasmine Bouajine<br>
-**Encadrement :** M. Abdelmouttalib Maqil
+**Final-year project (PFA) — INPT × EURAFRIC Information**<br>
+**Team:** Souhail Bourhim · Zakarya El Wali · Yasmine Bouajine<br>
+**Supervisor:** M. Abdelmouttalib Maqil
 
-## Le projet en une minute
+*[Version française](README.fr.md)*
 
-Portfolio ML est un prototype de recherche en gestion de portefeuille. Il étudie comment répartir
-un capital entre des actions de la Bourse de Casablanca et des ETF internationaux, sous des
-contraintes de gestion réalistes : positions long-only, plafond de poids par actif et coûts de
-transaction.
+## The project in one minute
 
-Le système confronte des allocations classiques de Markowitz à des enrichissements fondés sur les
-données — covariance dynamique, régimes de marché HMM et challengers Random Forest/XGBoost. La
-question n’est pas « quel modèle affiche le meilleur backtest ? », mais « quel résultat résiste à
-une évaluation strictement temporelle, aux coûts, à la sélection multiple et à la traçabilité des
-données ? ».
+Portfolio ML is a research prototype in portfolio management. It studies how to allocate capital
+across Casablanca Stock Exchange (BVC) equities and international ETFs under realistic management
+constraints: long-only positions, a per-asset weight cap, and transaction costs.
 
-Il s’agit d’un démonstrateur académique et de recherche : ni conseil financier, ni recommandation
-client, ni exécution d’ordres.
+The system pits classical Markowitz allocations against data-driven extensions — dynamic
+covariance, HMM market regimes, and Random Forest / XGBoost challengers. The question is not
+"which model shows the best backtest?" but "which result survives strictly temporal evaluation,
+costs, multiple testing, and data lineage?".
 
-> Une chaîne de recherche reproductible pour déterminer si la complexité ML améliore réellement
-> une allocation de portefeuille après contraintes, coûts, incertitude statistique et sélection
-> de modèles.
+This is an academic research demonstrator: not financial advice, not a client recommendation, not
+order execution.
 
-[Rapport final — PDF](output/pdf/Rapport_PFA_Final_2026.pdf) ·
-[Présentation de soutenance — PowerPoint](output/presentation/Soutenance_PFA_Portfolio_ML_INPT_EURAFRIC.pptx) ·
-[Notebook exécuté — preuve `global_2004`](notebooks/phase10_global_2004_evidence.ipynb) ·
+> A reproducible research chain for determining whether ML complexity actually improves a portfolio
+> allocation once constraints, costs, statistical uncertainty and model selection are accounted for.
+
+[Final report — PDF](output/pdf/Rapport_PFA_Final_2026.pdf) ·
+[Defense presentation — PowerPoint](output/presentation/Soutenance_PFA_Portfolio_ML_INPT_EURAFRIC.pptx) ·
+[Executed notebook — `global_2004` evidence](notebooks/phase10_global_2004_evidence.ipynb) ·
 [Model governance](docs/MODEL_GOVERNANCE.md) ·
-[Documentation d’explicabilité](docs/EXPLAINABILITY.md)
+[Explainability](docs/EXPLAINABILITY.md)
 
-**État final de la recherche.** Les trois évaluations sont terminées. Sur les deux univers de la
-release comme sur l’extension pré-enregistrée `global_2004`, aucune couche ML n’établit une
-surperformance face à son comparateur primaire. Le résultat central n’est donc pas un modèle
-« gagnant », mais une chaîne de preuve capable de distinguer un maximum de backtest séduisant
-d’un avantage qui résiste aux coûts, au temps et au data snooping.
+**Final research state.** All three evaluations are complete. Across both release universes and the
+pre-registered `global_2004` extension, **no ML layer establishes outperformance against its primary
+comparator**. The central result is therefore not a "winning" model but an evidence chain able to
+tell a seductive backtest maximum apart from an edge that survives costs, time and data snooping.
 
-![Les quatre problèmes traités par le projet](docs/rapport_final/assets/figures/quatre_problemes.png)
+![The four problems this project addresses](docs/rapport_final/assets/figures/quatre_problemes.png)
 
-## Pourquoi ce projet est différent
+## Why this project is different
 
-Le dépôt ne cherche pas à présenter artificiellement le Machine Learning comme gagnant. Il
-construit les contrôles nécessaires pour qu’un résultat puisse être **réfuté** : validation
-strictement temporelle, comparaison appariée, correction du data snooping, provenance des
-données, observabilité des fallbacks et cohérence automatique entre artefacts, API, dashboard,
-model cards et rapport.
+The repository does not try to manufacture Machine Learning as the winner. It builds the controls
+needed for a result to be **refutable**: strictly temporal validation, paired comparison, data
+snooping correction, data provenance, fallback observability, and automated consistency between
+artifacts, API, dashboard, model cards and report.
 
-La correction la plus importante l’illustre : après conversion des ETF de l’univers mixte au
-numéraire MAD avec le taux officiel Bank Al-Maghrib, l’écart observé de la stratégie à régimes
-s’est inversé. La release conserve ce résultat négatif au lieu de reconstruire le récit autour
-d’un autre benchmark.
+The most important correction illustrates this. After converting the mixed universe's ETFs to MAD
+using the official Bank Al-Maghrib rate, the observed edge of the regime strategy **flipped sign**.
+The release keeps that negative result instead of rebuilding the narrative around a friendlier
+benchmark.
 
-### Ce qui est livré
+### What is delivered
 
-- Pipeline de données **Bronze → Silver → Gold**, validé par contrats et versionné avec DVC.
-- Backtest walk-forward long-only, plafond de 25 % par actif et coûts de transaction déduits.
-- Baselines classiques : `equal_weight`, minimum variance, Ledoit–Wolf et maximum Sharpe.
-- Covariance dynamique : EWMA et DCC-GARCH.
-- Régimes de marché : HMM à deux états et allocation conditionnelle.
-- Challengers supervisés : Random Forest et XGBoost sur un panel causal par actif.
-- Sélection forward-only avec purge, embargo et test final gelé.
-- Bootstrap apparié, White Reality Check et Hansen SPA.
-- Explicabilité exacte, télémétrie par fit, model cards et politique challenger.
-- Dashboard Streamlit, API FastAPI read-only, Docker, CI et portes de release.
-- **891 tests** automatisés dans l’état final du dépôt.
+- **Bronze → Silver → Gold** data pipeline, contract-validated and DVC-versioned.
+- Long-only walk-forward backtest, 25% per-asset cap, transaction costs deducted.
+- Classical baselines: `equal_weight`, minimum variance, Ledoit–Wolf, maximum Sharpe.
+- Dynamic covariance: EWMA and DCC-GARCH.
+- Market regimes: two-state HMM with conditional allocation.
+- Supervised challengers: Random Forest and XGBoost on a causal per-asset panel.
+- Forward-only selection with purge, embargo and a frozen final test.
+- Paired bootstrap, White Reality Check and Hansen SPA.
+- Exact explainability, per-fit telemetry, model cards and a challenger policy.
+- Streamlit dashboard, read-only FastAPI service, Docker, CI and release gates.
+- **891 automated tests** in the repository's final state.
 
-## Résultats essentiels
+## Headline results
 
-| Question | Résultat actuel | Interprétation autorisée |
+| Question | Current result | Permitted interpretation |
 |---|---|---|
-| Le système à régimes bat-il Markowitz sur `full_2021` ? | Sharpe net **0,9571** contre **1,0690**, écart observé **−10,47 %** | Résultat descriptif défavorable au ML ; aucun test pairé de cette différence n’établit la supériorité inverse. |
-| Le système à régimes bat-il la meilleure référence ETF ? | **0,9371** contre **0,9525**, écart observé **−1,62 %** | Le ML ne crée pas de gain observé sur cet univers. |
-| Un challenger gagne-t-il après les 240 essais ? | **Non établi** par White RC ou Hansen SPA contre le comparateur primaire pré-spécifié | Le choix du benchmark n’est pas réécrit après observation du résultat. |
-| Le système à régimes gagne-t-il lorsque l’univers peut réellement exprimer l’allocation ? | Sur `global_2004` : **0,8923** contre **0,9785**, ΔSharpe **−0,0862**, IC 90 % **[−0,2133 ; +0,0414]** | Q1 n’établit aucune surperformance Sharpe dans un univers de 10 ETF produisant 249 allocations distinctes sur 249. L’intervalle ne démontre pas davantage la supériorité inverse. |
-| Le meilleur résultat d’une nouvelle recherche de 240 challengers est-il crédible ? | Maximum brut **+0,0930**, mais White RC **p = 0,9045** et Hansen SPA **p = 0,8656** | Q2 montre pourquoi le meilleur candidat observé ne doit pas être transformé en résultat après sélection. |
-| Davantage de données marocaines suffisent-elles ? | L’IC augmente de **×2 à ×4** sur 12 actions, 2005–2024, sans gain portefeuille établi | La limite n’est pas seulement la quantité : qualité, couverture économique et transformation signal → allocation dominent. |
-| Quelle intervention est la plus robuste sur les ETF ? | Le plafond de **25 %** : Sharpe 0,9525 contre 0,8650 sans plafond | La contrainte de gestion agit comme un puissant régularisateur de l’erreur d’estimation. |
-| Les étiquettes cachent-elles des modèles dégradés ? | Voir l’énoncé « Intégrité des modèles » dans **Faits publiés** ci-dessous | Chiffre généré depuis `data/gold/fit_report_summary.json`, jamais saisi ; le compte est confronté à un second artefact (`dashboard_regime.parquet`) par `TestFallbackCountsAgree`. |
+| Does the regime system beat Markowitz on `full_2021`? | Net Sharpe **0.9571** vs **1.0690**, observed gap **−10.47%** | Descriptive result unfavourable to ML; no paired test of this difference establishes the reverse superiority. |
+| Does the regime system beat the best ETF reference? | **0.9371** vs **0.9525**, observed gap **−1.62%** | ML produces no observed gain on this universe. |
+| Does any challenger win after 240 trials? | **Not established** by White RC or Hansen SPA against the pre-specified primary comparator | The benchmark choice is not rewritten after seeing the result. |
+| Does the regime system win when the universe can actually express the allocation? | On `global_2004`: **0.8923** vs **0.9785**, ΔSharpe **−0.0862**, 90% CI **[−0.2133, +0.0414]** | Q1 establishes no Sharpe outperformance in a 10-ETF universe producing 249 distinct allocations out of 249. Nor does the interval demonstrate the reverse. |
+| Is the best result from a fresh 240-challenger search credible? | Raw maximum **+0.0930**, but White RC **p = 0.9045** and Hansen SPA **p = 0.8656** | Q2 shows why the best observed candidate must not be turned into a post-selection result. |
+| Is more Moroccan data enough? | The CI widens by **2× to 4×** across 12 equities, 2005–2024, with no established portfolio gain | The limit is not only quantity: quality, economic coverage and the signal → allocation transformation dominate. |
+| Which intervention is most robust on ETFs? | The **25% cap**: Sharpe 0.9525 vs 0.8650 uncapped | The management constraint acts as a powerful regulariser of estimation error. |
+| Do the labels hide degraded models? | See "Model integrity" in **Published facts** below | Figure generated from `data/gold/fit_report_summary.json`, never typed by hand; the count is cross-checked against a second artifact (`dashboard_regime.parquet`) by `TestFallbackCountsAgree`. |
 
-![Résultats hors échantillon, nets de coûts](docs/rapport_final/assets/figures/courbes_equity.png)
+![Out-of-sample results, net of costs](docs/rapport_final/assets/figures/courbes_equity.png)
 
-## Données et numéraires
+## Data and numéraires
 
-| Univers | Composition | Fenêtre | Numéraire | Usage |
+| Universe | Composition | Window | Numéraire | Use |
 |---|---|---|---|---|
-| `full_2021` | 4 actions BVC + 5 ETF | 2021-07-29 → 2026-07 | **MAD**, conversion causale au taux officiel BAM | Univers principal mixte ; exposition USD/MAD non couverte. |
-| `etf_2017` | SPY, QQQ, EEM, GLD, TLT | 2004-11 → 2026-07 | **USD** | Historique profond couvrant 2008, 2020 et 2022. |
-| `global_2004` | 10 ETF américains multi-classes | 2004-11 → 2026-08 | **USD** | Extension de recherche pré-enregistrée ; hors API et dashboard. |
+| `full_2021` | 4 BVC equities + 5 ETFs | 2021-07-29 → 2026-07 | **MAD**, causal conversion at the official BAM rate | Main mixed universe; unhedged USD exposure. |
+| `etf_2017` | SPY, QQQ, EEM, GLD, TLT | 2004-11 → 2026-07 | **USD** | Deep history covering 2008, 2020 and 2022. |
+| `global_2004` | 10 multi-asset US ETFs | 2004-11 → 2026-08 | **USD** | Pre-registered research extension; outside the API and dashboard. |
 
-Les univers sont évalués séparément. Leurs niveaux de Sharpe ne sont pas directement comparables
-entre eux : devise, fenêtre, composition et nombre d’actifs diffèrent. L’exposition USD/MAD non couverte de
-`full_2021` constitue un **risque économique matériel** ; elle est intégrée aux performances
-réalisées, sans contrat de couverture ni coût de roulement.
+The universes are evaluated separately. Their Sharpe levels are **not** directly comparable to each
+other: currency, window, composition and asset count all differ. The unhedged USD/MAD exposure of
+`full_2021` is a material economic risk — stated in the governance surfaces with the pinned
+wording **`risque économique matériel`** — and it is embedded in realised performance, with no
+hedging contract and no roll cost modelled.
 
-Les actions BVC utilisent des rendements totaux avec dividendes aux dates de détachement. Les ETF
-sont téléchargés ajustés. L’expérience **Maroc profond** ajoute un panel de recherche de 12 actions
-sur 2005–2024, mais il n’est pas intégré à la release canonique : réconciliation des sources,
-dividendes, corporate actions, raccordement récent et droits de redistribution restent à
-industrialiser.
+BVC equities use total returns with dividends at ex-dates. ETFs are downloaded adjusted. The **deep
+Morocco** experiment adds a research panel of 12 equities over 2005–2024, but it is not integrated
+into the canonical release: source reconciliation, dividends, corporate actions, recent splicing
+and redistribution rights all remain to be industrialised.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    S[Sources\nBVC · Yahoo/FRED · BAM] --> B[Bronze\nbrut et persistant]
-    B --> V[Silver\ncalendriers · MAD · contrats]
-    V --> G[Gold\nrendements · features · preuves]
-    G --> BT[Backtest causal\ncontraintes + coûts]
-    BT --> M[Modèles\nMarkowitz · HMM · RF/XGB]
-    M --> E[Évaluation\nwalk-forward · bootstrap · RC/SPA]
-    E --> P[Publication\nAPI · dashboard · rapport]
-    P --> GOV[Gouvernance\nmanifest · cards · monitoring]
+    S[Sources\nBVC · Yahoo/FRED · BAM] --> B[Bronze\nraw and persistent]
+    B --> V[Silver\ncalendars · MAD · contracts]
+    V --> G[Gold\nreturns · features · evidence]
+    G --> BT[Causal backtest\nconstraints + costs]
+    BT --> M[Models\nMarkowitz · HMM · RF/XGB]
+    M --> E[Evaluation\nwalk-forward · bootstrap · RC/SPA]
+    E --> P[Publication\nAPI · dashboard · report]
+    P --> GOV[Governance\nmanifest · cards · monitoring]
 ```
 
-### Modèles évalués
+### Models evaluated
 
 ```text
-Références classiques
+Classical references
   └─ 1/N · MinVariance · Ledoit-Wolf · MaxSharpe
-      └─ Covariance dynamique
+      └─ Dynamic covariance
           └─ EWMA · DCC-GARCH
-              └─ HMM + allocation conditionnelle
-                  └─ RF/XGBoost + optimisation sensible aux coûts
+              └─ HMM + conditional allocation
+                  └─ RF/XGBoost + cost-aware optimisation
 ```
 
-La complexité est ajoutée par paliers. Un modèle qui ne justifie pas son coût hors échantillon
-reste un challenger exploratoire.
+Complexity is added in tiers. A model that does not justify its cost out-of-sample stays an
+exploratory challenger.
 
-## Protocole de validation
+## Validation protocol
 
-1. Features causales : aucune information postérieure à la date de décision.
-2. Sélection par walk-forward expanding/rolling, avec purge et embargo.
-3. Dernière période gelée pour la comparaison finale.
-4. Bootstrap par blocs **apparié** sur les différences de rendements.
-5. Correction des 240 configurations atteignables par White Reality Check et Hansen SPA.
-6. Publication uniquement depuis des artefacts Gold partageant la même provenance.
+1. Causal features: no information later than the decision date.
+2. Selection by expanding/rolling walk-forward, with purge and embargo.
+3. Final period frozen for the final comparison.
+4. **Paired** block bootstrap on return differences.
+5. Correction across the 240 reachable configurations via White Reality Check and Hansen SPA.
+6. Publication only from Gold artifacts sharing the same provenance.
 
-Les huit comparaisons appariées publiées contiennent zéro dans leur intervalle. Contre
-`regime_conditional`, comparateur primaire pré-spécifié, White RC et Hansen SPA n’établissent
-aucune surperformance sur les deux univers et les deux statistiques. Les résultats contre
-l’équipondéré restent exploratoires et ne prouvent pas une valeur ajoutée de la couche ML.
+The eight published paired comparisons all contain zero in their interval. Against
+`regime_conditional`, the pre-specified primary comparator, White RC and Hansen SPA establish no
+outperformance across both universes and both statistics. Results against equal-weight remain
+exploratory and do not prove added value from the ML layer.
 
-## Extension de recherche — l'univers `global_2004`
+## Research extension — the `global_2004` universe
 
-> ⚠️ **Expérience de recherche, hors système livré.** `global_2004` n'est raccordé
-> ni à l'API, ni au tableau de bord, ni à aucune allocation destinée à la
-> production, et aucun résultat publié ci-dessus n'en dépend. Cette section décrit
-> une extension menée *après* la clôture du système, pour lever une faiblesse
-> d'identification commune aux deux univers publiés.
+> ⚠️ **Research experiment, outside the delivered system.** `global_2004` is wired to neither the
+> API, nor the dashboard, nor any production-bound allocation, and no result published above
+> depends on it. This section describes an extension run *after* the system closed, to remove an
+> identification weakness common to both published universes.
 
-**Le problème.** Sur `etf_2017`, la variance minimale n'émet qu'**une seule
-allocation distincte sur 248 rééquilibrages** : à cinq actifs sous un plafond de
-25 %, c'est empiriquement la contrainte, et non le modèle, qui choisit le
-portefeuille. Sur `full_2021`, la covariance quotidienne est biaisée par des
-séances non recouvrantes et des prix figés. Dans les deux cas, il était
-impossible de distinguer « le modèle n'apporte rien » de « le dispositif ne lui
-permet pas de s'exprimer ».
+**The problem.** On `etf_2017`, minimum variance emits **a single distinct allocation across 248
+rebalances**: with five assets under a 25% cap, it is empirically the constraint — not the model —
+that picks the portfolio. On `full_2021`, daily covariance is biased by non-overlapping sessions
+and stale prices. In both cases it was impossible to distinguish "the model adds nothing" from
+"the setup does not let it express anything".
 
-**Le dispositif.** Dix ETF américains libellés en dollars, sur 21,7 ans, **à
-contrainte strictement identique** (même plafond de 25 %, mêmes coûts, même
-moteur), spécifiés dans un pré-enregistrement horodaté *avant* toute ingestion,
-puis validés par dix critères de préparation des données.
+**The setup.** Ten USD-denominated US ETFs over 21.7 years, under a **strictly identical
+constraint** (same 25% cap, same costs, same engine), specified in a timestamped pre-registration
+*before* any ingestion, then validated against ten data-readiness criteria.
 
 | | `etf_2017` | `global_2004` |
 |---|---:|---:|
-| allocations distinctes (variance minimale) | **1 / 248** | **249 / 249** |
+| distinct allocations (minimum variance) | **1 / 248** | **249 / 249** |
 
-**Le résultat.** Ni la couche de régimes (Q1) ni la famille de 240 configurations
-RF/XGBoost (Q2) n'établit d'avantage. Le meilleur candidat brut dépassait
-pourtant la référence de **+0,093 de Sharpe** — les corrections de White
-(*p* = 0,905) et de Hansen (*p* = 0,866) refusent cette valeur, car elle est le
-maximum d'une recherche de 240 configurations.
+**The result.** Neither the regime layer (Q1) nor the 240-configuration RF/XGBoost family (Q2)
+establishes an edge. The best raw candidate did beat the reference by **+0.093 Sharpe** — and
+White's correction (*p* = 0.905) and Hansen's (*p* = 0.866) refuse that value, because it is the
+maximum of a 240-configuration search.
 
-Les challengers effectivement sélectionnés sans accès au segment final affichent eux aussi un
-Sharpe net observé plus bas : **−0,0657** pour RF et **−0,0898** pour XGBoost relativement à
-`regime_conditional`. C’est un diagnostic opérationnel descriptif, **pas** une preuve statistique
-de sous-performance : aucun test pairé individuel de ces deux différences n’avait été
-pré-spécifié.
+The challengers actually selected without access to the final segment also show a lower observed
+net Sharpe: **−0.0657** for RF and **−0.0898** for XGBoost relative to `regime_conditional`. That
+is a descriptive operational diagnostic, **not** statistical proof of underperformance: no
+individual paired test of those two differences had been pre-specified.
 
-> Une fois les deux défauts d'identification levés, les modèles complexes ont
-> enfin reçu un test équitable — et n'ont toujours pas établi d'avantage. La
-> contribution est la preuve auditable montrant pourquoi le gagnant brut,
-> pourtant séduisant, ne doit pas être cru.
+> Once both identification defects were removed, the complex models finally got a fair test — and
+> still established no edge. The contribution is the auditable proof showing why the raw winner,
+> seductive as it was, must not be believed.
 
-📄 **[Résultats détaillés — `GLOBAL_2004_RESULTS.md`](docs/GLOBAL_2004_RESULTS.md)**
-(document généré depuis les artefacts) ·
-[protocole pré-enregistré](docs/GLOBAL_UNIVERSE_PREREGISTRATION.md) ·
-[notebook de synthèse exécuté](notebooks/phase10_global_2004_evidence.ipynb) ·
-chapitre 8 du rapport final · cinq planches dans la présentation de soutenance.
+📄 **[Detailed results — `GLOBAL_2004_RESULTS.md`](docs/GLOBAL_2004_RESULTS.md)**
+(generated from artifacts) ·
+[pre-registered protocol](docs/GLOBAL_UNIVERSE_PREREGISTRATION.md) ·
+[executed synthesis notebook](notebooks/phase10_global_2004_evidence.ipynb) ·
+chapter 8 of the final report · five slides in the defense deck.
 
-⚠️ `etf_2017` et `global_2004` partagent cinq instruments et des périodes
-largement recouvrantes : ce sont **deux évaluations distinctes mais
-statistiquement recouvrantes**, non des confirmations indépendantes.
+⚠️ `etf_2017` and `global_2004` share five instruments and largely overlapping periods: these are
+**two distinct but statistically overlapping evaluations**, not independent confirmations.
 
-## Dashboard et API
+## Dashboard and API
 
-![Dashboard — résultats de recherche](docs/rapport_final/assets/figures/dashboard_page1.png)
+![Dashboard — research results](docs/rapport_final/assets/figures/dashboard_page1.png)
 
-- **Résultats de recherche** : faits publiés, devises, résultats, crises et limites.
-- **Explorateur de stratégies** : métriques, trajectoires, allocations et export CSV.
-- **API FastAPI** : service read-only sur les mêmes artefacts Gold, sans entraînement en requête.
-- Les contrats publiés imposent `base_currency` et `hedge_status` ; une devise manquante n’est pas
-  silencieusement remplacée par une valeur par défaut.
+- **Research results** — published facts, currencies, results, crises and limitations.
+- **Strategy explorer** — metrics, trajectories, allocations and CSV export.
+- **FastAPI service** — read-only over the same Gold artifacts, with no training at request time.
+- Published contracts require `base_currency` and `hedge_status`; a missing currency is never
+  silently replaced by a default.
 
 ```bash
-# Nécessite le bundle d’artefacts DVC
+# Requires the DVC artifact bundle
 streamlit run dashboard/streamlit_app.py
 uvicorn api.main:app --app-dir src
 ```
 
-Documentation interactive de l’API : `http://127.0.0.1:8000/docs`.
+Interactive API documentation: `http://127.0.0.1:8000/docs`.
 
-## Reproduire et vérifier
+## Reproduce and verify
 
-### Installation locale
+### Local install
 
 ```bash
 git clone https://github.com/SouhailBourhim/Portfolio_ML.git
@@ -230,20 +220,19 @@ pip install -r requirements.lock.txt
 pytest -q
 ```
 
-Le notebook de synthèse final est déjà exécuté et ne relance ni ingestion, ni sélection, ni
-backtest :
+The final synthesis notebook is already executed and re-runs neither ingestion, selection nor
+backtest:
 
 ```bash
 jupyter notebook notebooks/phase10_global_2004_evidence.ipynb
 ```
 
-Sa source est reconstruite par `scripts/build_visualization_notebooks.py`. Les tests vérifient
-qu’elle ne lit que les artefacts Gold versionnés, que toutes les cellules ont été exécutées et
-qu’aucun accès réseau ou entraînement ne se glisse dans cette couche de présentation.
+Its source is rebuilt by `scripts/build_visualization_notebooks.py`. Tests verify that it reads
+only versioned Gold artifacts, that every cell has been executed, and that no network access or
+training slips into this presentation layer.
 
-La suite de tests est hors ligne. Les données de marché ne sont pas distribuées dans Git. Le
-remote DVC est privé en raison des licences de données ; les membres autorisés configurent leurs
-identifiants R2 localement puis exécutent :
+The test suite is offline. Market data is not distributed in Git. The DVC remote is private
+because of data licensing; authorised members configure their R2 credentials locally and then run:
 
 ```bash
 ./scripts/dvc.sh pull
@@ -254,69 +243,66 @@ identifiants R2 localement puis exécutent :
 ### Docker
 
 ```bash
-docker compose run --rm test       # tests hors ligne
-docker compose up api              # API, si le bundle DVC est présent
-docker compose up dashboard        # application Streamlit sur http://localhost:8501
-docker compose up notebook         # Jupyter local
+docker compose run --rm test       # offline tests
+docker compose up api              # API, if the DVC bundle is present
+docker compose up dashboard        # Streamlit app on http://localhost:8501
+docker compose up notebook         # local Jupyter
 ```
 
-`api` et `dashboard` lisent les mêmes artefacts Gold, montés en lecture seule :
-aucune des deux surfaces n'écrit ni ne réestime. Les deux exécutent le même
-préflight `scripts/check_artifacts.py` avant de démarrer et **refusent de se
-lancer** sur un bundle incomplet : servir un sous-ensemble qu'un lecteur
-pourrait prendre pour l'ensemble est pire que ne rien servir.
+`api` and `dashboard` read the same Gold artifacts, mounted read-only: neither surface writes or
+re-estimates. Both run the same `scripts/check_artifacts.py` preflight before starting and
+**refuse to launch** on an incomplete bundle — serving a subset a reader might mistake for the
+whole is worse than serving nothing.
 
-La sonde de santé du service `api` exige `status == "ok"`. Sa portée est
-volontairement étroite : comme le préflight bloque déjà le démarrage, un
-conteneur qui écoute sur 8000 a nécessairement satisfait la garde la plus
-stricte. La sonde couvre donc la vivacité ordinaire et le cas où le bundle
-change *sous* un conteneur déjà en cours d'exécution — le montage est en
-lecture seule pour le conteneur, pas pour l'hôte.
+The `api` service health probe requires `status == "ok"`. Its scope is deliberately narrow: since
+the preflight already blocks startup, a container listening on 8000 has necessarily satisfied the
+stricter guard. The probe therefore covers ordinary liveness and the case where the bundle changes
+*underneath* an already-running container — the mount is read-only for the container, not for the
+host.
 
-Le service `test` ne monte **pas** `data/` : la suite doit passer sur un clone
-neuf. Les contrôles de cohérence des artefacts sont donc ignorés (`skip`). Pour
-les exercer aussi :
+The `test` service does **not** mount `data/`: the suite must pass on a fresh clone. Artifact
+consistency checks are therefore skipped. To exercise those too:
 
 ```bash
 docker compose run --rm -v "$PWD/data:/app/data:ro" test
 ```
 
-### Portes de release
+### Release gates
 
 ```bash
 ./scripts/release_gates.sh
 ```
 
-Elles contrôlent l’état DVC, les checksums du snapshot, la complétude du bundle, la régénération
-des model cards, la propreté Git et la suite de tests. Le job CI `release-gates` récupère le bundle
-depuis R2 avec un token read-only, uniquement sur des événements de confiance.
+These check DVC state, snapshot checksums, bundle completeness, model card regeneration, Git
+cleanliness and the test suite. The `release-gates` CI job fetches the bundle from R2 with a
+read-only token, on trusted events only.
 
-## Structure du dépôt
+## Repository layout
 
 ```text
-src/                 pipeline, backtest, modèles, évaluation, API
-dashboard/           application Streamlit à deux vues
-data/                artefacts Bronze/Silver/Gold gérés par DVC
-experiments/         expériences de robustesse séparées de la release
-notebooks/           notebooks exécutés, reconstruits depuis les artefacts finaux
-tests/               891 tests unitaires, d’intégration et de gouvernance
-docs/                livrables, model cards et documentation
-docs/rapport_final/  SOURCE MAINTENUE du rapport de soumission
-docs/rapport/        version historique et courte — archive, non maintenue
-output/pdf/          rapport final de PFA (copie de docs/rapport_final/main.pdf)
-output/presentation/ présentation finale de soutenance
-dvc.yaml             graphe de production reproductible
-params.yaml          paramètres de données, modèles et validation
-compose.yaml         API, pipeline, tests et notebooks conteneurisés
+src/                 pipeline, backtest, models, evaluation, API
+dashboard/           two-view Streamlit application
+data/                Bronze/Silver/Gold artifacts managed by DVC
+experiments/         robustness experiments kept separate from the release
+notebooks/           executed notebooks, rebuilt from final artifacts
+tests/               891 unit, integration and governance tests
+docs/                deliverables, model cards and documentation
+docs/rapport_final/  MAINTAINED SOURCE of the submitted report
+docs/rapport/        historical short version — archive, not maintained
+output/pdf/          final PFA report (copy of docs/rapport_final/main.pdf)
+output/presentation/ final defense presentation
+dvc.yaml             reproducible production graph
+params.yaml          data, model and validation parameters
+compose.yaml         containerised API, pipeline, tests and notebooks
 ```
 
-## Documentation principale
+## Key documentation
 
-- [Rapport final du PFA](output/pdf/Rapport_PFA_Final_2026.pdf)
-- [Présentation de soutenance](output/presentation/Soutenance_PFA_Portfolio_ML_INPT_EURAFRIC.pptx)
-- [Notebook exécuté — synthèse `global_2004`](notebooks/phase10_global_2004_evidence.ipynb)
-- [Résultats générés de `global_2004`](docs/GLOBAL_2004_RESULTS.md)
-- [Protocole pré-enregistré de `global_2004`](docs/GLOBAL_UNIVERSE_PREREGISTRATION.md)
+- [Final PFA report](output/pdf/Rapport_PFA_Final_2026.pdf) (French)
+- [Defense presentation](output/presentation/Soutenance_PFA_Portfolio_ML_INPT_EURAFRIC.pptx) (French)
+- [Executed notebook — `global_2004` synthesis](notebooks/phase10_global_2004_evidence.ipynb)
+- [Generated `global_2004` results](docs/GLOBAL_2004_RESULTS.md)
+- [Pre-registered `global_2004` protocol](docs/GLOBAL_UNIVERSE_PREREGISTRATION.md)
 - [Model governance](docs/MODEL_GOVERNANCE.md)
 - [Model integrity](docs/MODEL_INTEGRITY.md)
 - [Explainability](docs/EXPLAINABILITY.md)
@@ -326,29 +312,35 @@ compose.yaml         API, pipeline, tests et notebooks conteneurisés
 - [ETF deep-history experiment](docs/ETF_DEEP_HISTORY_EXPERIMENT.md)
 - [Inference contract](docs/INFERENCE_CONTRACT.md)
 
-## Limites
+## Limitations
 
-- L’univers canonique contenant la BVC reste court ; l’expérience profonde améliore le signal mais
-  n’est pas encore une source de production réconciliée et contractuelle.
-- Un rendement de dividende BVC reste estimé et documenté par analyse de sensibilité.
-- La correction multiple porte sur la famille définie de 240 configurations ; les huit
-  comparaisons externes constituent un niveau de multiplicité distinct.
-- Sur `global_2004`, Q2 change simultanément la coupe d’actifs et la politique de variables macro ;
-  son résultat ne peut pas être attribué au seul élargissement de l’univers. White RC et Hansen
-  SPA corrigent la recherche de stratégies, pas la décision externe de construire ce troisième
-  univers après diagnostic des deux premiers.
-- Il n’existe ni exécution d’ordres, ni modèle de capacité/impact marché, ni stratégie de
-  couverture USD/MAD.
-- Le monitoring est instrumenté **hors ligne** mais volontairement non actif tant que la
-  publication atomique, le verrouillage des releases et le rollback ne sont pas exercés.
-- La validation reste interne à l’équipe ; une validation indépendante est requise avant tout usage
-  institutionnel.
+- The canonical universe containing BVC remains short; the deep experiment improves the signal but
+  is not yet a reconciled, contractual production source.
+- One BVC dividend yield remains estimated and documented via sensitivity analysis.
+- The multiple-testing correction covers the defined family of 240 configurations; the eight
+  external comparisons constitute a separate level of multiplicity.
+- On `global_2004`, Q2 simultaneously changes the asset cut and the macro-variable policy; its
+  result cannot be attributed to universe widening alone. White RC and Hansen SPA correct the
+  strategy search, not the external decision to build this third universe after diagnosing the
+  first two.
+- There is no order execution, no capacity/market-impact model, and no USD/MAD hedging strategy.
+- Monitoring is instrumented **offline** but deliberately inactive until atomic publication,
+  release locking and rollback have been exercised.
+- Validation remains internal to the team; independent validation is required before any
+  institutional use.
 
-## Positionnement
+## Positioning
 
-Ce dépôt est un **prototype de recherche**, pas un outil de conseil, de gestion discrétionnaire ou
-d’exécution. Aucune stratégie n’est recommandée. La valeur du projet réside dans la chaîne de
-preuve : les données, modèles, décisions, fallbacks et claims publiés sont versionnés et testables.
+This repository is a **research prototype**, not an advisory, discretionary-management or execution
+tool. No strategy is recommended. The project's value lies in the evidence chain: data, models,
+decisions, fallbacks and published claims are all versioned and testable.
+
+> **The block below is reproduced verbatim in French, and deliberately so.** It is generated by
+> `scripts/build_release_facts.py` from `src/release_facts.py`, and the same sentences — word for
+> word — appear in the report, the dashboard and the API.
+> `tests/test_release_facts.py::TestSurfacesQuoteTheGeneratedStringsExactly` fails if any surface
+> paraphrases them, so translating them here would break the guarantee they exist to provide.
+> An English rendering is in [`docs/MODEL_GOVERNANCE.md`](docs/MODEL_GOVERNANCE.md).
 
 <!-- BEGIN RELEASE FACTS — generated by scripts/build_release_facts.py -->
 
@@ -371,7 +363,7 @@ preuve : les données, modèles, décisions, fallbacks et claims publiés sont v
 
 <!-- END RELEASE FACTS -->
 
-## Références
+## References
 
 - López de Prado, M. (2018). *Advances in Financial Machine Learning*. Wiley.
 - DeMiguel, V., Garlappi, L. & Uppal, R. (2009). *Optimal Versus Naive Diversification*.
