@@ -892,3 +892,131 @@ def reality_check(
             f"correcting for the search (RC p = {rc_p:.3f}, SPA p = {spa_p:.3f})."
         ),
     }
+
+
+def model_confidence_set(
+    candidate_returns: Mapping[str, pd.Series],
+    *,
+    size: float = 0.10,
+    block_len: int = 21,
+    n_boot: int = 2000,
+    seed: int = 0,
+) -> dict:
+    """
+    Model Confidence Set of Hansen, Lunde & Nason (2011), Econometrica 79(2).
+
+    Addresses: P4 — `reality_check` can only ever fail to reject. White's RC and
+    Hansen's SPA are one-sided tests against a single pre-specified benchmark,
+    so when the search turns up nothing they return silence: "no candidate is
+    established as superior", and no more. The MCS asks the complementary
+    question and returns a SET — the strategies not eliminated at confidence
+    1 - `size` — which carries content whichever way it falls. A surviving set
+    containing `equal_weight` quantifies DeMiguel et al. (2009) on this
+    project's own data; a set that eliminates the ML challengers is evidence
+    they are worse rather than merely unproven.
+
+    WORDING (AGENTS.md section 5.2). Survival is not equivalence, and members of
+    the returned set must never be called "statistically indistinguishable" —
+    that phrase is banned project-wide precisely because failing to eliminate
+    is not a demonstration of sameness. Say "retained by the MCS procedure at
+    size alpha". `interpretation` below is phrased to comply and should be
+    quoted rather than paraphrased.
+
+    STATISTIC. The procedure consumes per-period LOSSES, taken here as negated
+    net returns, so this is a mean-return criterion. It is NOT a Sharpe
+    criterion: a Sharpe ratio is a ratio of moments with no per-period loss
+    representation, so unlike `reality_check` there is no `statistic` argument.
+    An MCS reported beside a Sharpe-based RC/SPA compares different quantities,
+    and that must be stated wherever the two appear together.
+
+    Implementation note: delegates to `arch.bootstrap.MCS` rather than
+    hand-rolling the elimination, but only after verifying it. Its neighbour
+    `arch.bootstrap.SPA` accepts a `studentize` flag it never applies — the
+    flag only writes a metadata string — so the library is not taken on trust.
+    MCS was checked to retain a genuinely best model, eliminate hopeless ones,
+    retain everything under exchangeability, and shrink monotonically in `size`.
+
+    Args:
+        candidate_returns: Per-strategy simple net return series sharing one
+            index. At least two — a confidence set over one model is vacuous.
+        size: Test size alpha; the set has confidence 1 - alpha. Default 0.10,
+            matching `phase5.bootstrap.alpha`.
+        block_len: Circular block length, matching the project's other
+            bootstraps (~one trading month).
+        n_boot: Bootstrap replications.
+        seed: Seeded for reproducibility, like every estimator here.
+
+    Returns:
+        dict with `included` / `excluded` (sorted name lists), `n_candidates`,
+        `n_included`, `size`, `block_len`, `n_boot`, `seed`, `statistic` and
+        `interpretation`.
+
+    Raises:
+        ValueError: on fewer than two candidates, misaligned indexes, NaN, or
+            too little data for one block — the same input discipline as
+            `reality_check`, and for the same reason: silent alignment would
+            change which periods are being compared.
+    """
+    from arch.bootstrap import MCS as _ArchMCS
+
+    names = sorted(candidate_returns)
+    if len(names) < 2:
+        raise ValueError(
+            f"model_confidence_set needs at least two candidates; got {len(names)}."
+        )
+
+    reference = candidate_returns[names[0]].index
+    for name in names:
+        series = candidate_returns[name]
+        if not series.index.equals(reference):
+            raise ValueError(
+                f"model_confidence_set requires identical date indexes; '{name}' "
+                f"differs from '{names[0]}' — refusing to align silently."
+            )
+        if series.isna().any():
+            raise ValueError(
+                f"model_confidence_set requires NaN-free returns; '{name}' has NaN."
+            )
+
+    n = len(reference)
+    if n < block_len:
+        raise ValueError(
+            f"Not enough observations for a block bootstrap: n={n}, block_len={block_len}."
+        )
+
+    # Losses, not returns: the MCS eliminates models with HIGHER loss.
+    losses = pd.DataFrame(
+        {name: -candidate_returns[name].to_numpy(dtype=float) for name in names},
+        index=reference,
+    )
+
+    mcs = _ArchMCS(
+        losses,
+        size=size,
+        reps=n_boot,
+        block_size=block_len,
+        bootstrap="circular",
+        seed=seed,
+    )
+    mcs.compute()
+
+    included = sorted(str(x) for x in mcs.included)
+    excluded = sorted(str(x) for x in mcs.excluded)
+
+    return {
+        "included": included,
+        "excluded": excluded,
+        "n_candidates": len(names),
+        "n_included": len(included),
+        "size": float(size),
+        "block_len": int(block_len),
+        "n_boot": int(n_boot),
+        "seed": int(seed),
+        "statistic": "mean_return",
+        "interpretation": (
+            f"{len(included)} of {len(names)} strategies are retained by the MCS "
+            f"procedure at size {size:g} (mean-return losses). Retention is not "
+            f"evidence that the retained strategies perform equally; it means the "
+            f"data do not support eliminating them."
+        ),
+    }
