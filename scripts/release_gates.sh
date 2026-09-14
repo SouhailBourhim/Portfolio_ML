@@ -109,6 +109,14 @@ gate_clean_tree() {
         echo "Restore the history (git clone, or git init + remote) before tagging."
         return 1
     fi
+    # A repository created by `git init` with no commits also exits 0 with empty
+    # output here, so the exit-status check alone still reports a clean tree
+    # against a revision that does not exist. There must be a HEAD to tag.
+    if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+        echo "Repository has no commits — there is no revision to tag, so this"
+        echo "gate cannot answer whether the tree matches one."
+        return 1
+    fi
     if [ -n "$dirty" ]; then
         echo "Uncommitted changes:"; echo "$dirty"
         return 1

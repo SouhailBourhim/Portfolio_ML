@@ -40,7 +40,22 @@ function Invoke-Gate {
     param([string] $Name, [scriptblock] $Body)
     Write-Host ""
     Write-Host ("-- {0}" -f $Name)
-    $ok = & $Body
+
+    # A script block emits EVERYTHING its body writes to the success stream, not
+    # just the value it returns. A gate that shells out to a native command
+    # therefore yields [pytest output..., $false], and `if ($ok)` on a non-empty
+    # array is truthy -- so a FAILING gate reported PASS. Verified: a body that
+    # prints one line and returns $false emits [String, Boolean] and passed.
+    #
+    # Two defences, because either alone is fragile:
+    #   - every gate below routes native output to the host with `| Out-Host`,
+    #     so only its Boolean reaches the success stream;
+    #   - this takes the LAST emitted object and coerces it explicitly, so a
+    #     gate that forgets that still cannot pass on stray output.
+    # The same failure this guards against is the one gate 5 exists to catch:
+    # a check that reports success because it never really ran.
+    $ok = [bool](@(& $Body) | Select-Object -Last 1)
+
     if ($ok) {
         Write-Host "   PASS"
     } else {
@@ -72,13 +87,13 @@ function Test-DvcStatus {
 # 2. The manifest identifies the code that produced these artifacts, was
 #    written from a clean tree, and every checksum still matches.
 function Test-Snapshot {
-    & $Python src/snapshot.py verify
+    & $Python src/snapshot.py verify | Out-Host
     return $LASTEXITCODE -eq 0
 }
 
 # 3. The serving bundle is complete AND verified.
 function Test-Bundle {
-    & $Python scripts/check_artifacts.py --verify
+    & $Python scripts/check_artifacts.py --verify | Out-Host
     return $LASTEXITCODE -eq 0
 }
 
@@ -95,7 +110,7 @@ function Test-ModelCards {
     git diff --quiet -- docs/MODEL_CARD_*.md
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Model cards changed when regenerated -- they are stale."
-        git --no-pager diff --stat -- docs/MODEL_CARD_*.md
+        git --no-pager diff --stat -- docs/MODEL_CARD_*.md | Out-Host
         Write-Host ""
         Write-Host "Fix: regenerate the snapshot manifest FIRST, then the cards, then"
         Write-Host "commit both:"
@@ -122,6 +137,15 @@ function Test-CleanTree {
         Write-Host "Restore the history (git clone, or git init + remote) before tagging."
         return $false
     }
+    # A repository created by `git init` with no commits also returns success
+    # and empty output here, so the exit-code check alone still reports a clean
+    # tree against a revision that does not exist. There must be a HEAD to tag.
+    git rev-parse --verify HEAD 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Repository has no commits -- there is no revision to tag, so"
+        Write-Host "this gate cannot answer whether the tree matches one."
+        return $false
+    }
     if ($dirty) {
         Write-Host "Uncommitted changes:"
         $dirty | Write-Host
@@ -133,7 +157,7 @@ function Test-CleanTree {
 }
 
 function Test-Suite {
-    & $Python -m pytest tests/ -q
+    & $Python -m pytest tests/ -q | Out-Host
     return $LASTEXITCODE -eq 0
 }
 
