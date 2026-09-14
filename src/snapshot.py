@@ -249,7 +249,14 @@ def build_snapshot_manifest() -> dict[str, object]:
         "git_dirty": bool(dirty),
         "git_dirty_paths": dirty,
         "python": platform.python_version(),
-        "files": {str(path): _file_record(path) for path in SNAPSHOT_FILES},
+        # `as_posix()`, NOT `str()`. The manifest's keys are a published, durable
+        # identifier for each artifact, and `str(Path("data/gold/x.parquet"))`
+        # yields `data\gold\x.parquet` on Windows. That silently made every
+        # checked file report "Snapshot mismatch" there — not because any byte
+        # had changed, but because no key in the committed manifest matched the
+        # one being looked up. POSIX separators are identical to `str()` on
+        # macOS and Linux, so every existing manifest stays valid.
+        "files": {path.as_posix(): _file_record(path) for path in SNAPSHOT_FILES},
         "notes": [
             "This manifest identifies a local/DVC-managed data snapshot; it does not publish data.",
             "A reviewer must obtain the matching data through the configured DVC remote or a release archive.",
@@ -284,7 +291,7 @@ def verify_snapshot() -> list[str]:
     current = build_snapshot_manifest()
     failures: list[str] = []
     for relative_path in SNAPSHOT_FILES:
-        key = str(relative_path)
+        key = relative_path.as_posix()      # see build_snapshot_manifest
         if expected.get("files", {}).get(key) != current["files"].get(key):
             failures.append(f"Snapshot mismatch: {key}")
     # A manifest produced from uncommitted code names a revision that does not

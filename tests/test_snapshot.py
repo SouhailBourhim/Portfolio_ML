@@ -35,7 +35,11 @@ def test_write_then_verify_accepts_an_unchanged_snapshot(snapshot_root):
 
     assert path == snapshot_root / snapshot.MANIFEST_RELATIVE_PATH
     manifest = json.loads(path.read_text(encoding="utf-8"))
-    assert set(manifest["files"]) == {str(path) for path in snapshot.SNAPSHOT_FILES}
+    # `as_posix()`, not `str()`: the manifest's keys must be identical on every
+    # platform, or a manifest written on macOS can never be verified on Windows.
+    # Asserting `str()` here was self-consistent and therefore blind to that.
+    assert set(manifest["files"]) == {p.as_posix() for p in snapshot.SNAPSHOT_FILES}
+    assert not any("\\" in key for key in manifest["files"])
     assert snapshot.verify_snapshot() == []
 
 

@@ -44,7 +44,10 @@ artifact, no DVC stage and no committed result.
 Usage:
     export $(grep -v '^#' .env | xargs)      # or however you load .env
     python scripts/probe_bam_history.py
-    python scripts/probe_bam_history.py --currency EUR --out /tmp/probe.json
+    python scripts/probe_bam_history.py --currency EUR --out data/interim/probe.json
+
+On Windows, the .env line above has no shell equivalent; the project virtualenv
+loads it through python-dotenv anyway, so just activate and run the script.
 """
 
 from __future__ import annotations
@@ -245,7 +248,7 @@ def main() -> int:
 def _write(report: dict, out: str) -> None:
     path = Path(out)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(report, indent=2))
+    path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     log.info("Probe report written -> %s", path)
     print(json.dumps(report, indent=2))
 

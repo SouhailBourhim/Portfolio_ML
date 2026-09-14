@@ -18,7 +18,10 @@ from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Twips
 from docx.text.paragraph import Paragraph
 
-ROOT = Path("/Users/apple/Projects/Portfolio_ML")
+# Derived from this file's location, never hardcoded: an absolute path pinned to
+# one developer's macOS home directory made this script the only one in the repo
+# that could not run on a fresh clone, on another machine, or in the container.
+ROOT = Path(__file__).resolve().parents[1]
 GOLD = ROOT / "data" / "gold"
 SRC = ROOT / "docs" / "Livrable_Phase5_Evaluation_OOS.docx"
 OUT = ROOT / "docs" / "Livrable_Phase8_Etudes_Robustesse.docx"
@@ -26,7 +29,7 @@ USABLE_TW, HEADER_FILL = 9026, "DCE6F1"
 
 
 def load(name):
-    return json.loads((GOLD / name).read_text())
+    return json.loads((GOLD / name).read_text(encoding="utf-8"))
 
 
 DM = load("deep_morocco_results.json")
