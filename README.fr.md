@@ -404,7 +404,7 @@ preuve : les données, modèles, décisions, fallbacks et claims publiés sont v
 5. Ces écarts ne démontrent pas une supériorité de l'approche classique : aucun test pairé de cette différence n'est présenté.
 6. `regime_conditional` demeure le comparateur primaire pré-spécifié des tests White/SPA. Ce choix a été fixé avant l'observation des résultats et n'est pas réécrit maintenant que le signe de l'écart a changé.
 7. Correction pour tests multiples (White 2000, Hansen 2005) sur les 240 configurations atteignables : aucun candidat n'établit de surperformance face au comparateur primaire pré-spécifié.
-8. Walk-forward imbriqué (fenêtre OOS 2023-07-28 → 2026-07-24, 781 lignes) : le classement est sensible au protocole d'évaluation et à la fenêtre hors échantillon associée. Ratio de Sharpe dégonflé (DSR) = 0,6707 sur 198 configurations.
+8. Walk-forward imbriqué (fenêtre OOS 2023-07-28 → 2026-07-24, 781 lignes) : le classement est sensible au protocole d'évaluation et à la fenêtre hors échantillon associée. Ratio de Sharpe dégonflé (DSR) = 0,6705 sur 198 configurations.
 9. Intégrité des modèles : 6 ajustements sur 1 184 ont emprunté un repli d'estimateur (4 stratégies évaluées, 296 dates de rééquilibrage). Sur ces rééquilibrages, le résultat a été produit par un estimateur de substitution et non par le modèle que son étiquette désigne : les séries concernées sont des HYBRIDES. La portée de cette mesure est exactement l'ensemble compté ci-dessus : elle n'affirme pas qu'aucun repli n'est possible sur un autre instantané.
 10. Aucune stratégie n'est recommandée, déployée, ni présentée comme une valeur ajoutée établie. Ce livrable est un prototype de recherche.
 

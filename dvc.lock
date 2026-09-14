@@ -1310,8 +1310,8 @@ stages:
       size: 119827
     - path: experiments/nested_walkforward.py
       hash: md5
-      md5: f927b54e371008f988fec35168e3a8b4
-      size: 15432
+      md5: 75fc88440d7aa8237ae6ccedcaab471e
+      size: 15450
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
@@ -1322,8 +1322,8 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: a7a9578c1b4daeaf27a2ba9656307de4
-      size: 36258
+      md5: c94dcb2d5752bee3db110279360abc8b
+      size: 36292
     - path: src/ml_signals.py
       hash: md5
       md5: 8deb9470629e15379eff17bdf89b4b71
@@ -1334,8 +1334,8 @@ stages:
       size: 13882
     - path: src/provenance.py
       hash: md5
-      md5: c94889064caa35b611042df3346ed175
-      size: 9555
+      md5: 2eaeaed38a73b96f4265d2916776dd55
+      size: 9587
     - path: src/purged_kfold.py
       hash: md5
       md5: 6d40001c67cbf63bcc06ad19ff0c9992
@@ -1346,8 +1346,8 @@ stages:
       size: 12557
     - path: src/run_phase4.py
       hash: md5
-      md5: 76f45b09b4bf39097ea9c3346b8941b9
-      size: 15261
+      md5: 68d529cec6eb6bacf1b3f4fd07717739
+      size: 15295
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -1415,8 +1415,8 @@ stages:
     outs:
     - path: data/gold/nested_walkforward_results.json
       hash: md5
-      md5: 36d39cef2963517fa7d86eb0d62a6c7b
-      size: 7628
+      md5: 71237778bd2a684d4e85dd45ab6b400e
+      size: 7943
   etf_cap_sweep:
     cmd: python experiments/etf_cap_verdict.py
     deps:
