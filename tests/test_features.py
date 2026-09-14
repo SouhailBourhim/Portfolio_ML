@@ -75,7 +75,7 @@ class TestCurrencyManifest:
         payload = {"n_trading_days": 10}
         if currency is not None:
             payload["currency"] = currency
-        (silver / name).write_text(json.dumps(payload))
+        (silver / name).write_text(json.dumps(payload), encoding="utf-8")
 
     def test_it_copies_the_currency_block_from_both_silver_reports(self, dirs):
         silver, gold = dirs

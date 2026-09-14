@@ -227,7 +227,7 @@ class TestSingleCalendarAlignment:
             pytest.skip("readiness artifact absent — run the global_2004 runner.")
         import json
 
-        coverage = json.loads(path.read_text())["coverage"]
+        coverage = json.loads(path.read_text(encoding="utf-8"))["coverage"]
         assert coverage["forward_filled_cells"] == 0
         assert coverage["max_zero_return_share"] < 0.02
 
@@ -265,7 +265,7 @@ class TestFrozenEvidenceAndProtocolLineage:
         path = ROOT / "dvc.yaml"
         if not path.is_file():
             pytest.skip("dvc.yaml absent")
-        return yaml.safe_load(path.read_text())["stages"]
+        return yaml.safe_load(path.read_text(encoding="utf-8"))["stages"]
 
     def test_completed_stages_are_frozen(self):
         stages = self._stages()
@@ -330,6 +330,6 @@ class TestFrozenEvidenceAndProtocolLineage:
         q1_path = GOLD / "global_2004_q1_results.json"
         if not q1_path.is_file():
             pytest.skip("Q1 artifact absent")
-        sources = json.loads(q1_path.read_text())["provenance"]["source_artifacts"]
+        sources = json.loads(q1_path.read_text(encoding="utf-8"))["provenance"]["source_artifacts"]
         assert self.PROTOCOL_DOC in sources
         assert sources[self.PROTOCOL_DOC], "protocol hash recorded but empty"

@@ -76,7 +76,7 @@ def _require(path: Path) -> Path:
 @st.cache_data(show_spinner=False)
 def load_showcase() -> dict:
     """Metrics table + headline comparison, per universe."""
-    return json.loads(_require(GOLD / "dashboard_showcase.json").read_text())
+    return json.loads(_require(GOLD / "dashboard_showcase.json").read_text(encoding="utf-8"))
 
 
 @st.cache_data(show_spinner=False)
@@ -107,7 +107,7 @@ def load_crisis() -> dict:
     supporting section.
     """
     path = GOLD / "crisis_windows.json"
-    return json.loads(path.read_text()) if path.exists() else {}
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
 @st.cache_data(show_spinner=False)
@@ -118,13 +118,13 @@ def load_cap_sweep() -> dict:
     breaking the page.
     """
     path = GOLD / "etf_cap_verdict.json"
-    return json.loads(path.read_text()) if path.exists() else {}
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
 @st.cache_data(show_spinner=False)
 def load_phase5() -> dict:
     """The committed out-of-sample evaluation — used for the credibility layer."""
-    return json.loads(_require(GOLD / "phase5_results.json").read_text())
+    return json.loads(_require(GOLD / "phase5_results.json").read_text(encoding="utf-8"))
 
 
 def equity_curve(equity: pd.DataFrame, universe: str, strategy: str,

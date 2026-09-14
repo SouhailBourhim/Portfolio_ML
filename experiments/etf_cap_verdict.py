@@ -215,7 +215,7 @@ def main() -> None:
             ],
         ),
         "caps": CAPS, "results": results, "verdicts": verdicts,
-    }, indent=2))
+    }, indent=2), encoding="utf-8")
     log.info("")
     log.info("wrote %s", out)
 

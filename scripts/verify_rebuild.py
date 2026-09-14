@@ -36,7 +36,7 @@ def _strip_volatile(o):
 
 def etf_sha(path: pathlib.Path):
     try:
-        d = _strip_volatile(json.loads(path.read_text()))
+        d = _strip_volatile(json.loads(path.read_text(encoding="utf-8")))
     except Exception:
         return None
     acc = []
@@ -61,7 +61,7 @@ if not baseline_path.is_file():
 print("=" * 78)
 print("GATE 1 — etf_2017 must be UNCHANGED (non-negotiable)")
 print("=" * 78)
-before = json.loads(baseline_path.read_text())
+before = json.loads(baseline_path.read_text(encoding="utf-8"))
 failures = []
 for name, rec in before.items():
     old = rec.get("etf_2017_sha")
@@ -76,7 +76,7 @@ for name, rec in before.items():
 print("\n" + "=" * 78)
 print("GATE 2 — full_2021 is MAD, etf_2017 is USD")
 print("=" * 78)
-man = json.loads((GOLD / "currency_manifest.json").read_text())
+man = json.loads((GOLD / "currency_manifest.json").read_text(encoding="utf-8"))
 for u, v in man["universes"].items():
     print(f"  {u:10s} converted={v.get('converted')} base={v.get('base_currency')}")
 full = pd.read_parquet(GOLD / "log_returns.parquet")
@@ -95,7 +95,7 @@ print("NEW full_2021 HEADLINE (MAD) vs OLD (mixed-currency)")
 print("=" * 78)
 print("  OLD (AGENTS.md §5.1): max_sharpe 1.1644 | regime_conditional 1.2363 | +6.2%")
 try:
-    show = json.loads((GOLD / "dashboard_showcase.json").read_text())
+    show = json.loads((GOLD / "dashboard_showcase.json").read_text(encoding="utf-8"))
     print("  NEW: " + json.dumps(show.get("full_2021", show), indent=2)[:900])
 except Exception as e:
     print(f"  dashboard_showcase.json not yet rebuilt ({e})")

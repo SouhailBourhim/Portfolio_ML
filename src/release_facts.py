@@ -65,7 +65,7 @@ FALLBACK_SCOPE_NOTE = (
 
 
 def _load(name: str, root: Path = ROOT) -> dict:
-    return json.loads((root / "data" / "gold" / name).read_text())
+    return json.loads((root / "data" / "gold" / name).read_text(encoding="utf-8"))
 
 
 def load_facts(root: Path = ROOT) -> dict:

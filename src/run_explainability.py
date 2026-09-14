@@ -116,7 +116,7 @@ def explain_challenger(
     from strategies import RandomForestSignalStrategy, XGBoostSignalStrategy
 
     regime, backtest = params["regime"], params["backtest"]
-    selected = json.loads((GOLD / "phase5_results.json").read_text())[universe]
+    selected = json.loads((GOLD / "phase5_results.json").read_text(encoding="utf-8"))[universe]
     model_params = dict(selected["tuned"][name]["selected_ml_params"])
     levers = dict(selected["tuned"][name]["selected_levers"])
 

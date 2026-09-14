@@ -78,7 +78,7 @@ def client(tmp_path, monkeypatch):
         "rebalance_freq": "ME",
         "max_weight": 0.25,
         "cost_bps": {"etf": 10, "bvc": 30},
-    }))
+    }), encoding="utf-8")
 
     (gold / "currency_manifest.json").write_text(json.dumps({
         "universes": {
@@ -92,7 +92,7 @@ def client(tmp_path, monkeypatch):
                 "fx_series": None,
             },
         },
-    }))
+    }), encoding="utf-8")
 
     # Minimal crisis artifact so the /crisis tests exercise the real endpoint
     # instead of skipping — a skipped test guards nothing.
@@ -115,7 +115,7 @@ def client(tmp_path, monkeypatch):
                              "crises_exceeding_base_rate": "5/5",
                              "sign_test_p_conservative": 0.03125, "note": "lead with the sign test"},
         }},
-    }))
+    }), encoding="utf-8")
 
     # A minimal, versioned explanation artifact. The API must serve this
     # artifact verbatim; it must never re-fit a strategy while handling a
@@ -133,7 +133,7 @@ def client(tmp_path, monkeypatch):
                 "challengers": {},
             },
         },
-    }))
+    }), encoding="utf-8")
 
     monkeypatch.setattr(api_main, "GOLD", gold)
     # Caching moved down a layer: the loaders are plain functions now and the
@@ -179,7 +179,7 @@ class TestCatalogue:
             "git_commit": "producing-commit",
             "generated_at_utc": "2026-08-03T00:00:00+00:00",
             "files": {"data/gold/dashboard_showcase.json": {"sha256": "abc"}},
-        }))
+        }), encoding="utf-8")
         body = client.get("/version").json()
         assert body["provenance"] == {
             "status": "manifest_present",
@@ -210,7 +210,7 @@ class TestCatalogue:
             "git_dirty_paths": ["src/strategies.py"],
             "generated_at_utc": "2026-08-03T00:00:00+00:00",
             "files": {"data/gold/dashboard_showcase.json": {"sha256": "abc"}},
-        }))
+        }), encoding="utf-8")
         provenance = client.get("/version").json()["provenance"]
         assert provenance["status"] == "manifest_dirty_tree"
         assert provenance["producer_tree_dirty"] is True
@@ -376,14 +376,14 @@ class TestArtifactCacheIsNotStale:
         gold = tmp_path / "gold"
         gold.mkdir()
         path = gold / "dashboard_showcase.json"
-        path.write_text(_json.dumps({"universes": {"u": {"marker": 1}}}))
+        path.write_text(_json.dumps({"universes": {"u": {"marker": 1}}}), encoding="utf-8")
         monkeypatch.setattr(m, "GOLD", gold)
 
         assert m._showcase()["universes"]["u"]["marker"] == 1
 
         # Rewrite with a distinct mtime, as a pipeline re-run would.
         import os
-        path.write_text(_json.dumps({"universes": {"u": {"marker": 2}}}))
+        path.write_text(_json.dumps({"universes": {"u": {"marker": 2}}}), encoding="utf-8")
         os.utime(path, (path.stat().st_atime + 10, path.stat().st_mtime + 10))
 
         assert m._showcase()["universes"]["u"]["marker"] == 2, (

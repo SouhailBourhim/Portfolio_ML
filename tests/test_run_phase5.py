@@ -125,7 +125,7 @@ def test_run_phase5_writes_results_and_respects_the_test_split(tmp_path, monkeyp
     results_file = tmp_path / "data" / "gold" / "phase5_results.json"
     ledger_file = tmp_path / "data" / "gold" / "dsr_trial_ledger.json"
     assert results_file.exists() and ledger_file.exists()
-    assert set(json.loads(results_file.read_text())) == {"etf_2017", "full_2021"}
+    assert set(json.loads(results_file.read_text(encoding="utf-8"))) == {"etf_2017", "full_2021"}
 
 
 def test_phase5_writes_the_validation_protocol_and_paired_comparison_artifacts(
@@ -141,7 +141,7 @@ def test_phase5_writes_the_validation_protocol_and_paired_comparison_artifacts(
     _patch(monkeypatch, tmp_path)
     run_phase5.run_phase5()
 
-    protocol = json.loads((tmp_path / "data/gold/phase5_validation_protocol.json").read_text())
+    protocol = json.loads((tmp_path / "data/gold/phase5_validation_protocol.json").read_text(encoding="utf-8"))
     assert protocol["protocol"] == "purged_walk_forward"
     assert protocol["config"]["mode"] == "expanding"
 
@@ -159,7 +159,7 @@ def test_phase5_writes_the_validation_protocol_and_paired_comparison_artifacts(
                 assert fold["n_train_rows"] > 0 and fold["n_val_rows"] > 0
             assert len(block["fold_ics_of_selected"]) == len(block["folds"])
 
-    paired = json.loads((tmp_path / "data/gold/paired_comparison_results.json").read_text())
+    paired = json.loads((tmp_path / "data/gold/paired_comparison_results.json").read_text(encoding="utf-8"))
     assert paired["comparisons"], "no paired comparisons written"
     for row in paired["comparisons"]:
         for key in ("universe", "candidate", "benchmark", "test_start", "test_end",
@@ -178,7 +178,7 @@ def test_phase5_validation_never_touches_the_frozen_test_segment(tmp_path, monke
     _patch(monkeypatch, tmp_path)
     results = run_phase5.run_phase5()
 
-    protocol = json.loads((tmp_path / "data/gold/phase5_validation_protocol.json").read_text())
+    protocol = json.loads((tmp_path / "data/gold/phase5_validation_protocol.json").read_text(encoding="utf-8"))
     for universe, per_model in protocol["universes"].items():
         test_start = results[universe]["test_start"]
         for block in per_model.values():

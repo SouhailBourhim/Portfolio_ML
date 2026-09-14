@@ -338,7 +338,7 @@ class DSRTrialLedger:
         if self.path is not None and self.path.exists():
             import json
 
-            raw = json.loads(self.path.read_text())
+            raw = json.loads(self.path.read_text(encoding="utf-8"))
             if isinstance(raw, dict) and raw.get("schema_version") == self.SCHEMA_VERSION:
                 self._trials = {k: list(v) for k, v in raw.get("trials", {}).items()}
             else:
@@ -477,7 +477,7 @@ class DSRTrialLedger:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(
             {"schema_version": self.SCHEMA_VERSION, "trials": self._trials}, indent=2
-        ))
+        ), encoding="utf-8")
 
 
 def paired_block_bootstrap(

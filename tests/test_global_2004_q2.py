@@ -42,7 +42,7 @@ Q1_ARTIFACT = ROOT / "data" / "gold" / "global_2004_q1_results.json"
 def _artifact() -> dict:
     if not ARTIFACT.is_file():
         pytest.skip("Q2 artifact absent — run src/run_global_2004_q2.py.")
-    return json.loads(ARTIFACT.read_text())
+    return json.loads(ARTIFACT.read_text(encoding="utf-8"))
 
 
 # ── 1. The ledger is derived, not observed ───────────────────────────────────
@@ -95,7 +95,7 @@ class TestBenchmarkReproducesQ1:
     def test_benchmark_metrics_match_q1_exactly(self):
         if not Q1_ARTIFACT.is_file():
             pytest.skip("Q1 artifact absent")
-        q1 = json.loads(Q1_ARTIFACT.read_text())["candidate"]
+        q1 = json.loads(Q1_ARTIFACT.read_text(encoding="utf-8"))["candidate"]
         q2_bench = _artifact()["benchmark"]
 
         for field in ("net_sharpe", "net_geometric_annual_return", "max_drawdown",

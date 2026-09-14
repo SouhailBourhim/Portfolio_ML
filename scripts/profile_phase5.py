@@ -293,7 +293,7 @@ def main() -> None:
                       f"{r['seconds_in_repeat_calls']:>7.2f}s in repeats")
 
     if args.json:
-        args.json.write_text(json.dumps(out, indent=2))
+        args.json.write_text(json.dumps(out, indent=2), encoding="utf-8")
         print(f"\nwritten → {args.json}")
 
 

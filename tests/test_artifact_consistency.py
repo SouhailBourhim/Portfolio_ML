@@ -72,7 +72,7 @@ TOLERANCE = 5e-4
 
 def _load(name: str) -> dict | None:
     path = GOLD / name
-    return json.loads(path.read_text()) if path.exists() else None
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
 def _require(name: str) -> dict:

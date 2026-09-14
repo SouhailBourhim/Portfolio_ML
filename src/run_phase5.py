@@ -149,7 +149,7 @@ def run_phase5() -> dict:
     ledger = DSRTrialLedger(path=ledger_path)
 
     hurdle_path = ROOT / "data" / "gold" / "phase4_results.json"
-    stored_hurdle = json.loads(hurdle_path.read_text()) if hurdle_path.exists() else {}
+    stored_hurdle = json.loads(hurdle_path.read_text(encoding="utf-8")) if hurdle_path.exists() else {}
 
     configure_mlflow()
     mlflow.set_experiment("phase5_oos_evaluation")
@@ -374,7 +374,7 @@ def run_phase5() -> dict:
             ),
             "config": dict(wf),
             "universes": fold_audit,
-        }, indent=2))
+        }, indent=2), encoding="utf-8")
         mlflow.log_artifact(str(protocol_path))
         log.info("Validation protocol written → %s", protocol_path)
 
@@ -396,12 +396,12 @@ def run_phase5() -> dict:
             ),
             "multiple_testing": _search_correction_note(ledger, bp["universes"]),
             "comparisons": paired_rows,
-        }, indent=2))
+        }, indent=2), encoding="utf-8")
         mlflow.log_artifact(str(paired_path))
         log.info("Paired comparisons written → %s (%d rows)", paired_path, len(paired_rows))
 
         results_path.parent.mkdir(parents=True, exist_ok=True)
-        results_path.write_text(json.dumps(output, indent=2))
+        results_path.write_text(json.dumps(output, indent=2), encoding="utf-8")
         mlflow.log_artifact(str(results_path))
         mlflow.log_artifact(str(ledger_path))
         log.info("Phase 5 results → %s", results_path)

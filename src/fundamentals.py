@@ -401,6 +401,6 @@ if __name__ == "__main__":  # pragma: no cover — thin CLI, unit-tested via cal
     out_path = root / cfg["output_path"]
     out_path.parent.mkdir(parents=True, exist_ok=True)
     panel.to_parquet(out_path)
-    (root / cfg["manifest_path"]).write_text(json.dumps(manifest.to_dict(), indent=2))
+    (root / cfg["manifest_path"]).write_text(json.dumps(manifest.to_dict(), indent=2), encoding="utf-8")
     log.info("wrote %s (%d rows × %d cols) and manifest", out_path,
              panel.shape[0], panel.shape[1])

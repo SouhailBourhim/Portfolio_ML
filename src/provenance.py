@@ -98,7 +98,7 @@ def read_numeraire(universe: str, root: Path = ROOT) -> dict:
             f"numéraire. The tree predates the base-currency correction; run "
             f"`dvc repro features`."
         )
-    manifest = json.loads(path.read_text())
+    manifest = json.loads(path.read_text(encoding="utf-8"))
     entry = manifest.get("universes", {}).get(universe)
     if not entry:
         raise StaleArtifactError(
@@ -199,7 +199,7 @@ def require_current_artifact(
                 f"any surface that consumes it."
             )
         label = str(path)
-        artifact = json.loads(path.read_text())
+        artifact = json.loads(path.read_text(encoding="utf-8"))
     else:
         label = artifact.get("universe", "<artifact>")
 

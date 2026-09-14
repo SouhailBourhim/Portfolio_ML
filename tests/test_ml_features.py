@@ -181,7 +181,7 @@ class TestFeatureSetAndPipeline:
         assert set(results) == {"etf_2017", "full_2021"}
         assert (gold / "ml_features_etf.parquet").exists()
         assert (gold / "ml_features_full.parquet").exists()
-        manifest = json.loads((gold / "ml_features_manifest.json").read_text())
+        manifest = json.loads((gold / "ml_features_manifest.json").read_text(encoding="utf-8"))
         assert manifest["global_standardization"] is False
         assert set(manifest["universes"]) == {"etf_2017", "full_2021"}
 
@@ -213,7 +213,7 @@ class TestFeatureSetAndPipeline:
             }, "manifest_path": "data/gold/ml_features_manifest.json"},
         }
         run_phase3(config=config, project_root=tmp_path)
-        manifest = json.loads((gold / "ml_features_manifest.json").read_text())
+        manifest = json.loads((gold / "ml_features_manifest.json").read_text(encoding="utf-8"))
 
         assert "warmup_policy" in manifest
         etf = manifest["universes"]["etf_2017"]

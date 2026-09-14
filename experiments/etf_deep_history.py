@@ -353,7 +353,7 @@ def main() -> None:
         "effect_b_test_history": {"shallow": b_shallow, "deep": b_deep},
         "mean_ci_width": {"shallow": round(mean_shallow, 4), "deep": round(mean_deep, 4)},
         "effect_c_cap_degeneracy": cap_sweep,
-    }, indent=2))
+    }, indent=2), encoding="utf-8")
     log.info("")
     log.info("wrote %s", out)
 

@@ -191,7 +191,7 @@ def main() -> dict:
                    "note": "FIXED (not selected) — this run answers the DATA question, not the tuning one"},
     }
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-    OUT_JSON.write_text(json.dumps(out, indent=2))
+    OUT_JSON.write_text(json.dumps(out, indent=2), encoding="utf-8")
     pd.DataFrame(equity).to_parquet(OUT_EQUITY)
     log.info("Wrote %s and %s", OUT_JSON.name, OUT_EQUITY.name)
     log.info("VERDICT: best ML %s @ %.3f | regime %.3f | Markowitz %.3f | 1/N %.3f | CV IC rose to %.3f/%.3f",

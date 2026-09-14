@@ -120,7 +120,7 @@ def test_run_phase4c_writes_results_with_full_trial_pool(tmp_path, monkeypatch):
         assert len(universe_results) == 14
         assert {r.strategy_name for r in universe_results} == expected_names
 
-    output = json.loads((tmp_path / "data" / "gold" / "phase4c_results.json").read_text())
+    output = json.loads((tmp_path / "data" / "gold" / "phase4c_results.json").read_text(encoding="utf-8"))
     for entry in output.values():
         assert entry["n_trials"] == 14
         # The diagnosis (gross, net, turnover per strategy) must live in the

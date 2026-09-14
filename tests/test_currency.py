@@ -594,7 +594,7 @@ class TestDvcLineageDeclaresTheFxInput:
         from pathlib import Path
 
         root = Path(__file__).resolve().parents[1]
-        return yaml.safe_load((root / "dvc.yaml").read_text())["stages"]
+        return yaml.safe_load((root / "dvc.yaml").read_text(encoding="utf-8"))["stages"]
 
     def test_the_conversion_module_is_a_declared_dependency_of_clean(self, stages):
         assert "src/currency.py" in stages["clean"]["deps"], (

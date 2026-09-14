@@ -52,7 +52,7 @@ plt.rcParams.update(
 
 
 def load(name: str):
-    return json.loads((GOLD / name).read_text())
+    return json.loads((GOLD / name).read_text(encoding="utf-8"))
 
 
 def fr(value: float, digits: int = 2) -> str:

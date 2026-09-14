@@ -228,7 +228,7 @@ def main() -> dict:
             },
         }
 
-    OUT_PATH.write_text(json.dumps(out, indent=2))
+    OUT_PATH.write_text(json.dumps(out, indent=2), encoding="utf-8")
 
     # ── Report ───────────────────────────────────────────────────────────────
     for universe, per_crisis in out["universes"].items():

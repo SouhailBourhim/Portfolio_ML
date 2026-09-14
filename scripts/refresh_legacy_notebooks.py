@@ -38,8 +38,8 @@ if not (SAFE_ROOT / "data" / "gold").exists():
     SAFE_ROOT = SAFE_ROOT.parent
 GOLD_RELEASE = SAFE_ROOT / "data" / "gold"
 
-snapshot = json.loads((GOLD_RELEASE / "snapshot_manifest.json").read_text())
-currency = json.loads((GOLD_RELEASE / "currency_manifest.json").read_text())
+snapshot = json.loads((GOLD_RELEASE / "snapshot_manifest.json").read_text(encoding="utf-8"))
+currency = json.loads((GOLD_RELEASE / "currency_manifest.json").read_text(encoding="utf-8"))
 assert snapshot["git_dirty"] is False, "The published snapshot itself must have clean provenance."
 assert currency["universes"]["full_2021"]["base_currency"] == "MAD"
 assert currency["universes"]["etf_2017"]["base_currency"] == "USD"
@@ -145,7 +145,7 @@ def refresh_phase2() -> None:
     nb.cells.append(nbf.v4.new_markdown_cell("## 8. Release cross-check — recomputation versus the canonical hurdle"))
     nb.cells.append(nbf.v4.new_code_cell(r'''
 import json
-canonical_hurdle = json.loads((SAFE_ROOT / "data" / "gold" / "phase2_hurdle.json").read_text())
+canonical_hurdle = json.loads((SAFE_ROOT / "data" / "gold" / "phase2_hurdle.json").read_text(encoding="utf-8"))
 for universe, results in RESULTS.items():
     winner = max(results, key=lambda r: annualized_sharpe(r.net_returns))
     measured = annualized_sharpe(winner.net_returns)
@@ -201,7 +201,7 @@ assets, so the ETF result also measures the constraint as much as the estimator.
 - The result is descriptive and does not establish superiority or equivalence.""",
     )
     nb.cells.append(nbf.v4.new_code_cell(r'''
-canonical = json.loads((ROOT / "data" / "gold" / "phase4_results.json").read_text())
+canonical = json.loads((ROOT / "data" / "gold" / "phase4_results.json").read_text(encoding="utf-8"))
 for universe, results in RESULTS.items():
     winner = max(results, key=lambda r: annualized_sharpe(r.net_returns))
     measured = annualized_sharpe(winner.net_returns)

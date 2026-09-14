@@ -31,7 +31,7 @@ plt.rcParams.update({
     "figure.dpi": 150, "savefig.bbox": "tight", "pdf.fonttype": 42,
 })
 
-L = lambda n: json.loads((GOLD / n).read_text())
+L = lambda n: json.loads((GOLD / n).read_text(encoding="utf-8"))
 
 # The nested walk-forward artifact is loaded through the provenance gate, not
 # with a bare read. It went stale invisibly once — produced 2026-07-28 from a

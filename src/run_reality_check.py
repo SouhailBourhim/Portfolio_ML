@@ -302,7 +302,7 @@ def analyse_from_persisted(universes: list[str] | None = None) -> Path:
             f"first (`python src/run_reality_check.py`)."
         )
     long = pd.read_parquet(SERIES_PATH)
-    previous = json.loads(RESULTS_PATH.read_text()) if RESULTS_PATH.is_file() else {}
+    previous = json.loads(RESULTS_PATH.read_text(encoding="utf-8")) if RESULTS_PATH.is_file() else {}
     results = dict(previous.get("universes", {}))
 
     for universe in (universes or sorted(long["universe"].unique())):
@@ -333,7 +333,7 @@ def run(universes: list[str] | None = None) -> tuple[Path, Path]:
         pd.read_parquet(SERIES_PATH) if SERIES_PATH.is_file() else pd.DataFrame()
     )
     previous = (
-        json.loads(RESULTS_PATH.read_text()) if RESULTS_PATH.is_file() else {"universes": {}}
+        json.loads(RESULTS_PATH.read_text(encoding="utf-8")) if RESULTS_PATH.is_file() else {"universes": {}}
     )
 
     long_frames = [] if existing.empty else [existing[existing["universe"] != u]

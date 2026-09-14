@@ -43,7 +43,7 @@ def tree(tmp_path):
                           "hedge_status": "unhedged", "fx_series": "USDMAD"},
             "etf_2017": {"converted": False, "base_currency": "USD"},
         }
-    }))
+    }), encoding="utf-8")
     (tmp_path / "params.yaml").write_text("backtest:\n  max_weight: 0.25\n")
     return tmp_path
 
@@ -96,7 +96,7 @@ class TestChapterFiveRefusesAStaleArtifact:
         """Exactly the shape of every pre-correction artifact: well-formed,
         plausible, and silent about what produced it."""
         path = tree / "data" / "gold" / "nested_walkforward_results.json"
-        path.write_text(json.dumps({"universe": "full_2021", "strategies": {"a": 1}}))
+        path.write_text(json.dumps({"universe": "full_2021", "strategies": {"a": 1}}), encoding="utf-8")
         with pytest.raises(StaleArtifactError, match="carries no `provenance` block"):
             require_current_artifact(path, expect_universe="full_2021", root=tree)
 
@@ -157,7 +157,7 @@ class TestTheChapterFiveBuilderIsActuallyGated:
 
     def test_the_nested_experiment_is_a_tracked_dvc_stage(self):
         import yaml
-        stages = yaml.safe_load((ROOT / "dvc.yaml").read_text())["stages"]
+        stages = yaml.safe_load((ROOT / "dvc.yaml").read_text(encoding="utf-8"))["stages"]
         assert "nested_walkforward" in stages, (
             "the experiment must be in the graph; being outside it is why the "
             "artifact went stale unnoticed (AGENTS.md §17.8)"

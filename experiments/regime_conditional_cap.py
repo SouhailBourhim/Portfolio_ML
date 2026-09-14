@@ -279,7 +279,7 @@ def main() -> dict:
                  results["baseline_25_25"]["ci_width"],
                  candidates[best_candidate]["ci_width"])
 
-    OUT_PATH.write_text(json.dumps(out, indent=2))
+    OUT_PATH.write_text(json.dumps(out, indent=2), encoding="utf-8")
     log.info("wrote %s", OUT_PATH)
     return out
 

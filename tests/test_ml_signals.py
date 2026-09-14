@@ -406,7 +406,7 @@ class TestRunMlSignalFeatures:
         assert set(results) == {"etf_2017", "full_2021"}
         assert (gold / "ml_signal_features_etf.parquet").exists()
         assert (gold / "ml_signal_features_full.parquet").exists()
-        manifest = json.loads((gold / "ml_signal_features_manifest.json").read_text())
+        manifest = json.loads((gold / "ml_signal_features_manifest.json").read_text(encoding="utf-8"))
         assert set(manifest["universes"]) == {"etf_2017", "full_2021"}
         assert manifest["universes"]["etf_2017"]["columns"] == results["etf_2017"].shape[1]
 

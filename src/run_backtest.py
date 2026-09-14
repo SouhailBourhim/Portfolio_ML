@@ -184,7 +184,7 @@ def run_phase2() -> dict[str, list[BacktestResult]]:
                 "oos_end": str(best.net_returns.index.max().date()),
             }
         hurdle_path = ROOT / "data" / "gold" / "phase2_hurdle.json"
-        hurdle_path.write_text(json.dumps(hurdle, indent=2))
+        hurdle_path.write_text(json.dumps(hurdle, indent=2), encoding="utf-8")
         mlflow.log_artifact(str(hurdle_path))
         log.info("Phase 4 hurdle written → %s : %s", hurdle_path,
                  {k: v["sharpe_net"] for k, v in hurdle.items()})

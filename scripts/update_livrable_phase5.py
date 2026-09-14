@@ -32,9 +32,9 @@ ROOT = Path(__file__).resolve().parents[1]
 GOLD = ROOT / "data" / "gold"
 DOCX = ROOT / "docs" / "Livrable_Phase5_Evaluation_OOS.docx"
 
-P5 = json.loads((GOLD / "phase5_results.json").read_text())
-PAIRED = json.loads((GOLD / "paired_comparison_results.json").read_text())
-PROTOCOL = json.loads((GOLD / "phase5_validation_protocol.json").read_text())
+P5 = json.loads((GOLD / "phase5_results.json").read_text(encoding="utf-8"))
+PAIRED = json.loads((GOLD / "paired_comparison_results.json").read_text(encoding="utf-8"))
+PROTOCOL = json.loads((GOLD / "phase5_validation_protocol.json").read_text(encoding="utf-8"))
 
 UNIVERSES = ("etf_2017", "full_2021")
 FR_LABEL = {

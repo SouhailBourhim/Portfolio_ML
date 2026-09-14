@@ -98,7 +98,7 @@ def load_known_empty(out_path: Path) -> set:
     path = empty_dates_path(out_path)
     if not path.exists():
         return set()
-    known = {pd.Timestamp(d) for d in json.loads(path.read_text())["no_publication"]}
+    known = {pd.Timestamp(d) for d in json.loads(path.read_text(encoding="utf-8"))["no_publication"]}
     log.info("Resuming: %d date(s) already known to have no publication.", len(known))
     return known
 
@@ -115,7 +115,7 @@ def flush_known_empty(known: set, out_path: Path) -> None:
             "no_publication": sorted(str(pd.Timestamp(d).date()) for d in known),
         },
         indent=2,
-    ))
+    ), encoding="utf-8")
 
 
 def flush(series: pd.Series, path: Path) -> None:
@@ -199,7 +199,7 @@ def write_reports(series, start, end, out_path) -> bool:
             "quality": report,
         },
         indent=2, default=str,
-    ))
+    ), encoding="utf-8")
     log.info("Quality summary -> %s", summary_path)
     return bool(report["passed"])
 

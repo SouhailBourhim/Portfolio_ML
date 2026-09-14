@@ -132,7 +132,7 @@ def validation_purgee():
 def regimes_timeline():
     reg = pd.read_parquet(GOLD / "dashboard_regime.parquet")
     reg = reg[reg.universe == "etf_2017"].sort_values("Date").reset_index(drop=True)
-    crises = json.loads((GOLD / "crisis_windows.json").read_text())["crises"]
+    crises = json.loads((GOLD / "crisis_windows.json").read_text(encoding="utf-8"))["crises"]
 
     warm_end = reg.loc[~reg.converged, "Date"].max() if (~reg.converged).any() else None
 

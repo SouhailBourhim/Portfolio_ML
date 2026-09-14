@@ -226,7 +226,7 @@ class TestBaseCurrencyConversion:
         result = clean.silver_pipeline(include_bvc=False, output_stem="log_returns_etf")
 
         assert list(result.columns) == ETF_ASSETS
-        report = json.loads((silver / "validation_report_log_returns_etf.json").read_text())
+        report = json.loads((silver / "validation_report_log_returns_etf.json").read_text(encoding="utf-8"))
         assert report["currency"]["base_currency"] == "USD"
         assert report["currency"]["converted"] is False
         assert report["currency"]["conversion_required"] is False
@@ -306,7 +306,7 @@ class TestBaseCurrencyConversion:
         tell MAD from USD from a mixture — the state the project was in."""
         _, silver, _ = bronze_full
         clean.silver_pipeline(adjust_dividends=False, mixed_universe_start='2000-01-01')
-        report = json.loads((silver / "validation_report.json").read_text())
+        report = json.loads((silver / "validation_report.json").read_text(encoding="utf-8"))
 
         currency = report["currency"]
         assert currency["converted"] is True
@@ -327,7 +327,7 @@ class TestBaseCurrencyConversion:
             adjust_dividends=False, convert_to_mad=False, output_stem="log_returns_usd",
             mixed_universe_start='2000-01-01',
         )
-        report = json.loads((silver / "validation_report_log_returns_usd.json").read_text())
+        report = json.loads((silver / "validation_report_log_returns_usd.json").read_text(encoding="utf-8"))
         assert report["currency"]["converted"] is False
         assert report["currency"]["base_currency"] is None
 

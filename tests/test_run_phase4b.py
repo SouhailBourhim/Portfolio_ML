@@ -118,7 +118,7 @@ def test_run_phase4b_writes_results_with_full_trial_pool(tmp_path, monkeypatch):
 
     results_path = tmp_path / "data" / "gold" / "phase4b_results.json"
     assert results_path.exists()
-    output = json.loads(results_path.read_text())
+    output = json.loads(results_path.read_text(encoding="utf-8"))
     assert set(output) == {"etf_2017", "full_2021"}
     for entry in output.values():
         assert entry["n_trials"] == 9
@@ -134,12 +134,12 @@ def test_run_phase4b_compares_against_a_stored_hurdle(tmp_path, monkeypatch):
         "etf_2017": {"strategy": "max_sharpe", "sharpe_net": -999.0},
         "full_2021": {"strategy": "regime_conditional", "sharpe_net": -999.0},
     }
-    (tmp_path / "data" / "gold" / "phase4_results.json").write_text(json.dumps(hurdle))
+    (tmp_path / "data" / "gold" / "phase4_results.json").write_text(json.dumps(hurdle), encoding="utf-8")
     _patch(monkeypatch, tmp_path)
 
     run_phase4b.run_phase4b()
 
-    output = json.loads((tmp_path / "data" / "gold" / "phase4b_results.json").read_text())
+    output = json.loads((tmp_path / "data" / "gold" / "phase4b_results.json").read_text(encoding="utf-8"))
     for entry in output.values():
         # An absurdly low stored hurdle (-999) must be beaten by anything real.
         assert entry["beats_phase4_hurdle"] is True
