@@ -1394,3 +1394,171 @@ def sharpe_difference_mde(
         se = se * np.sqrt(n_observed / n_target)
 
     return float((norm.ppf(1 - alpha / 2) + norm.ppf(power)) * se)
+
+
+def probability_of_backtest_overfitting(
+    trial_returns: Mapping[str, pd.Series],
+    *,
+    n_splits: int = 16,
+) -> dict:
+    """
+    Probability of backtest overfitting via CSCV (Bailey, Borwein, Lopez de
+    Prado & Zhu, 2017), Journal of Computational Finance 20(4).
+
+    Addresses: P4 — `deflated_sharpe_ratio` is the other half of this research
+    programme and fails differently, which is the point of having both. DSR is
+    PARAMETRIC: it needs a trial count and a variance of trial Sharpes, and is
+    only as good as those two inputs. CSCV is model-free, non-parametric and
+    symmetric. It splits the trial-by-time performance matrix into S blocks,
+    forms every balanced in-sample / out-of-sample partition, and asks how
+    often the configuration chosen in-sample lands below the OOS median. That
+    frequency is the PBO.
+
+    The question it answers is the one this project keeps asking: is the best
+    observed candidate a real edge or the luckiest of a wide search? Unlike the
+    Reality Check it needs no benchmark, and unlike the DSR it makes no
+    distributional assumption about the trial pool.
+
+    CAUTION, and it must be reported with the number: PBO measures the
+    SELECTION PROCEDURE, not the strategies alone. It rises toward 1 when
+    in-sample advantage is sample-specific — the realistic case for a
+    hyperparameter grid fitted repeatedly to one dataset — so a high value over
+    a wide grid is not by itself evidence that every candidate is worthless.
+
+    The converse is worth stating too, because it is easy to assume otherwise:
+    breadth alone does not inflate PBO. Measured here on INDEPENDENT noise
+    series, PBO stays near 0.5 whether the search spans 4 configurations or
+    120, because the in-sample winner's out-of-sample rank is then uniform.
+    What drives PBO up is dependence between candidates and the selection, not
+    the count. Reading a high PBO as "we simply tried too many things" is
+    therefore the wrong inference.
+
+    Method. Splits are contiguous in time and disjoint; with S blocks there are
+    C(S, S/2) partitions, each using S/2 blocks in-sample and the complement
+    out-of-sample. Performance is the per-period Sharpe ratio. For each
+    partition the in-sample winner is found, its out-of-sample rank omega among
+    all N configurations is taken, and the logit
+    lambda = log(omega / (1 - omega)) recorded. PBO is the fraction of
+    partitions with lambda <= 0.
+
+    Implementation detail worth knowing: Sharpe ratios for every partition are
+    computed from per-block sums of x and x^2 rather than by re-slicing the
+    matrix, so the cost is one (C x S) by (S x N) matrix product rather than
+    C x N independent passes. At S = 16 that is 12 870 partitions, which is
+    seconds rather than hours.
+
+    Args:
+        trial_returns: Per-configuration simple return series, identical
+            indexes. At least two configurations — ranking one is vacuous.
+        n_splits: S, the number of contiguous blocks. Must be even and at
+            least 4. The paper uses 16. Observations beyond a multiple of S
+            are dropped from the END and the count is reported.
+
+    Returns:
+        dict with `pbo`, `n_trials`, `n_splits`, `n_partitions`,
+        `n_observations_used`, `n_observations_dropped`, `median_logit`,
+        `performance_degradation_slope`, `probability_of_loss`, and
+        `interpretation`.
+
+    Raises:
+        ValueError: on fewer than two trials, an odd or too-small `n_splits`,
+            misaligned indexes, NaN, or too few observations per block.
+    """
+    from itertools import combinations
+
+    names = sorted(trial_returns)
+    if len(names) < 2:
+        raise ValueError(
+            f"probability_of_backtest_overfitting needs at least two trials; got {len(names)}."
+        )
+    if n_splits < 4 or n_splits % 2 != 0:
+        raise ValueError(f"n_splits must be even and >= 4; got {n_splits}.")
+
+    reference = trial_returns[names[0]].index
+    for name in names:
+        series = trial_returns[name]
+        if not series.index.equals(reference):
+            raise ValueError(
+                f"probability_of_backtest_overfitting requires identical date indexes; "
+                f"'{name}' differs from '{names[0]}' — refusing to align silently."
+            )
+        if series.isna().any():
+            raise ValueError(
+                f"probability_of_backtest_overfitting requires NaN-free returns; "
+                f"'{name}' has NaN."
+            )
+
+    matrix = np.column_stack([trial_returns[n].to_numpy(dtype=float) for n in names])
+    n_obs_total, n_trials = matrix.shape
+    block_len = n_obs_total // n_splits
+    if block_len < 2:
+        raise ValueError(
+            f"Too few observations for {n_splits} blocks: {n_obs_total} rows gives "
+            f"{block_len} per block; need at least 2."
+        )
+    used = block_len * n_splits
+    trimmed = matrix[:used]
+
+    # Per-block sufficient statistics: a Sharpe over any union of blocks is a
+    # function of the summed counts, sums and sums of squares.
+    blocks = trimmed.reshape(n_splits, block_len, n_trials)
+    block_sum = blocks.sum(axis=1)                 # (S, N)
+    block_sumsq = (blocks**2).sum(axis=1)          # (S, N)
+
+    partitions = list(combinations(range(n_splits), n_splits // 2))
+    masks = np.zeros((len(partitions), n_splits), dtype=float)
+    for i, combo in enumerate(partitions):
+        masks[i, list(combo)] = 1.0
+    complement = 1.0 - masks
+
+    def sharpes(mask: np.ndarray) -> np.ndarray:
+        count = block_len * (n_splits // 2)
+        total = mask @ block_sum                   # (C, N)
+        total_sq = mask @ block_sumsq              # (C, N)
+        mean = total / count
+        var = total_sq / count - mean**2
+        with np.errstate(invalid="ignore", divide="ignore"):
+            out = np.where(var > 0, mean / np.sqrt(np.maximum(var, 1e-300)), 0.0)
+        return out
+
+    is_perf = sharpes(masks)
+    oos_perf = sharpes(complement)
+
+    winners = np.argmax(is_perf, axis=1)
+    rows = np.arange(len(partitions))
+    winner_oos = oos_perf[rows, winners]
+
+    # Rank of the in-sample winner among all trials out of sample (1 = worst).
+    ranks = (oos_perf < winner_oos[:, None]).sum(axis=1) + 1
+    omega = ranks / (n_trials + 1.0)
+    omega = np.clip(omega, 1e-12, 1 - 1e-12)
+    logits = np.log(omega / (1 - omega))
+
+    pbo = float(np.mean(logits <= 0.0))
+
+    # Performance degradation: OOS performance of the chosen config regressed
+    # on its IS performance. A negative slope is the overfitting signature.
+    winner_is = is_perf[rows, winners]
+    if np.std(winner_is) > 0:
+        slope = float(np.polyfit(winner_is, winner_oos, 1)[0])
+    else:
+        slope = float("nan")
+
+    return {
+        "pbo": pbo,
+        "n_trials": n_trials,
+        "n_splits": int(n_splits),
+        "n_partitions": len(partitions),
+        "n_observations_used": int(used),
+        "n_observations_dropped": int(n_obs_total - used),
+        "median_logit": float(np.median(logits)),
+        "performance_degradation_slope": slope,
+        "probability_of_loss": float(np.mean(winner_oos <= 0.0)),
+        "interpretation": (
+            f"The configuration selected in-sample falls below the out-of-sample "
+            f"median in {pbo:.1%} of {len(partitions)} balanced partitions "
+            f"(PBO = {pbo:.4f}, {n_trials} trials). PBO rises toward 1 with the "
+            f"size of the search regardless of genuine skill, so it describes the "
+            f"selection procedure as much as the strategies."
+        ),
+    }
