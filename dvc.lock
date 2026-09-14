@@ -1415,7 +1415,7 @@ stages:
     outs:
     - path: data/gold/nested_walkforward_results.json
       hash: md5
-      md5: 71237778bd2a684d4e85dd45ab6b400e
+      md5: 60aff6afe4ea9eee43b5966d3585fcde
       size: 7943
   etf_cap_sweep:
     cmd: python experiments/etf_cap_verdict.py
