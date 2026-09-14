@@ -1149,3 +1149,248 @@ def stepm_superior_models(
             f"differs from the benchmark."
         ),
     }
+
+
+def _newey_west_long_run_cov(centered: np.ndarray, bandwidth: int) -> np.ndarray:
+    """Bartlett-kernel HAC estimate of the long-run covariance of a k-vector.
+
+    `centered` is (T, k) with column means already removed. Returns (k, k).
+    """
+    n_obs = centered.shape[0]
+    psi = centered.T @ centered / n_obs
+    for lag in range(1, bandwidth + 1):
+        gamma = centered[lag:].T @ centered[:-lag] / n_obs
+        weight = 1.0 - lag / (bandwidth + 1.0)
+        psi = psi + weight * (gamma + gamma.T)
+    return psi
+
+
+def _sharpe_difference_point(r_a: np.ndarray, r_b: np.ndarray) -> tuple[float, np.ndarray]:
+    """Per-period Sharpe difference and the delta-method gradient at the estimate.
+
+    Parameterised by the four moments (mu_a, mu_b, gamma_a, gamma_b) where
+    gamma is the SECOND RAW moment, following Ledoit & Wolf (2008). With
+    sigma^2 = gamma - mu^2 and SR = mu / sigma, the partials are
+    d SR / d mu = gamma / sigma^3 and d SR / d gamma = -mu / (2 sigma^3).
+    """
+    mu_a, mu_b = float(r_a.mean()), float(r_b.mean())
+    g_a, g_b = float((r_a**2).mean()), float((r_b**2).mean())
+    var_a, var_b = g_a - mu_a**2, g_b - mu_b**2
+    if var_a <= 0 or var_b <= 0:
+        return float("nan"), np.full(4, np.nan)
+    sd_a, sd_b = var_a**1.5, var_b**1.5
+    diff = mu_a / np.sqrt(var_a) - mu_b / np.sqrt(var_b)
+    gradient = np.array(
+        [g_a / sd_a, -g_b / sd_b, -mu_a / (2 * sd_a), mu_b / (2 * sd_b)], dtype=float
+    )
+    return float(diff), gradient
+
+
+def sharpe_difference_test(
+    candidate: pd.Series,
+    benchmark: pd.Series,
+    *,
+    block_len: int = 21,
+    n_boot: int = 2000,
+    alpha: float = 0.10,
+    risk_free_annual: float = 0.0,
+    periods: int = TRADING_DAYS_PER_YEAR,
+    hac_bandwidth: int | None = None,
+    seed: int = 0,
+) -> dict:
+    """
+    Studentized test for a DIFFERENCE of Sharpe ratios (Ledoit & Wolf 2008).
+
+    Addresses: P4 — `paired_block_bootstrap` reports a percentile interval for
+    the Sharpe difference. A percentile bootstrap of a non-pivotal statistic is
+    not asymptotically refined, and its coverage degrades under exactly the two
+    conditions this data has: heavy tails and serial dependence. Ledoit and Wolf
+    derive the HAC standard error of the difference by the delta method over the
+    four moments (mu_a, mu_b, gamma_a, gamma_b) and use it to STUDENTIZE a
+    circular block bootstrap. The studentized statistic is asymptotically
+    pivotal, so the bootstrap attains a higher order of accuracy.
+
+    Why this matters here rather than in general: the frozen test on
+    `full_2021` is ~455 days and the published intervals are wide enough that
+    calibration, not point estimation, is the binding constraint. A
+    better-calibrated test on identical data is the cheapest possible
+    improvement to the evidence chain.
+
+    The same standard error yields the MINIMUM DETECTABLE DIFFERENCE —
+    see `sharpe_difference_mde`. `docs/EVALUATION_LIMITS.md` section 5 records
+    that a pre-registered MDE "would have framed the negative result as
+    DESIGNED rather than as a disappointment"; this supplies it, and it can be
+    computed retrospectively for every comparison already published.
+
+    WORDING (AGENTS.md section 5.2): a point estimate is an OBSERVED
+    DIFFERENCE, an interval is UNCERTAINTY QUANTIFICATION, and failing to
+    reject establishes nothing about equality.
+
+    SHARPE CONVENTION, and it is a real difference worth stating. The delta
+    method is derived on the raw-moment parameterisation, where
+    sigma^2 = gamma - mu^2 — a population (ddof=0) variance. `annualized_sharpe`
+    elsewhere in this module uses pandas' default ddof=1. The two cannot both
+    hold exactly, so this function is internally consistent on the Ledoit-Wolf
+    basis: `difference` IS `sharpe_candidate - sharpe_benchmark` exactly, and
+    all three use ddof=0. The gap against `annualized_sharpe` is O(1/n) —
+    around 7e-4 relative at n = 750 — and is a convention, not a disagreement.
+    Reporting a difference that did not equal the difference of the two
+    reported Sharpes would be the worse trade: a reader can reconcile a stated
+    convention, but not an unexplained arithmetic mismatch.
+
+    Args:
+        candidate, benchmark: Simple periodic net returns, identical indexes.
+        block_len: Circular block length (~one trading month).
+        n_boot: Bootstrap replications.
+        alpha: Two-sided level; the interval has coverage 1 - alpha.
+        risk_free_annual: Converted per-period geometrically and subtracted
+            from both series, matching `annualized_sharpe` exactly.
+        periods: Periods per year. Sharpe, the difference and the standard
+            error are all reported ANNUALIZED; the t-statistic is invariant to
+            that rescaling.
+        hac_bandwidth: Bartlett-kernel lag truncation. Defaults to the standard
+            Newey-West rule floor(4 (T/100)^(2/9)). Ledoit and Wolf prefer a
+            prewhitened QS kernel; Bartlett is the documented simplification.
+        seed: Seeded, like every stochastic estimator here.
+
+    Returns:
+        dict with annualized `sharpe_candidate`, `sharpe_benchmark`,
+        `difference`, `standard_error`, plus `t_statistic`, `p_value_hac`
+        (normal approximation), `p_value_studentized_bootstrap`,
+        `confidence_interval`, `mde_at_power_80`, and the settings used.
+
+    Raises:
+        ValueError: on misaligned indexes, NaN, or too little data for one
+            block — the input discipline of `paired_block_bootstrap`.
+    """
+    if not candidate.index.equals(benchmark.index):
+        raise ValueError(
+            "sharpe_difference_test requires identical date indexes; "
+            "refusing to align silently."
+        )
+    if candidate.isna().any() or benchmark.isna().any():
+        raise ValueError("sharpe_difference_test requires NaN-free return series.")
+
+    n = len(candidate)
+    if n < 2 or n < block_len:
+        raise ValueError(
+            f"Not enough observations: n={n}, block_len={block_len}."
+        )
+
+    rf_periodic = (1 + risk_free_annual) ** (1 / periods) - 1
+    r_a = candidate.to_numpy(dtype=float) - rf_periodic
+    r_b = benchmark.to_numpy(dtype=float) - rf_periodic
+
+    if hac_bandwidth is None:
+        hac_bandwidth = int(np.floor(4 * (n / 100.0) ** (2.0 / 9.0)))
+    hac_bandwidth = max(0, min(hac_bandwidth, n - 2))
+
+    def point_and_se(a: np.ndarray, b: np.ndarray) -> tuple[float, float]:
+        diff, grad = _sharpe_difference_point(a, b)
+        if not np.isfinite(diff):
+            return float("nan"), float("nan")
+        moments = np.column_stack([a, b, a**2, b**2])
+        psi = _newey_west_long_run_cov(moments - moments.mean(axis=0), hac_bandwidth)
+        variance = float(grad @ psi @ grad) / len(a)
+        return diff, float(np.sqrt(variance)) if variance > 0 else float("nan")
+
+    diff_obs, se_obs = point_and_se(r_a, r_b)
+    if not np.isfinite(diff_obs) or not np.isfinite(se_obs) or se_obs == 0.0:
+        raise ValueError(
+            "sharpe_difference_test: degenerate sample — zero variance in a "
+            "series, or a non-finite standard error."
+        )
+    t_obs = diff_obs / se_obs
+
+    rng = np.random.default_rng(seed)
+    studentized = np.empty(n_boot)
+    for b in range(n_boot):
+        rows = _circular_block_indices(n, block_len, rng)
+        diff_b, se_b = point_and_se(r_a[rows], r_b[rows])
+        studentized[b] = (diff_b - diff_obs) / se_b if np.isfinite(se_b) and se_b > 0 else np.nan
+    studentized = studentized[np.isfinite(studentized)]
+
+    p_boot = float((np.sum(np.abs(studentized) >= abs(t_obs)) + 1) / (len(studentized) + 1))
+    lo_q, hi_q = np.quantile(studentized, [alpha / 2, 1 - alpha / 2])
+
+    scale = np.sqrt(periods)
+    diff_ann, se_ann = diff_obs * scale, se_obs * scale
+
+    return {
+        "n_observations": n,
+        # ddof=0, NOT ddof=1 — see the "Sharpe convention" note in the docstring.
+        "sharpe_candidate": float(np.mean(r_a) / np.std(r_a, ddof=0) * scale),
+        "sharpe_benchmark": float(np.mean(r_b) / np.std(r_b, ddof=0) * scale),
+        "difference": diff_ann,
+        "standard_error": se_ann,
+        "t_statistic": float(t_obs),
+        "p_value_hac": float(2 * (1 - norm.cdf(abs(t_obs)))),
+        "p_value_studentized_bootstrap": p_boot,
+        "confidence_interval": (
+            float(diff_ann - hi_q * se_ann),
+            float(diff_ann - lo_q * se_ann),
+        ),
+        "mde_at_power_80": sharpe_difference_mde(se_ann, alpha=alpha, power=0.80),
+        "ci_alpha": float(alpha),
+        "block_len": int(block_len),
+        "n_boot": int(n_boot),
+        "hac_bandwidth": int(hac_bandwidth),
+        "seed": int(seed),
+    }
+
+
+def sharpe_difference_mde(
+    standard_error: float,
+    *,
+    alpha: float = 0.10,
+    power: float = 0.80,
+    n_observed: int | None = None,
+    n_target: int | None = None,
+) -> float:
+    """
+    Smallest Sharpe difference detectable at `power`, given a standard error.
+
+    Addresses: P4 — `docs/EVALUATION_LIMITS.md` section 5 states that intervals
+    containing zero "were the predictable consequence of the design, not a
+    discovery about the models", and that a minimum-detectable-effect stated in
+    advance "would have framed the negative result as DESIGNED rather than as a
+    disappointment". This is that quantity: `(z_{1-alpha/2} + z_{power}) * SE`.
+
+    Report it BEFORE running a comparison, not after. Its value is that it
+    distinguishes "the effect is absent" from "this design could never have
+    seen it", which a p-value alone cannot.
+
+    Pass `n_observed` and `n_target` to project the standard error onto a
+    different sample length under the usual root-n scaling — the honest way to
+    answer "how much more data would this question need?".
+
+    Args:
+        standard_error: SE of the Sharpe difference, from
+            `sharpe_difference_test`. Annualized in, annualized out.
+        alpha: Two-sided significance level.
+        power: Desired power, conventionally 0.80.
+        n_observed, n_target: Optional; supply BOTH to rescale.
+
+    Returns:
+        The minimum detectable difference, in the units of `standard_error`.
+
+    Raises:
+        ValueError: if only one of `n_observed` / `n_target` is given, or
+            either is not positive, or alpha/power are outside (0, 1).
+    """
+    if not 0 < alpha < 1:
+        raise ValueError(f"alpha must be in (0, 1); got {alpha}")
+    if not 0 < power < 1:
+        raise ValueError(f"power must be in (0, 1); got {power}")
+    if (n_observed is None) != (n_target is None):
+        raise ValueError(
+            "supply both n_observed and n_target to rescale, or neither."
+        )
+
+    se = float(standard_error)
+    if n_observed is not None:
+        if n_observed <= 0 or n_target <= 0:
+            raise ValueError("n_observed and n_target must be positive.")
+        se = se * np.sqrt(n_observed / n_target)
+
+    return float((norm.ppf(1 - alpha / 2) + norm.ppf(power)) * se)
