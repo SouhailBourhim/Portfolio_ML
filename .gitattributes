@@ -1,0 +1,41 @@
+# Line-ending policy — LF everywhere, on every platform.
+#
+# WHY THIS FILE EXISTS. This repository was developed on macOS and later checked
+# out on Windows, where Git's default `core.autocrlf=true` rewrote every text
+# file to CRLF on checkout. That is not cosmetic here, it breaks three things:
+#
+#   1. `src/snapshot.py` SHA-256s params.yaml, dvc.yaml, requirements.txt and
+#      requirements.lock.txt. CRLF changes those bytes, so `snapshot.py verify`
+#      fails against a manifest produced anywhere else — release gate 2.
+#   2. DVC hashes params.yaml as a stage dependency. CRLF makes `dvc status`
+#      report every stage as changed, inviting a needless full `dvc repro`.
+#   3. `scripts/*.sh` with CRLF fail under Git Bash and inside the Linux
+#      container with `$'\r': command not found`.
+#
+# `eol=lf` is deliberate rather than `text=auto`: it normalises in the
+# repository AND checks out LF, so a Windows working tree stays byte-identical
+# to the macOS and CI ones. Windows tooling (PowerShell, VS Code, Python) all
+# read LF without complaint.
+
+*               text=auto eol=lf
+
+# Executable POSIX scripts — must never gain CR, at any cost.
+*.sh            text eol=lf
+*.ps1           text eol=crlf
+
+# Binary: never touched, and never diffed as text.
+*.parquet       binary
+*.pdf           binary
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.docx          binary
+*.pptx          binary
+*.xlsx          binary
+*.zip           binary
+*.woff          binary
+*.woff2         binary
+*.ttf           binary
+*.otf           binary
