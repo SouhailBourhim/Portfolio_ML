@@ -6,7 +6,21 @@
 # Usage:
 #   ./scripts/setup_launchd.sh            # install + (re)start both agents
 #   ./scripts/setup_launchd.sh --uninstall # stop + remove both agents
+#
+# macOS ONLY — launchd, launchctl and plutil do not exist elsewhere. The Windows
+# equivalent, installing the same two processes as Scheduled Tasks, is
+# scripts\setup_dagster_tasks.ps1. The script refuses to run off macOS rather
+# than failing halfway through with a confusing `launchctl: command not found`
+# after it has already written files into $HOME.
 set -euo pipefail
+
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "error: setup_launchd.sh is macOS-only (launchd/launchctl/plutil)." >&2
+    echo "       On Windows run:  .\\scripts\\setup_dagster_tasks.ps1" >&2
+    echo "       On Linux, run the daemon under systemd or in a terminal:" >&2
+    echo "         DAGSTER_HOME=\"\$PWD/.dagster_home\" dagster-daemon run -w workspace.yaml" >&2
+    exit 1
+fi
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_BIN="$PROJECT_ROOT/.venv/bin"

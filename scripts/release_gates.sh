@@ -11,14 +11,22 @@
 #
 # Exits non-zero on the FIRST failure, naming the gate. CI calls this with
 # --skip-tests because the suite already runs in its own job.
+#
+# On Windows use scripts\release_gates.ps1, which runs the same gates without
+# needing Bash. This script still works under Git Bash — it probes both
+# virtualenv layouts below — but the PowerShell twin is the documented route.
 
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# A virtualenv is `.venv/bin/python` on macOS and Linux but
+# `.venv/Scripts/python.exe` on Windows. Probe both before falling back to the
+# ambient interpreter, which is what CI uses (it installs into the job's env).
 PYTHON="$ROOT/.venv/bin/python"
-[ -x "$PYTHON" ] || PYTHON="python"          # CI installs into the job's env
+[ -x "$PYTHON" ] || PYTHON="$ROOT/.venv/Scripts/python.exe"
+[ -x "$PYTHON" ] || PYTHON="python"
 DVC="$PYTHON -m dvc"
 
 SKIP_TESTS=0
@@ -80,7 +88,7 @@ gate_model_cards() {
         echo "Fix: regenerate the snapshot manifest FIRST, then the cards, then"
         echo "commit both:"
         echo "  ./scripts/dvc.sh repro --single-item --force snapshot_manifest"
-        echo "  ./.venv/bin/python scripts/build_model_cards.py"
+        echo "  $PYTHON scripts/build_model_cards.py"
         return 1
     fi
     echo "regeneration is a no-op"
@@ -90,7 +98,17 @@ gate_model_cards() {
 #    does not contain what was tested.
 gate_clean_tree() {
     local dirty
-    dirty="$(git status --porcelain)"
+    # Check git's EXIT STATUS, not just whether output was empty. Outside a
+    # repository `git status --porcelain` writes to stderr and prints nothing to
+    # stdout, so an emptiness test alone reports "working tree clean" for a
+    # checkout with no history at all — a gate passing because it could not run,
+    # which is the precise failure these gates exist to catch.
+    if ! dirty="$(git status --porcelain 2>/dev/null)"; then
+        echo "Not a git repository — this gate cannot answer whether the tree"
+        echo "matches a commit, so it fails rather than passing blindly."
+        echo "Restore the history (git clone, or git init + remote) before tagging."
+        return 1
+    fi
     if [ -n "$dirty" ]; then
         echo "Uncommitted changes:"; echo "$dirty"
         return 1
