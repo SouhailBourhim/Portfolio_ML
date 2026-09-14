@@ -221,6 +221,8 @@ Documentation interactive de l’API : `http://127.0.0.1:8000/docs`.
 
 ### Installation locale
 
+**macOS / Linux**
+
 ```bash
 git clone https://github.com/SouhailBourhim/Portfolio_ML.git
 cd Portfolio_ML
@@ -229,6 +231,28 @@ source .venv/bin/activate
 pip install -r requirements.lock.txt
 pytest -q
 ```
+
+**Windows**
+
+```powershell
+git clone https://github.com/SouhailBourhim/Portfolio_ML.git
+cd Portfolio_ML
+.\scripts\bootstrap_windows.ps1
+```
+
+Cette commande n’est pas un simple raccourci des quatre lignes ci-dessus.
+`requirements.lock.txt` a été gelé sous macOS et épingle **uvloop**, qui n’a
+aucune version Windows : un `pip install -r requirements.lock.txt` direct
+s’interrompt en cours de route et laisse un environnement à moitié installé. Le
+lock est une entrée SHA-256 du manifeste de release et n’est donc jamais modifié
+pour accommoder une plateforme ; le script de bootstrap filtre les quatre
+distributions POSIX-only au moment de l’installation. Il gère aussi la
+disposition `.venv\Scripts` et les défauts UTF-8.
+
+Lire **[docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md)** avant le premier
+lancement — en particulier le §1.1 : le `core.autocrlf` par défaut de Git sous
+Windows casse la vérification du snapshot et `dvc status` d’une manière qui
+ressemble à une corruption de données plutôt qu’à un réglage de fins de ligne.
 
 Le notebook de synthèse final est déjà exécuté et ne relance ni ingestion, ni sélection, ni
 backtest :
@@ -250,6 +274,16 @@ identifiants R2 localement puis exécutent :
 ./scripts/dvc.sh status
 ./.venv/bin/python src/snapshot.py verify
 ```
+
+```powershell
+# Équivalent Windows
+.\scripts\dvc.ps1 pull
+.\scripts\dvc.ps1 status
+python src/snapshot.py verify
+```
+
+Utiliser le wrapper plutôt que `dvc` directement, sur les deux plateformes : DVC exécute les
+commandes de `dvc.yaml` via un shell, où `python` résoudrait sinon vers l’interpréteur système.
 
 ### Docker
 
@@ -278,13 +312,17 @@ neuf. Les contrôles de cohérence des artefacts sont donc ignorés (`skip`). Po
 les exercer aussi :
 
 ```bash
-docker compose run --rm -v "$PWD/data:/app/data:ro" test
+docker compose run --rm -v "$PWD/data:/app/data:ro" test     # PowerShell : "${PWD}/data:/app/data:ro"
 ```
 
 ### Portes de release
 
 ```bash
-./scripts/release_gates.sh
+./scripts/release_gates.sh          # macOS / Linux
+```
+
+```powershell
+.\scripts\release_gates.ps1         # Windows — les six mêmes portes, dans le même ordre
 ```
 
 Elles contrôlent l’état DVC, les checksums du snapshot, la complétude du bundle, la régénération
@@ -325,6 +363,7 @@ compose.yaml         API, pipeline, tests et notebooks conteneurisés
 - [Deep Morocco experiment](docs/DEEP_MOROCCO_EXPERIMENT.md)
 - [ETF deep-history experiment](docs/ETF_DEEP_HISTORY_EXPERIMENT.md)
 - [Inference contract](docs/INFERENCE_CONTRACT.md)
+- [Exécution sous Windows](docs/WINDOWS_SETUP.md)
 
 ## Limites
 
