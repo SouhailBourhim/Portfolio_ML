@@ -44,6 +44,12 @@ NOTEBOOKS = {
         "global_2004_q2_series.parquet",
         "snapshot_manifest.json",
     },
+    "phase11_statistical_power_and_overfitting.ipynb": {
+        "reality_check_series.parquet",
+        "reality_check_results.json",
+        "dashboard_equity.parquet",
+        "snapshot_manifest.json",
+    },
 }
 
 
