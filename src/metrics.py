@@ -1020,3 +1020,132 @@ def model_confidence_set(
             f"data do not support eliminating them."
         ),
     }
+
+
+def stepm_superior_models(
+    candidate_returns: Mapping[str, pd.Series],
+    benchmark: pd.Series,
+    *,
+    size: float = 0.05,
+    block_len: int = 21,
+    n_boot: int = 2000,
+    seed: int = 0,
+) -> dict:
+    """
+    Stepwise multiple testing (Romano & Wolf 2005), Econometrica 73(4).
+
+    Addresses: P4 — `reality_check` collapses a 240-configuration search into
+    ONE global p-value: "is the best of them better than the benchmark". When
+    that fails to reject, it cannot say which candidates were close, and when
+    it does reject it names only the single best. StepM controls the same
+    familywise error rate but proceeds in stages — reject the clear cases,
+    remove them, re-derive the critical value on what remains, repeat — so it
+    returns a PER-STRATEGY verdict and is never less powerful than the
+    single-step procedure at the same FWER.
+
+    What it adds over `model_confidence_set`: the MCS asks which strategies
+    survive mutual comparison, with no privileged benchmark. StepM keeps the
+    project's pre-specified benchmark and asks which candidates beat IT. Both
+    are one-sided in the project's favour-free direction; they answer different
+    questions and are reported side by side, not as substitutes.
+
+    WORDING (AGENTS.md section 5.2). A named model is one for which the null of
+    no outperformance is rejected at FWER `size`. That is a rejection, not a
+    demonstration of superiority in general — and an empty list is not evidence
+    of no difference. `interpretation` is phrased accordingly.
+
+    STATISTIC. Like the MCS, this consumes per-period losses (negated net
+    returns), so it is a MEAN-RETURN criterion and takes no `statistic`
+    argument. `reality_check` can also run on Sharpe; this cannot, and mixing
+    the two in one table compares different quantities.
+
+    Implementation note: delegates to `arch.bootstrap.StepM`, verified first
+    rather than trusted — it wraps `arch.bootstrap.SPA`, whose `studentize`
+    flag is accepted and never applied. StepM was checked to name exactly the
+    genuinely superior models in a positive control, name none under
+    exchangeability, be no less informative than the single-step Reality Check
+    on the same data, and be monotone in `size`.
+
+    Args:
+        candidate_returns: Per-candidate simple net return series.
+        benchmark: The pre-specified comparator, same index as every candidate.
+        size: Familywise error rate. Default 0.05.
+        block_len: Circular block length (~one trading month).
+        n_boot: Bootstrap replications.
+        seed: Seeded for reproducibility.
+
+    Returns:
+        dict with `superior_models` (sorted names whose null was rejected),
+        `n_superior`, `n_candidates`, `size`, `block_len`, `n_boot`, `seed`,
+        `statistic` and `interpretation`.
+
+    Raises:
+        ValueError: on an empty candidate set, misaligned indexes, NaN, or too
+            little data for one block — the input discipline of
+            `reality_check`, for the same reason.
+    """
+    from arch.bootstrap import StepM as _ArchStepM
+
+    names = sorted(candidate_returns)
+    if not names:
+        raise ValueError("stepm_superior_models requires at least one candidate.")
+
+    for name in names:
+        series = candidate_returns[name]
+        if not series.index.equals(benchmark.index):
+            raise ValueError(
+                f"stepm_superior_models requires identical date indexes; '{name}' "
+                f"differs from the benchmark — refusing to align silently."
+            )
+        if series.isna().any():
+            raise ValueError(
+                f"stepm_superior_models requires NaN-free returns; '{name}' has NaN."
+            )
+    if benchmark.isna().any():
+        raise ValueError("stepm_superior_models requires a NaN-free benchmark.")
+
+    n = len(benchmark)
+    if n < block_len:
+        raise ValueError(
+            f"Not enough observations for a block bootstrap: n={n}, block_len={block_len}."
+        )
+
+    # Losses, not returns: a model is "superior" when its loss is lower.
+    models = pd.DataFrame(
+        {name: -candidate_returns[name].to_numpy(dtype=float) for name in names},
+        index=benchmark.index,
+    )
+    bench_loss = pd.Series(-benchmark.to_numpy(dtype=float), index=benchmark.index)
+
+    step = _ArchStepM(
+        bench_loss,
+        models,
+        size=size,
+        block_size=block_len,
+        reps=n_boot,
+        bootstrap="circular",
+        seed=seed,
+    )
+    step.compute()
+    superior = sorted(str(x) for x in step.superior_models)
+
+    return {
+        "superior_models": superior,
+        "n_superior": len(superior),
+        "n_candidates": len(names),
+        "size": float(size),
+        "block_len": int(block_len),
+        "n_boot": int(n_boot),
+        "seed": int(seed),
+        "statistic": "mean_return",
+        "interpretation": (
+            f"StepM rejects the null of no outperformance for {len(superior)} of "
+            f"{len(names)} candidates at familywise error rate {size:g} "
+            f"(mean-return losses)."
+            if superior else
+            f"StepM rejects the null of no outperformance for none of the "
+            f"{len(names)} candidates at familywise error rate {size:g} "
+            f"(mean-return losses). This does not establish that no candidate "
+            f"differs from the benchmark."
+        ),
+    }
