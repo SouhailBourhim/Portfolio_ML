@@ -32,6 +32,28 @@ from release_facts import load_facts, numeraire_for, statement_list
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def published_dsr_fr() -> str:
+    """The nested walk-forward DSR, French-formatted, READ FROM THE ARTIFACT.
+
+    This was a typed literal (`"0,6707"`) until the `nested_walkforward` stage
+    was legitimately regenerated and the value moved to 0,6705 — the artifact
+    had been produced before the fallback-telemetry corrections in
+    `docs/MODEL_INTEGRITY.md` and was never rebuilt afterwards. Three tests
+    then failed over a digit that was never the property under test.
+
+    The property under test is that the surfaces quote whatever the artifact
+    says, bare and without an editorial adjective. So the expectation is
+    derived, exactly as `TestNumbersAreDerivedNotTyped` below demands of the
+    surfaces themselves — a test that types a number the code derives is the
+    same defect one level up.
+    """
+    path = ROOT / "data" / "gold" / "nested_walkforward_results.json"
+    if not path.is_file():
+        pytest.skip("Gold artifacts absent — run `dvc pull`.")
+    dsr = json.loads(path.read_text(encoding="utf-8"))["best_dsr_vs_search"]
+    return f"{dsr:.4f}".replace(".", ",")
+
+
 @pytest.fixture(scope="module")
 def facts():
     if not (ROOT / "data" / "gold" / "dashboard_showcase.json").is_file():
@@ -318,7 +340,7 @@ class TestTheCanonicalFactsSayTheRightThing:
     def test_the_dsr_is_reported_without_an_editorial_qualifier(self, statements):
         """No threshold was pre-specified, so the value is reported bare."""
         joined = "\n".join(statements).lower()
-        assert "0,6707" in joined
+        assert published_dsr_fr() in joined
         for adjective in ("crédible", "faible", "insuffisant", "solide", "peu fiable"):
             assert adjective not in joined, (
                 f"DSR carries the qualifier '{adjective}' but no threshold was "
@@ -454,4 +476,4 @@ class TestPreCommitSurfaceChecks:
             "the report must say protocol and period are confounded here, not that "
             "the protocol alone explains the change of sign"
         )
-        assert "0,6707" in tex
+        assert published_dsr_fr() in tex
