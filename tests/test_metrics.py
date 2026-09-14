@@ -15,6 +15,7 @@ from metrics import (
     annualized_sharpe,
     block_bootstrap_sharpe_ci,
     calmar_ratio,
+    certainty_equivalent,
     deflated_sharpe_ratio,
     information_ratio,
     max_drawdown,
@@ -68,6 +69,62 @@ class TestAnnualizedReturn:
         r = pd.Series([0.01, 0.01])
         expected = (1.01**2) ** (252 / 2) - 1
         assert annualized_return(r) == pytest.approx(expected)
+
+
+class TestCertaintyEquivalent:
+    """CEQ = mu - (gamma/2) sigma^2 on annualized excess moments.
+
+    The criterion DeMiguel et al. (2009) report beside Sharpe and turnover,
+    and the answer to EVALUATION_LIMITS.md section 2: a Sharpe ranking that
+    flips with the risk-free rate needs a second criterion, not a firmer
+    reading of the first.
+    """
+
+    def test_ceq_matches_hand_computation(self):
+        r = pd.Series([0.01, -0.005, 0.02, 0.0, 0.01])
+        # Arithmetic annualization on both moments, gamma = 1.
+        expected = r.mean() * 252 - 0.5 * 1.0 * r.var(ddof=1) * 252
+        assert certainty_equivalent(r, risk_aversion=1.0) == pytest.approx(expected)
+
+    def test_risk_neutral_investor_gets_the_mean_excess(self):
+        """gamma = 0 removes the penalty entirely, leaving the annualized mean."""
+        r = pd.Series([0.01, -0.005, 0.02, 0.0, 0.01])
+        assert certainty_equivalent(r, risk_aversion=0.0) == pytest.approx(r.mean() * 252)
+
+    def test_ceq_falls_as_risk_aversion_rises(self, iid_returns):
+        vals = [certainty_equivalent(iid_returns, risk_aversion=g) for g in (0, 1, 2, 5)]
+        assert vals == sorted(vals, reverse=True)
+
+    def test_volatility_is_penalised_at_equal_mean(self):
+        """Same mean, more variance -> strictly lower CEQ. The whole point."""
+        rng = np.random.default_rng(3)
+        calm = pd.Series(rng.normal(0.0, 0.001, 400)) + 0.0005
+        wild = pd.Series(rng.normal(0.0, 0.02, 400))
+        wild = wild - wild.mean() + calm.mean()  # equalise means exactly
+        assert calm.mean() == pytest.approx(wild.mean())
+        assert certainty_equivalent(calm) > certainty_equivalent(wild)
+
+    def test_a_higher_risk_free_rate_lowers_ceq(self, iid_returns):
+        assert certainty_equivalent(iid_returns, risk_free_annual=0.03) < certainty_equivalent(
+            iid_returns, risk_free_annual=0.0
+        )
+
+    def test_the_excess_convention_matches_annualized_sharpe(self):
+        """Both must subtract the SAME per-period rate, or the pair disagree."""
+        r = pd.Series([0.01, -0.005, 0.02, 0.0, 0.01])
+        rf_periodic = (1 + 0.03) ** (1 / 252) - 1
+        excess = r - rf_periodic
+        expected = excess.mean() * 252 - 0.5 * excess.var(ddof=1) * 252
+        assert certainty_equivalent(r, risk_free_annual=0.03) == pytest.approx(expected)
+
+    def test_too_short_a_sample_is_nan(self):
+        assert np.isnan(certainty_equivalent(pd.Series([0.01])))
+        assert np.isnan(certainty_equivalent(pd.Series([], dtype=float)))
+
+    def test_negative_risk_aversion_is_refused(self):
+        """A negative gamma would reward variance, inverting the utility."""
+        with pytest.raises(ValueError, match="risk_aversion must be >= 0"):
+            certainty_equivalent(pd.Series([0.01, 0.02]), risk_aversion=-1.0)
 
 
 class TestInformationRatio:
@@ -133,6 +190,24 @@ class TestSummarize:
         assert out["total_cost_drag"] > 0
         assert out["n_trials"] == 2
         assert "dsr_net" in out
+
+    def test_summarize_completes_the_demiguel_criterion_triple(self, iid_returns):
+        """Sharpe + CEQ + turnover, the three criteria the cited paper reports."""
+        out = summarize(
+            net_returns=iid_returns,
+            gross_returns=iid_returns,
+            turnover=pd.Series([1.0, 0.3, 0.2]),
+        )
+        for key in ("sharpe_net", "ceq_net", "avg_turnover"):
+            assert key in out, f"{key} missing from the criterion triple"
+        assert out["ceq_net"] == pytest.approx(certainty_equivalent(iid_returns))
+        assert out["risk_aversion"] == 1.0
+
+    def test_summarize_honours_a_non_default_risk_aversion(self, iid_returns):
+        base = summarize(iid_returns, iid_returns, pd.Series([0.1]))
+        averse = summarize(iid_returns, iid_returns, pd.Series([0.1]), risk_aversion=5.0)
+        assert averse["ceq_net"] < base["ceq_net"]
+        assert averse["risk_aversion"] == 5.0
 
 
 class TestBlockBootstrapSharpeCI:

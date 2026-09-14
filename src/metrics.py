@@ -93,6 +93,67 @@ def calmar_ratio(returns: pd.Series, periods: int = TRADING_DAYS_PER_YEAR) -> fl
     return annualized_return(returns, periods) / abs(mdd)
 
 
+def certainty_equivalent(
+    returns: pd.Series,
+    risk_aversion: float = 1.0,
+    risk_free_annual: float = 0.0,
+    periods: int = TRADING_DAYS_PER_YEAR,
+) -> float:
+    """
+    Annualized certainty-equivalent return for a mean-variance investor.
+
+    `CEQ = mu - (gamma / 2) * sigma^2` on EXCESS returns — the third criterion
+    DeMiguel, Garlappi and Uppal (2009) report beside the Sharpe ratio and
+    turnover. This project already cites that paper as its honesty hurdle but
+    took only its Sharpe comparison. CEQ answers a different question: how much
+    certain annual return an investor with risk aversion `gamma` would accept
+    in place of the strategy. Being a difference rather than a ratio, it cannot
+    be improved by shrinking a denominator.
+
+    Addresses: P4 — `docs/EVALUATION_LIMITS.md` section 2 records that the
+    Sharpe RANKING on `full_2021` is not invariant to the risk-free rate: at
+    rf = 3.00% `equal_weight` overtakes `regime_conditional`. A ranking that
+    flips under a nuisance parameter needs a second criterion computed the same
+    way, not a more confident reading of the first.
+
+    Moments are annualized ARITHMETICALLY here, deliberately, unlike
+    `annualized_return`'s geometric compounding. CEQ is a mean-variance utility,
+    so its mean and its variance must sit on the same footing; pairing a
+    geometric mean with an arithmetic variance would not be the quantity
+    DeMiguel et al. define. The gap between the two conventions is of order
+    sigma^2 / 2 — the same order as the risk penalty itself, so the choice is
+    not cosmetic.
+
+    Args:
+        returns: Simple periodic (daily) returns.
+        risk_aversion: `gamma`. 1.0 is the paper's default. 0.0 is the
+            risk-neutral case and returns the annualized mean excess unchanged.
+        risk_free_annual: Annual risk-free rate, converted per-period
+            geometrically so the excess matches `annualized_sharpe` exactly.
+        periods: Periods per year for annualization.
+
+    Returns:
+        Annualized CEQ as a decimal. NaN for fewer than two observations,
+        matching `annualized_sharpe`'s convention for an unusable sample.
+
+    Raises:
+        ValueError: if `risk_aversion` is negative. A negative coefficient
+            would reward variance, inverting the utility rather than
+            parameterising it — a caller bug, not a degenerate sample.
+    """
+    if risk_aversion < 0:
+        raise ValueError(
+            f"risk_aversion must be >= 0 (0 is risk-neutral); got {risk_aversion}"
+        )
+    if len(returns) < 2:
+        return float("nan")
+    rf_periodic = (1 + risk_free_annual) ** (1 / periods) - 1
+    excess = returns - rf_periodic
+    mu_annual = float(excess.mean()) * periods
+    var_annual = float(excess.var(ddof=1)) * periods
+    return mu_annual - 0.5 * risk_aversion * var_annual
+
+
 def information_ratio(
     returns: pd.Series,
     benchmark: pd.Series,
@@ -187,6 +248,7 @@ def summarize(
     benchmark_net: pd.Series | None = None,
     trial_sharpes: Sequence[float] | None = None,
     risk_free_annual: float = 0.0,
+    risk_aversion: float = 1.0,
 ) -> dict[str, float]:
     """
     Full metric panel for one backtest result. All headline metrics are NET
@@ -203,6 +265,12 @@ def summarize(
         "sharpe_gross":      annualized_sharpe(gross_returns, risk_free_annual),
         "max_drawdown_net":  max_drawdown(net_returns),
         "calmar_net":        calmar_ratio(net_returns),
+        # The DeMiguel et al. (2009) criterion triple is Sharpe + CEQ +
+        # turnover; `avg_turnover` was already here, CEQ completes it.
+        "ceq_net":           certainty_equivalent(
+            net_returns, risk_aversion, risk_free_annual
+        ),
+        "risk_aversion":     float(risk_aversion),
         "avg_turnover":      float(turnover.mean()) if len(turnover) else float("nan"),
         "total_cost_drag":   float((gross_returns - net_returns).sum()),
     }
