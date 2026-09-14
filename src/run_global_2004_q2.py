@@ -131,7 +131,7 @@ def run() -> dict:
     q1_path = ROOT / "data" / "gold" / "global_2004_q1_results.json"
     if not q1_path.is_file():
         raise RuntimeError("Q1 artifact absent. Q2 must not run before Q1 is frozen.")
-    q1 = json.loads(q1_path.read_text())
+    q1 = json.loads(q1_path.read_text(encoding="utf-8"))
     if q1["provenance"]["git_revision"].endswith("-dirty"):
         raise RuntimeError("Q1 artifact came from a dirty tree; it is not canonical.")
 

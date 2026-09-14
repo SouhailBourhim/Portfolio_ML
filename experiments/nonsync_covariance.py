@@ -640,7 +640,7 @@ def main() -> None:
         "target": target,
         "control": control,
         "verdict": v,
-    }, indent=2))
+    }, indent=2), encoding="utf-8")
     log.info("")
     log.info("wrote %s", out)
 

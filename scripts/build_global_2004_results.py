@@ -29,7 +29,7 @@ def load(name: str) -> dict:
     path = GOLD / name
     if not path.is_file():
         raise SystemExit(f"{path} absent — run the global_2004 stages first.")
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def pct(x: float) -> str:

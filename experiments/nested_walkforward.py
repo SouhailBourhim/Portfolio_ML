@@ -336,7 +336,7 @@ def main() -> dict:
         "best_dsr_vs_search": round(float(deflated_sharpe_ratio(best_series, pool)), 4),
     }
 
-    OUT_PATH.write_text(json.dumps(out, indent=2))
+    OUT_PATH.write_text(json.dumps(out, indent=2), encoding="utf-8")
     log.info("=" * 70)
     log.info("NESTED WALK-FORWARD — %s, %d folds, %d OOS rows",
              UNIVERSE, len(folds), len(oos_index))

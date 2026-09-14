@@ -76,7 +76,7 @@ def _write_gold_snapshot(tmp_path, n: int = 200, assets=("SPY", "QQQ", "GLD"), s
                 "equal_weight": {"test_sharpe_net": 0.9, "test_sharpe_ci": [-0.05, 1.8]},
             },
         },
-    }))
+    }), encoding="utf-8")
 
 
 def _params() -> dict:
@@ -127,7 +127,7 @@ def dashboard_run(tmp_path, monkeypatch):
     return {
         "equity": pd.read_parquet(gold / "dashboard_equity.parquet"),
         "weights": pd.read_parquet(gold / "dashboard_weights.parquet"),
-        "showcase": json.loads((gold / "dashboard_showcase.json").read_text()),
+        "showcase": json.loads((gold / "dashboard_showcase.json").read_text(encoding="utf-8")),
         "gold": gold,
     }
 
@@ -210,7 +210,7 @@ class TestNumbersMatchSource:
         number, not a recomputation — recomputing would silently diverge from
         the published result the supervisor already reviewed."""
         source = json.loads(
-            (tmp_path / "data" / "gold" / "phase5_results.json").read_text()
+            (tmp_path / "data" / "gold" / "phase5_results.json").read_text(encoding="utf-8")
         )
         for universe, u in dashboard_run["showcase"]["universes"].items():
             shown = u["phase5_test_window"]

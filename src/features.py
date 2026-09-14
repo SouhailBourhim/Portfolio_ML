@@ -286,7 +286,7 @@ def write_currency_manifest() -> dict:
                 "Gold manifest.", report_name, universe,
             )
             continue
-        report = json.loads(report_path.read_text())
+        report = json.loads(report_path.read_text(encoding="utf-8"))
         currency = report.get("currency")
         if currency is None:
             # An older Silver artifact predating the conversion. Say so rather
@@ -302,7 +302,7 @@ def write_currency_manifest() -> dict:
         manifest["universes"][universe] = currency
 
     out_path = GOLD_DIR / "currency_manifest.json"
-    out_path.write_text(json.dumps(manifest, indent=2))
+    out_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     log.info("Gold currency manifest written → %s", out_path)
     return manifest
 

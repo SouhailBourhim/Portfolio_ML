@@ -307,7 +307,7 @@ def main() -> None:
 
     out = ROOT / "data" / "gold" / "fundamentals_ic_lift.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(results, indent=2, default=str))
+    out.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
     log.info("wrote %s", out)
 
 

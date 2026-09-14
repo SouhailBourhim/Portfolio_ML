@@ -50,7 +50,7 @@ ROLE = {
 
 def load_graph():
     """Return (stages, edges, layer_of) derived from dvc.yaml."""
-    spec = yaml.safe_load((ROOT / "dvc.yaml").read_text())["stages"]
+    spec = yaml.safe_load((ROOT / "dvc.yaml").read_text(encoding="utf-8"))["stages"]
 
     def outs(v):
         for o in v.get("outs", []):

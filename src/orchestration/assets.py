@@ -119,7 +119,7 @@ def bam_fx_reference(context: AssetExecutionContext) -> None:
     path = ROOT / "data" / "bronze" / "bam_fx_reference.parquet"
     series = pd.read_parquet(path)["USDMAD"]
     quality = json.loads(
-        (ROOT / "data" / "bronze" / "bam_fx_reference_quality.json").read_text()
+        (ROOT / "data" / "bronze" / "bam_fx_reference_quality.json").read_text(encoding="utf-8")
     )
     context.add_output_metadata({
         "n_rates": len(series),

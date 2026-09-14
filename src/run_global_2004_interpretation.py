@@ -88,8 +88,8 @@ def run() -> dict:
         if not path.is_file():
             raise RuntimeError(f"{path} absent; the frozen evidence is incomplete.")
 
-    q2 = json.loads(Q2_RESULTS.read_text())
-    q1 = json.loads(Q1_RESULTS.read_text())
+    q2 = json.loads(Q2_RESULTS.read_text(encoding="utf-8"))
+    q1 = json.loads(Q1_RESULTS.read_text(encoding="utf-8"))
     wide = (
         pd.read_parquet(Q2_SERIES)
         .pivot(index="Date", columns="candidate", values="net_return")

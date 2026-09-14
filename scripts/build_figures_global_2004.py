@@ -43,7 +43,7 @@ INK, MUTED, ACCENT, WARN = "#1b1b1b", "#8a8a8a", "#1f5fa8", "#b3341f"
 
 
 def load(name: str) -> dict:
-    return json.loads((GOLD / name).read_text())
+    return json.loads((GOLD / name).read_text(encoding="utf-8"))
 
 
 def save(fig, stem: str) -> None:

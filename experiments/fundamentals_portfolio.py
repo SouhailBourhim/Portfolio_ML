@@ -246,7 +246,7 @@ def main() -> None:
         "results": results,
         "verdict": verdict,
         "rf_signal_lift_sharpe": float(lift),
-    }, indent=2))
+    }, indent=2), encoding="utf-8")
     log.info("wrote %s", out)
 
 

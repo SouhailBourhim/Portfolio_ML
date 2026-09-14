@@ -48,7 +48,7 @@ def test_final_report_contains_the_new_chapters_once() -> None:
 
 def test_final_report_uses_current_canonical_result() -> None:
     _require_gold("dashboard_showcase.json")
-    showcase = json.loads((GOLD / "dashboard_showcase.json").read_text())
+    showcase = json.loads((GOLD / "dashboard_showcase.json").read_text(encoding="utf-8"))
     full = showcase["universes"]["full_2021"]
     regime = full["strategies"]["regime_conditional"]["sharpe_net"]
     classical = full["strategies"]["max_sharpe"]["sharpe_net"]
@@ -66,7 +66,7 @@ def test_final_report_headline_table_matches_the_current_mad_release() -> None:
     with current prose that correctly states 0.9571/1.0690.
     """
     _require_gold("dashboard_showcase.json")
-    showcase = json.loads((GOLD / "dashboard_showcase.json").read_text())
+    showcase = json.loads((GOLD / "dashboard_showcase.json").read_text(encoding="utf-8"))
     full = showcase["universes"]["full_2021"]["strategies"]
     chapter = (REPORT / "chapters" / "Chapter5.tex").read_text(encoding="utf-8")
     for strategy in ("regime_conditional", "max_sharpe", "equal_weight", "min_variance_lw"):
@@ -117,7 +117,7 @@ def test_rendered_final_report_cannot_mix_mad_prose_with_precorrection_metrics()
 
 def test_final_report_states_numeraire_per_universe() -> None:
     _require_gold("currency_manifest.json")
-    manifest = json.loads((GOLD / "currency_manifest.json").read_text())
+    manifest = json.loads((GOLD / "currency_manifest.json").read_text(encoding="utf-8"))
     chapter = (REPORT / "chapters" / "Chapter6.tex").read_text(encoding="utf-8")
     assert manifest["universes"]["full_2021"]["base_currency"] == "MAD"
     assert manifest["universes"]["etf_2017"]["base_currency"] == "USD"

@@ -46,7 +46,7 @@ ARTIFACT = ROOT / "data" / "gold" / "global_2004_q1_results.json"
 def _artifact() -> dict:
     if not ARTIFACT.is_file():
         pytest.skip("Q1 artifact absent — run src/run_global_2004_q1.py.")
-    return json.loads(ARTIFACT.read_text())
+    return json.loads(ARTIFACT.read_text(encoding="utf-8"))
 
 
 # ── The comparison is fixed by the protocol, not by configuration ────────────

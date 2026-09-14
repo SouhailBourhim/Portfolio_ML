@@ -171,7 +171,7 @@ def run_phase4c() -> dict[str, list[BacktestResult]]:
 
     stored_hurdle: dict = {}
     if hurdle_path.exists():
-        stored_hurdle = json.loads(hurdle_path.read_text())
+        stored_hurdle = json.loads(hurdle_path.read_text(encoding="utf-8"))
     else:
         log.warning(
             "No stored phase4_results.json at %s — run src/run_phase4.py first "
@@ -310,7 +310,7 @@ def run_phase4c() -> dict[str, list[BacktestResult]]:
                     )
 
         results_path.parent.mkdir(parents=True, exist_ok=True)
-        results_path.write_text(json.dumps(phase4c_output, indent=2))
+        results_path.write_text(json.dumps(phase4c_output, indent=2), encoding="utf-8")
         mlflow.log_artifact(str(results_path))
         log.info(
             "Phase 4C results written → %s : %s",

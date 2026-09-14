@@ -291,7 +291,7 @@ def main() -> None:
             "It is NOT applied to the USD etf_2017 universe."
         ),
         "results": results,
-    }, indent=2))
+    }, indent=2), encoding="utf-8")
     log.info("")
     log.info("wrote %s", out)
 

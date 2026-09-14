@@ -261,7 +261,7 @@ def main() -> None:
           f"({grand/3600:.2f} h) ===")
 
     if args.json:
-        args.json.write_text(json.dumps(report, indent=2))
+        args.json.write_text(json.dumps(report, indent=2), encoding="utf-8")
         print(f"written → {args.json}")
 
 

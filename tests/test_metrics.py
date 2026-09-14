@@ -349,7 +349,7 @@ class TestLedgerSchema2:
     def test_a_schema_1_file_still_loads(self, tmp_path):
         import json
         p = tmp_path / "legacy.json"
-        p.write_text(json.dumps({"u": [0.01, 0.02, 0.03]}))
+        p.write_text(json.dumps({"u": [0.01, 0.02, 0.03]}), encoding="utf-8")
         led = DSRTrialLedger(path=p)
         assert led.n_trials("u") == 3
         assert led.pool("u") == [0.01, 0.02, 0.03]

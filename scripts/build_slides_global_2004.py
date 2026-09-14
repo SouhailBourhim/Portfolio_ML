@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import copy
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -54,7 +55,7 @@ MARK = "GLOBAL2004"          # invisible marker so re-runs can find and replace
 
 
 def load(name: str) -> dict:
-    return json.loads((GOLD / name).read_text())
+    return json.loads((GOLD / name).read_text(encoding="utf-8"))
 
 
 def fr(value: float, dp: int = 4, signed: bool = False) -> str:
@@ -126,6 +127,24 @@ def new_slide(prs):
 def figure_png(stem: str) -> Path:
     PNGDIR.mkdir(parents=True, exist_ok=True)
     out = PNGDIR / f"{stem}.png"
+    # `pdftoppm` ships with Poppler, which is preinstalled on neither Windows nor
+    # a bare macOS. Resolving it up front turns a bare FileNotFoundError — whose
+    # message names only "pdftoppm", not what to install — into an instruction.
+    # `shutil.which` is used to DETECT, not to build the argv. The command below
+    # is spelled as a literal so the executable is a static string: passing the
+    # resolved path instead trips the `dangerous-subprocess-use` audit rule, and
+    # a reviewer then has to re-derive by hand that the value came from a
+    # constant lookup and not from anything a caller controls. Resolution still
+    # happens through PATH at exec time, which is what the check tested.
+    if shutil.which("pdftoppm") is None:
+        raise SystemExit(
+            "pdftoppm not found on PATH. It is part of Poppler, which rasterises\n"
+            "the report's vector figures for the deck. Install it with:\n"
+            "  Windows:  winget install --id oschwartz10612.Poppler\n"
+            "            (then add the package's Library\\bin to PATH)\n"
+            "  macOS:    brew install poppler\n"
+            "  Debian:   sudo apt install poppler-utils"
+        )
     subprocess.run(["pdftoppm", "-png", "-r", "220", "-singlefile",
                     str(FIGDIR / f"{stem}.pdf"), str(PNGDIR / stem)], check=True)
     return out

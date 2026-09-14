@@ -211,6 +211,8 @@ Interactive API documentation: `http://127.0.0.1:8000/docs`.
 
 ### Local install
 
+**macOS / Linux**
+
 ```bash
 git clone https://github.com/SouhailBourhim/Portfolio_ML.git
 cd Portfolio_ML
@@ -219,6 +221,27 @@ source .venv/bin/activate
 pip install -r requirements.lock.txt
 pytest -q
 ```
+
+**Windows**
+
+```powershell
+git clone https://github.com/SouhailBourhim/Portfolio_ML.git
+cd Portfolio_ML
+.\scripts\bootstrap_windows.ps1
+```
+
+The command above is not a convenience wrapper around the four lines opposite.
+`requirements.lock.txt` was frozen on macOS and pins **uvloop**, which has no
+Windows build at all, so a plain `pip install -r requirements.lock.txt` aborts
+partway and leaves a half-populated environment. The lock is a SHA-256 input to
+the release manifest and is therefore never edited to accommodate a platform;
+the bootstrap script filters the four POSIX-only distributions at install time
+instead. It also handles the `.venv\Scripts` layout and UTF-8 defaults.
+
+Read **[docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md)** before the first run —
+particularly §1.1, because Git's default `core.autocrlf` on Windows breaks
+snapshot verification and `dvc status` in a way that looks like data corruption
+rather than a line-ending setting.
 
 The final synthesis notebook is already executed and re-runs neither ingestion, selection nor
 backtest:
@@ -239,6 +262,16 @@ because of data licensing; authorised members configure their R2 credentials loc
 ./scripts/dvc.sh status
 ./.venv/bin/python src/snapshot.py verify
 ```
+
+```powershell
+# Windows equivalent
+.\scripts\dvc.ps1 pull
+.\scripts\dvc.ps1 status
+python src/snapshot.py verify
+```
+
+Use the wrapper rather than `dvc` directly on either platform: DVC runs the commands in `dvc.yaml`
+through a shell, where `python` would otherwise resolve to the system interpreter.
 
 ### Docker
 
@@ -264,13 +297,17 @@ The `test` service does **not** mount `data/`: the suite must pass on a fresh cl
 consistency checks are therefore skipped. To exercise those too:
 
 ```bash
-docker compose run --rm -v "$PWD/data:/app/data:ro" test
+docker compose run --rm -v "$PWD/data:/app/data:ro" test     # PowerShell: "${PWD}/data:/app/data:ro"
 ```
 
 ### Release gates
 
 ```bash
-./scripts/release_gates.sh
+./scripts/release_gates.sh          # macOS / Linux
+```
+
+```powershell
+.\scripts\release_gates.ps1         # Windows — same six gates, same order
 ```
 
 These check DVC state, snapshot checksums, bundle completeness, model card regeneration, Git
@@ -291,9 +328,11 @@ docs/rapport_final/  MAINTAINED SOURCE of the submitted report
 docs/rapport/        historical short version — archive, not maintained
 output/pdf/          final PFA report (copy of docs/rapport_final/main.pdf)
 output/presentation/ final defense presentation
+scripts/             build, release and environment entry points (.sh + .ps1 twins)
 dvc.yaml             reproducible production graph
 params.yaml          data, model and validation parameters
 compose.yaml         containerised API, pipeline, tests and notebooks
+.gitattributes       LF line endings on every platform — a release-gate prerequisite
 ```
 
 ## Key documentation
@@ -311,6 +350,7 @@ compose.yaml         containerised API, pipeline, tests and notebooks
 - [Deep Morocco experiment](docs/DEEP_MOROCCO_EXPERIMENT.md)
 - [ETF deep-history experiment](docs/ETF_DEEP_HISTORY_EXPERIMENT.md)
 - [Inference contract](docs/INFERENCE_CONTRACT.md)
+- [Running on Windows](docs/WINDOWS_SETUP.md)
 
 ## Limitations
 

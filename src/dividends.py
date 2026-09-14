@@ -113,32 +113,71 @@ def _ssl_context_with_aia_intermediate(host: str = "www.casablanca-bourse.com"):
                 leaf_der = sock.getpeercert(binary_form=True)
 
         leaf_pem = ssl.DER_cert_to_PEM_cert(leaf_der)
-        aia = re.search(r"CA Issuers - URI:(http[^\s]+)", _cert_text(leaf_pem))
-        if not aia:
+        aia_url = _aia_ca_issuers_url(leaf_pem)
+        if not aia_url:
             log.warning("no AIA CA-Issuers URL on the leaf certificate for %s", host)
             return context
 
-        with urllib.request.urlopen(aia.group(1), timeout=15) as resp:
+        with urllib.request.urlopen(aia_url, timeout=15) as resp:
             intermediate_der = resp.read()
         context.load_verify_locations(
             cadata=ssl.DER_cert_to_PEM_cert(intermediate_der)
         )
-        log.debug("loaded missing intermediate from %s", aia.group(1))
+        log.debug("loaded missing intermediate from %s", aia_url)
     except Exception as exc:  # noqa: BLE001 — best-effort; the caller still verifies
         log.warning("could not complete the certificate chain via AIA (%s); "
                     "the request will fail loudly if the chain is incomplete", exc)
     return context
 
 
-def _cert_text(pem: str) -> str:
-    """Human-readable dump of a PEM certificate, for reading its AIA extension."""
+def _aia_ca_issuers_url(pem: str) -> str | None:
+    """Return the leaf certificate's AIA `CA Issuers` URL, or None.
+
+    PORTABILITY. This used to shell out to `openssl x509 -noout -text` and regex
+    the human-readable dump. That works on macOS and most Linux images and fails
+    on Windows, where `openssl.exe` is not on PATH — and it failed *silently*,
+    because the FileNotFoundError was swallowed by the caller's best-effort
+    `except Exception`, leaving only a CERTIFICATE_VERIFY_FAILED several frames
+    later with nothing pointing at the real cause.
+
+    `cryptography` reads the extension directly, in-process, with no external
+    binary and no locale-dependent text format to parse. It is already in
+    requirements.lock.txt; it is now declared in requirements.txt too, because
+    this module imports it rather than merely inheriting it from dvc.
+
+    The `openssl` path is kept as a fallback for an environment that somehow has
+    the binary but not the library — it is no longer the primary route.
+    """
+    try:
+        from cryptography import x509
+        from cryptography.x509.oid import AuthorityInformationAccessOID, ExtensionOID
+
+        cert = x509.load_pem_x509_certificate(pem.encode("ascii"))
+        aia = cert.extensions.get_extension_for_oid(
+            ExtensionOID.AUTHORITY_INFORMATION_ACCESS
+        ).value
+        for description in aia:
+            if description.access_method == AuthorityInformationAccessOID.CA_ISSUERS:
+                return description.access_location.value
+        return None
+    except Exception as exc:  # noqa: BLE001 — fall through to the CLI probe
+        log.debug("cryptography could not read the AIA extension (%s)", exc)
+
+    import shutil
     import subprocess
 
+    # `shutil.which` DETECTS; the argv below spells the executable as a literal.
+    # Passing the resolved path instead trips the `dangerous-subprocess-use`
+    # audit rule, and a reviewer then has to re-derive by hand that the value
+    # came from a constant lookup rather than from caller-controlled data.
+    if shutil.which("openssl") is None:
+        return None
     completed = subprocess.run(
         ["openssl", "x509", "-noout", "-text"],
         input=pem, capture_output=True, text=True,
     )
-    return completed.stdout
+    match = re.search(r"CA Issuers - URI:(http[^\s]+)", completed.stdout)
+    return match.group(1) if match else None
 
 
 def fetch_issuer_page(ticker: str, force: bool = False, timeout: int = 30) -> str:

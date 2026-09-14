@@ -280,7 +280,7 @@ def build_showcase(all_metrics: dict, params: dict, equity: pd.DataFrame,
             ROOT / "data" / "gold" / "log_returns_etf.parquet",
         ],
     )
-    p5 = json.loads(phase5_path.read_text())
+    p5 = json.loads(phase5_path.read_text(encoding="utf-8"))
 
     showcase = {
         "universes": {},
@@ -361,7 +361,7 @@ def main() -> None:
     weights.to_parquet(out_dir / "dashboard_weights.parquet", index=False)
     if regime is not None and not regime.empty:
         regime.to_parquet(out_dir / "dashboard_regime.parquet", index=False)
-    (out_dir / "dashboard_showcase.json").write_text(json.dumps(showcase, indent=2, default=str))
+    (out_dir / "dashboard_showcase.json").write_text(json.dumps(showcase, indent=2, default=str), encoding="utf-8")
 
     # Report — proves the numbers on every page derive from this one run.
     log.info("=" * 70)

@@ -323,7 +323,7 @@ pip install yfinance fredapi pandas numpy pyarrow duckdb \
 | Pandera | Data contracts, Silver + Gold writes | |
 | DVC | Data versioning | `dvc.yaml` covers ingest→clean→features→ml_features; `phase2_hurdle.json` is deliberately outside it (§17.1) |
 | MLflow | Experiment tracking (results) | Dagster tracks *execution*; MLflow tracks *results* — not redundant |
-| Dagster | Scheduling + lineage | local only; launchd setup in `scripts/setup_launchd.sh`; 8 assets (§9, §11) |
+| Dagster | Scheduling + lineage | local only; launchd setup in `scripts/setup_launchd.sh` (macOS) or `scripts/setup_dagster_tasks.ps1` (Windows); 8 assets (§9, §11) |
 | `statsmodels` | ADF/KPSS | |
 | `hmmlearn` | HMM regimes | **Phase 4 — active now** |
 | `arch` | Univariate GARCH | **Phase 4 — active now.** ⚠️ no built-in multivariate DCC (§3.2) |
@@ -1324,6 +1324,8 @@ portfolio_ml/
 │   ├── Livrable_Phase1_*.docx / Livrable_Phase2_*.docx / Livrable_Phase3_*.docx  (French, committed)
 │   └── PHASE1_WALKTHROUGH.md      ← zero-context team walkthrough (committed)
 ├── scripts/setup_launchd.sh       ← unattended Dagster (macOS LaunchAgents)
+├── scripts/setup_dagster_tasks.ps1 ← same, Windows Scheduled Tasks
+├── scripts/bootstrap_windows.ps1  ← Windows venv install (see docs/WINDOWS_SETUP.md)
 ├── data/                          ← DVC-managed, gitignored (except dvc.lock, which is git-tracked)
 │   ├── bronze/  raw_prices | raw_macro | bvc_prices | raw_bam_macro .parquet
 │   ├── silver/  log_returns[_etf].parquet | validation_report[_log_returns_etf].json

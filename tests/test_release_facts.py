@@ -49,7 +49,7 @@ def statements():
 class TestNumbersAreDerivedNotTyped:
     def test_the_point_difference_matches_the_showcase_artifact(self, facts):
         showcase = json.loads(
-            (ROOT / "data" / "gold" / "dashboard_showcase.json").read_text()
+            (ROOT / "data" / "gold" / "dashboard_showcase.json").read_text(encoding="utf-8")
         )["universes"]
         for u in ("full_2021", "etf_2017"):
             assert facts["universes"][u]["point_difference_pct"] == \
@@ -57,7 +57,7 @@ class TestNumbersAreDerivedNotTyped:
 
     def test_the_numeraire_matches_the_currency_manifest(self, facts):
         manifest = json.loads(
-            (ROOT / "data" / "gold" / "currency_manifest.json").read_text()
+            (ROOT / "data" / "gold" / "currency_manifest.json").read_text(encoding="utf-8")
         )["universes"]
         for u in ("full_2021", "etf_2017"):
             assert facts["universes"][u]["base_currency"] == manifest[u]["base_currency"]

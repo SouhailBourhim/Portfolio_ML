@@ -102,7 +102,7 @@ class ArtifactsMissing(HTTPException):
 # while repeat reads stay free.
 @lru_cache(maxsize=8)
 def _read_json(path_str: str, _mtime: float) -> dict:
-    return json.loads(Path(path_str).read_text())
+    return json.loads(Path(path_str).read_text(encoding="utf-8"))
 
 
 @lru_cache(maxsize=8)

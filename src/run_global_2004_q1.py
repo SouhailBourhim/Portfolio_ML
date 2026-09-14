@@ -157,7 +157,7 @@ def run() -> dict:
     rf = bp["risk_free_annual"]
 
     readiness_path = ROOT / cfg["paths"]["readiness"]
-    readiness = json.loads(readiness_path.read_text())
+    readiness = json.loads(readiness_path.read_text(encoding="utf-8"))
     if readiness.get("verdict") != "READY":
         raise RuntimeError(
             f"Readiness artifact reports {readiness.get('verdict')!r}, not READY. "

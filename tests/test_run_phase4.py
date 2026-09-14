@@ -108,7 +108,7 @@ def test_run_phase4_writes_results_with_full_trial_pool(tmp_path, monkeypatch):
 
     results_path = tmp_path / "data" / "gold" / "phase4_results.json"
     assert results_path.exists()
-    output = json.loads(results_path.read_text())
+    output = json.loads(results_path.read_text(encoding="utf-8"))
     assert set(output) == {"etf_2017", "full_2021"}
     for entry in output.values():
         assert entry["n_trials"] == 7
@@ -124,7 +124,7 @@ def test_run_phase4_compares_against_a_stored_hurdle(tmp_path, monkeypatch):
         "etf_2017": {"strategy": "equal_weight", "sharpe_net": -999.0},
         "full_2021": {"strategy": "equal_weight", "sharpe_net": -999.0},
     }
-    (tmp_path / "data" / "gold" / "phase2_hurdle.json").write_text(json.dumps(hurdle))
+    (tmp_path / "data" / "gold" / "phase2_hurdle.json").write_text(json.dumps(hurdle), encoding="utf-8")
 
     monkeypatch.setattr(run_phase4, "ROOT", tmp_path)
     monkeypatch.setattr(run_phase4, "load_params", lambda: _params())
@@ -132,7 +132,7 @@ def test_run_phase4_compares_against_a_stored_hurdle(tmp_path, monkeypatch):
 
     run_phase4.run_phase4()
 
-    output = json.loads((tmp_path / "data" / "gold" / "phase4_results.json").read_text())
+    output = json.loads((tmp_path / "data" / "gold" / "phase4_results.json").read_text(encoding="utf-8"))
     for entry in output.values():
         # An absurdly low stored hurdle (-999) must be beaten by anything real.
         assert entry["beats_phase2_hurdle"] is True

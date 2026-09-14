@@ -243,7 +243,7 @@ def main() -> None:
         "corrected": corrected,
         "headline_lift_pct": {"as_committed": round(lb, 2), "corrected": round(lc, 2)},
         "sensitivity_to_iam_yield": sensitivity,
-    }, indent=2))
+    }, indent=2), encoding="utf-8")
     log.info("")
     log.info("wrote %s", out)
 
