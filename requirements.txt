@@ -13,6 +13,12 @@ python-dotenv>=1.0   # loads FRED_API_KEY from .env in pipeline.py
 requests>=2.31       # Bank Al-Maghrib reference-rate API (src/bam_fx.py). Was
                      # already present transitively via yfinance/fredapi; now a
                      # DIRECT dependency, so it is declared rather than assumed.
+cryptography>=42.0   # src/dividends.py reads the AIA CA-Issuers URL off the
+                     # casablanca-bourse.com leaf certificate to complete a
+                     # chain the server does not send. That used to shell out to
+                     # `openssl`, which is absent from a default Windows PATH;
+                     # reading the extension in-process is portable. Already
+                     # present transitively via dvc — declared, not assumed.
 
 # ── Data validation ─────────────────────────────────────────────────────────
 pandera>=0.20
@@ -70,3 +76,8 @@ httpx>=0.27               # FastAPI TestClient + Page 2's API client
 # du support de soutenance distribué à partir des artefacts gelés. Sans cette
 # dépendance, un clone neuf ne peut pas régénérer un livrable qu'il contient.
 python-pptx>=1.0
+python-docx>=1.1   # scripts/build_livrable_phase8.py and the other Livrable
+                   # builders import `docx`. It was pinned in
+                   # requirements.lock.txt but never declared here, so a fresh
+                   # `pip install -r requirements.txt` produced a tree in which
+                   # those scripts died on ModuleNotFoundError.
