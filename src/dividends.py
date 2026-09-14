@@ -166,11 +166,14 @@ def _aia_ca_issuers_url(pem: str) -> str | None:
     import shutil
     import subprocess
 
-    openssl = shutil.which("openssl")
-    if openssl is None:
+    # `shutil.which` DETECTS; the argv below spells the executable as a literal.
+    # Passing the resolved path instead trips the `dangerous-subprocess-use`
+    # audit rule, and a reviewer then has to re-derive by hand that the value
+    # came from a constant lookup rather than from caller-controlled data.
+    if shutil.which("openssl") is None:
         return None
     completed = subprocess.run(
-        [openssl, "x509", "-noout", "-text"],
+        ["openssl", "x509", "-noout", "-text"],
         input=pem, capture_output=True, text=True,
     )
     match = re.search(r"CA Issuers - URI:(http[^\s]+)", completed.stdout)
