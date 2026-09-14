@@ -189,7 +189,7 @@ class TestInputDiscipline:
 
 
 # ── The persisted artifact ───────────────────────────────────────────────────
-class TestPersistedArtifact:
+class TestCorrectionDescribesTheSearch:
     """The correction must describe the search it claims to correct for.
 
     Same failure class as the fit-report runner: a correction computed over a
