@@ -15,7 +15,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from metrics import reality_check, stepm_superior_models
+from inference import stepm_superior_models
+from metrics import reality_check
 
 
 DATES = pd.bdate_range("2022-01-03", periods=750)

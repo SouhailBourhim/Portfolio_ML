@@ -178,9 +178,9 @@ addresses this directly — `docs/ETF_DEEP_HISTORY_EXPERIMENT.md` extends the ET
 and `docs/NESTED_WALKFORWARD_EXPERIMENT.md` narrows the intervals by 28.6%.
 
 **Update.** This section used to say only that a minimum-detectable-effect calculation *would
-have* framed the negative result as designed. It now exists. `metrics.sharpe_difference_test`
+have* framed the negative result as designed. It now exists. `inference.sharpe_difference_test`
 gives the HAC standard error of a Sharpe *difference* (Ledoit & Wolf, 2008), and
-`metrics.sharpe_difference_mde` turns that into the smallest gap the design detects 80% of the
+`inference.sharpe_difference_mde` turns that into the smallest gap the design detects 80% of the
 time at α = 0.10. Recomputed from committed return series in
 `notebooks/phase11_statistical_power_and_overfitting.ipynb`:
 

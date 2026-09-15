@@ -15,11 +15,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from metrics import (
-    annualized_sharpe,
-    sharpe_difference_mde,
-    sharpe_difference_test,
-)
+from inference import sharpe_difference_mde, sharpe_difference_test
+from metrics import annualized_sharpe
 
 
 def _pair(n=750, edge=0.0, seed=0, vol=0.01, ar=0.0):

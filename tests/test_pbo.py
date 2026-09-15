@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from metrics import probability_of_backtest_overfitting
+from inference import probability_of_backtest_overfitting
 
 
 DATES = pd.bdate_range("2020-01-01", periods=1024)

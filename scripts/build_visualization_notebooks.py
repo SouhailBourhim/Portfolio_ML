@@ -1353,7 +1353,7 @@ def build_phase11_notebook() -> nbf.NotebookNode:
             + r'''
 import sys
 sys.path.insert(0, str(ROOT / "src"))
-from metrics import (
+from inference import (
     model_confidence_set,
     probability_of_backtest_overfitting,
     sharpe_difference_mde,

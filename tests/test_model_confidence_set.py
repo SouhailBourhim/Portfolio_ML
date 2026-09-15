@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from metrics import model_confidence_set
+from inference import model_confidence_set
 
 
 DATES = pd.bdate_range("2022-01-03", periods=750)
