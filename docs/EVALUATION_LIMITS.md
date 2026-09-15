@@ -114,6 +114,44 @@ first-100 mean of 9×10⁻¹⁶). That is the signature of forward-backward smoo
 pass carries most information where fewest future observations exist, while older rows are
 already pinned by everything that followed them.
 
+> ⚠️ **CORRECTED, 2026-09-15. That number is right and it is not the size of this defect.**
+> It measures the *incremental* movement from lengthening the window, and the train/serve
+> mismatch is the *total* gap between the smoothed value a row carries in training and the
+> filtered value it would carry at inference. The two differ by three orders of magnitude.
+> Everything from here to "Honest gap" is superseded by the measurement below; it is kept
+> because the distinction is the whole lesson.
+
+### The gap that actually matters
+
+`src/regime_research.filtered_posterior_series` computes the causal posterior
+P(state_t | x_1…x_t) by an explicit forward recursion, so the two can be compared directly on
+one fit — no refit, no window-length confound. `experiments/regime_filtered_posteriors.py`
+does that on every committed feature panel:
+
+| Panel | n | **total** gap: max / mean | rows moving >1e-3 | near a switch | away from one | §3-style *incremental* max |
+|---|---:|---:|---:|---:|---:|---:|
+| `full_2021` | 1,239 | **0.721** / 0.044 | 47.9% | 0.176 | 0.012 | 1.2×10⁻⁶ |
+| `etf_2017` | 5,594 | **0.818** / 0.036 | 45.6% | 0.207 | 0.011 | 5.9×10⁻⁴ |
+| `global_2004` | 5,405 | **0.818** / 0.036 | 40.2% | 0.219 | 0.009 | 5.0×10⁻⁴ |
+
+Roughly **45% of training rows** carry a regime probability that differs from the servable one
+by more than 10⁻³, and around a regime switch the average gap is **~0.18–0.22 in probability
+units** — about **18×** the gap away from one. The maximum reaches 0.72–0.82: rows where
+training says "bull" and live inference would have said "bear".
+
+Why the original figure is so much smaller, stated plainly because it is the reusable part:
+comparing `predict_proba` on a 141-row window against a 1,239-row window moves the shared rows
+almost not at all, since those rows are already pinned by everything that followed them **in
+both windows**. That is a statement about *marginal* information, not about how far the
+training feature sits from the causal one. Measuring the increment and reporting it as the
+defect understates it here by a factor of 1,385 to 611,807 depending on the panel.
+
+Three independent checks say the new measurement is the right one: the gap is exactly **0.000**
+at t = T, where no future remains for the backward pass to use; it is ~18× larger around regime
+switches, which is precisely where future observations are informative about the current state;
+and the forward recursion reproduces hmmlearn's own smoothed posterior at t = T to 2.3×10⁻¹³,
+where the two must agree by construction.
+
 The isolation matters, and getting it wrong was the first attempt at this measurement. The
 obvious diagnostic — call `attach_regime_feature` on a short window and a long one — conflates
 smoothing with the **refit**, since that function re-estimates the HMM. A refit on more data
@@ -129,9 +167,22 @@ is noisier at inference time.
 `test_future_returns_do_not_change_past_asset_features` covers `build_asset_features` — pure
 rolling windows — and does not extend to where the non-causal column is attached. The regime
 feature is therefore described as **exploratory** and this is not presented as a passing
-causality guarantee. The fix is filtered posteriors (a rolling `predict_proba` over expanding
-prefixes) or dropping the column from training rows; both change F7 results and neither is
-attempted this late.
+causality guarantee.
+
+**The fix now exists, and is not yet wired in.** `regime_research.filtered_posterior_series`
+is a drop-in replacement for `regime.predict_regime_posterior_series` — same signature, index
+and columns — and `tests/test_regime_filtered.py` pins it from both sides: truncating the
+future does not move an earlier row (the definition of filtered, which the smoothed version
+demonstrably fails), and it agrees with hmmlearn at every prefix endpoint (the identity that
+catches an arithmetic or labelling error).
+
+Substituting it inside `ml_signals.attach_regime_feature` is the production fix and it is
+**deliberately not done here**. It changes every F7 result, and `src/regime.py` and
+`src/ml_signals.py` are declared dependencies of twelve and eight DVC stages, so it costs a
+full three-to-five-hour rebuild and invalidates published numbers. Given the size of the gap
+now measured, that rebuild is justified — but it is a decision to take explicitly, not a side
+effect of adding an instrument, so the new code lives in a module no stage depends on until
+that call is made.
 
 **How it is now marked.** `tests/test_regime_feature_smoothing.py` is a *diagnostic*, not an
 `xfail`. Its five tests pass by measuring the dependency, showing it is concentrated where
