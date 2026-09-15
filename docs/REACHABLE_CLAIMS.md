@@ -102,9 +102,62 @@ affords. `regime_conditional` gives back 0.0733 Sharpe to transaction costs agai
 not establishable at all. The one thing the evidence can say about the regime switch versus
 Markowitz is that it costs more to run.
 
-`docs/DEEP_MOROCCO_EXPERIMENT.md` (correction, 2026-09-15) shows the same estimand question on a
-20-year panel moves the Sharpe ratio-to-threshold from 0.01–0.24 to 0.57 without crossing. Running
-this section's family on that window is the obvious next measurement.
+---
+
+## 5. The same family on the 20-year panel — nothing survives
+
+Section 4 named this the obvious next measurement. It has been run:
+`data/gold/deep_morocco_equity.parquet`, frozen test 2017-09-01 → 2024-05-31, **n = 1,638**
+(3.6x section 2's window). Five strategies, ten pairs, four estimands = **40 hypotheses**. Cost
+drag is absent because the artifact stores net equity only.
+
+**Zero of forty survive**, at α = 0.05 (critical |t| = 4.296) and at α = 0.10 (3.845). The
+strongest is `log vol ratio: xgb_tuned vs equal_weight` at |t| = 2.75. Five would pass
+uncorrected — which is what the correction is for.
+
+### Why more data produced fewer findings
+
+This looks backwards and is not. The effect shrank faster than the error bar:
+
+| log vol ratio, `regime_conditional` vs `max_sharpe` | observed | SE | MDE | obs/MDE |
+|---|---:|---:|---:|---:|
+| `full_2021`, n = 455 | −0.1564 | 0.0312 | 0.0775 | **2.02** |
+| `deep_morocco`, n = 1,638 | −0.0405 | 0.0246 | 0.0613 | **0.66** |
+
+The extra data did what extra data does — the standard error fell from 0.0312 to 0.0246. But the
+effect itself is **3.9x smaller** on the deep panel, so the ratio falls anyway. This is not a
+power failure; it is a smaller thing to find.
+
+Two natural explanations were tested and **both are wrong**, so neither should be repeated:
+
+- *"Moroccan equities are too correlated for a variance minimiser to act."* Mean pairwise
+  correlation is **0.176** on the deep panel against **0.161** on `full_2021` — essentially
+  identical.
+- *"There is no low-volatility asset to hide in."* The opposite. Asset volatility dispersion is
+  **wider** on the deep panel (max/min = 2.00, lowest asset 35% below the mean) than on
+  `full_2021` (1.61, 18%).
+
+What does differ is the **strategy set**. `full_2021`'s family contains `min_variance_lw`, and
+both of section 2's survivors are volatility contrasts against it — one directly, one through
+`regime_conditional`, which is bit-identical to `min_variance_lw` on 63.4% of `full_2021` days.
+The deep panel's family contains no variance minimiser at all: `rf_tuned`, `xgb_tuned`,
+`regime_conditional`, `equal_weight`, `max_sharpe`. None of them optimises variance, and they duly
+land within 0.1307–0.1421 annualised of each other.
+
+This is stated as the surviving explanation, **not** a demonstrated one. Testing it means re-running
+`deep_morocco_starvation.py` with `min_variance_lw` added to the comparison set, which is cheap and
+has not been done.
+
+### What it does to section 3
+
+It strengthens the reading there rather than contradicting it. Section 3 concluded the risk result
+is inherited from the minimum-variance branch rather than earned by the regime switch. Section 5 is
+what that predicts: remove the variance minimiser from the family and put the regime switch on a
+panel where it is not shadowing one, and the volatility advantage drops by a factor of four and
+stops being detectable.
+
+Across both panels, at every correction level, **no Sharpe, CEQ or drawdown comparison has ever
+survived** — 70 hypotheses now, on 455 and 1,638 days, on two universes.
 
 ## Reproduce
 
