@@ -796,3 +796,105 @@ def paired_estimand_mde(
         "n_observations": int(n),
         "blocks": int(np.ceil(n / block_len)),
     }
+
+
+def family_maxt_correction(
+    hypotheses: Mapping[str, tuple[pd.Series, pd.Series, Callable[[np.ndarray], float]]],
+    *,
+    block_len: int = 21,
+    n_boot: int = 4000,
+    alpha: float = 0.05,
+    seed: int = 0,
+) -> dict[str, object]:
+    """
+    Westfall-Young maxT over a family of paired estimands, on shared draws.
+
+    Addresses: P4 — `paired_estimand_mde` says whether ONE estimand is
+    reachable. Choosing among several, on several strategy pairs, is a search,
+    and the maximum of a search beats a benchmark by chance more often than any
+    single test does — the same mechanism `reality_check` corrects for across
+    configurations. This corrects across estimands.
+
+    Every hypothesis is resampled on the SAME circular block draws, so the
+    correction inherits the family's real dependence rather than assuming
+    independence. That matters here: a Sharpe difference and a certainty
+    equivalent computed on one pair of series are nearly the same question, and
+    a Bonferroni-style bound that treated them as independent would be far too
+    conservative.
+
+    The critical value is the 1-alpha quantile of max_j |t*_j| over the
+    centred, studentised bootstrap. A hypothesis survives when its own |t|
+    exceeds it. Scale is fixed at the outer standard error rather than
+    re-estimated inside each draw: the nested bootstrap that would licence a
+    fully studentised statistic costs n_boot^2 fits and buys little at these
+    sample sizes.
+
+    Args:
+        hypotheses: name -> (series_a, series_b, statistic). The tested
+            quantity is always `statistic(a) - statistic(b)`.
+        block_len: Circular block length; must be < the aligned length.
+        n_boot: Shared bootstrap draws.
+        alpha: Family-wise error rate.
+        seed: Fixes the resampling.
+
+    Returns:
+        critical_value, alpha, n_hypotheses, n_observations, and `results`:
+        name -> {observed, standard_error, t, survives}.
+
+    Raises:
+        ValueError: if `hypotheses` is empty, the series do not share one
+            length, or block_len is not in [1, n).
+    """
+    if not hypotheses:
+        raise ValueError("hypotheses must not be empty")
+
+    names = list(hypotheses)
+    lengths = set()
+    prepared = []
+    for name in names:
+        a_s, b_s, stat = hypotheses[name]
+        joined = pd.concat([a_s, b_s], axis=1, join="inner").dropna()
+        lengths.add(len(joined))
+        prepared.append(
+            (joined.iloc[:, 0].to_numpy(float), joined.iloc[:, 1].to_numpy(float), stat)
+        )
+    if len(lengths) != 1:
+        raise ValueError(
+            "every hypothesis must resolve to the same number of aligned "
+            f"observations so one set of block draws can serve all; got {sorted(lengths)}"
+        )
+    n = lengths.pop()
+    if not 1 <= block_len < n:
+        raise ValueError(
+            f"block_len must be in [1, {n}); got {block_len}. At or above n "
+            "every resample is a rotation and the standard errors collapse."
+        )
+
+    observed = np.array([stat(a) - stat(b) for a, b, stat in prepared])
+    rng = np.random.default_rng(seed)
+    draws = np.empty((n_boot, len(names)))
+    for i in range(n_boot):
+        rows = _circular_block_indices(n, block_len, rng)
+        for j, (a, b, stat) in enumerate(prepared):
+            draws[i, j] = stat(a[rows]) - stat(b[rows])
+
+    se = draws.std(axis=0, ddof=1)
+    safe = np.where(se > 0, se, np.inf)
+    t_obs = np.abs(observed) / safe
+    critical = float(np.quantile((np.abs(draws - observed) / safe).max(axis=1), 1 - alpha))
+
+    return {
+        "critical_value": critical,
+        "alpha": float(alpha),
+        "n_hypotheses": len(names),
+        "n_observations": int(n),
+        "results": {
+            name: {
+                "observed": float(observed[j]),
+                "standard_error": float(se[j]),
+                "t": float(t_obs[j]),
+                "survives": bool(t_obs[j] > critical),
+            }
+            for j, name in enumerate(names)
+        },
+    }
