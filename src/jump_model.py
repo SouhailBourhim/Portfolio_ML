@@ -1,6 +1,13 @@
 """
 jump_model.py — statistical jump models for regime identification.
 
+Addresses: P2, P3 — the same mapping as `regime.py`, which this is an
+alternative estimator for. P2: regime shifts are the non-stationarity being
+detected, and the jump penalty is a direct handle on how readily the estimator
+declares one. P3: the detected regime dispatches `RegimeConditionalStrategy` to
+a defensive sub-strategy, so state persistence governs whether that defence is
+in place when correlations spike.
+
 WHY THIS MODULE EXISTS. `docs/LITERATURE_IMPROVEMENTS.md` item 2.1 (Nystrup,
 Kolm & Lindström 2020/2021; Shu, Yu & Mulvey 2024) reports that HMMs under
 *high regime persistence, low signal-to-noise and limited data* -- a description

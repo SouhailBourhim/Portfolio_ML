@@ -1,6 +1,13 @@
 """
 regime_research.py — filtered (causal) regime posteriors.
 
+Addresses: P4, P2 — P4 primarily: this removes an in-window lookahead. The
+smoothed posterior gives every historical training row a value computed from
+observations after that row's own date, which is the "lookahead bias ... inflate
+apparent performance" P4 names, here in its train/serve form rather than its
+evaluation form. P2 secondarily, since the object being made causal is a regime
+probability, and regimes are P2's mechanism.
+
 WHY THIS MODULE EXISTS. `docs/EVALUATION_LIMITS.md` Limit #3 documents a
 train/serve mismatch: `regime.predict_regime_posterior_series` calls hmmlearn's
 `predict_proba`, which returns SMOOTHED posteriors

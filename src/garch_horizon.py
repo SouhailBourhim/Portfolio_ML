@@ -1,6 +1,14 @@
 """
 garch_horizon.py — multi-period GARCH variance, for Limit #4.
 
+Addresses: P1, P2 — P1: the object corrected here is the covariance matrix fed
+to the optimizer, and feeding it a one-day variance for a 21-day hold is an
+estimation error in that input as surely as a noisy sample matrix is. P2:
+volatility clustering is why a conditional variance differs from its
+unconditional level at all, and mean reversion across the holding period is the
+same non-stationarity seen over a longer horizon. The measured effect is largest
+on the highest-volatility decile, which is P3's territory.
+
 WHY THIS MODULE EXISTS. `docs/EVALUATION_LIMITS.md` Limit #4 records two defects
 in `dcc_garch._dcc_covariance_uncached`, diagnosed by inspection and explicitly
 NOT quantified:
