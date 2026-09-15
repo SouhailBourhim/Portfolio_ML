@@ -148,6 +148,7 @@ def main() -> dict:
             bull_strategy=MaxSharpe(max_weight=MAX_W), bear_strategy=MinVarianceLW(max_weight=MAX_W)),
         "equal_weight": EqualWeight(),
         "max_sharpe": MaxSharpe(max_weight=MAX_W),
+        "min_variance_lw": MinVarianceLW(max_weight=MAX_W),
     }
     strat_results, equity = {}, {}
     for name, strat in strategies.items():
