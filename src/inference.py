@@ -26,7 +26,7 @@ single Sharpe for the number of trials (the DSR); these characterise the
 search and the sample as a whole.
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 import numpy as np
 import pandas as pd
@@ -706,4 +706,93 @@ def probability_of_backtest_overfitting(
             f"size of the search regardless of genuine skill, so it describes the "
             f"selection procedure as much as the strategies."
         ),
+    }
+
+
+def paired_estimand_mde(
+    series_a: pd.Series,
+    series_b: pd.Series,
+    statistic: Callable[[np.ndarray], float],
+    *,
+    block_len: int = 21,
+    n_boot: int = 2000,
+    alpha: float = 0.10,
+    power: float = 0.80,
+    seed: int = 0,
+) -> dict[str, float | bool | int]:
+    """
+    Observed difference, bootstrap SE and MDE for ANY paired statistic.
+
+    Addresses: P4 — `sharpe_difference_mde` answers "could this design have
+    seen a Sharpe gap?". This answers the same question for the estimands that
+    a short sample CAN resolve. That distinction is the point: on the frozen
+    `full_2021` segment the Sharpe difference sits at 0.01-0.24 of its
+    detection threshold, while the log volatility ratio between the same two
+    strategies sits at roughly 2x — variance is estimated far more precisely
+    than mean return, so a risk claim is reachable where a return claim is not.
+
+    Report the MDE BEFORE looking at the comparison. A pre-registered estimand
+    whose MDE exceeds any plausible effect is a question not worth asking of
+    this sample, and knowing that in advance is the whole value.
+
+    BLOCK LENGTH IS NOT A FREE PARAMETER, and getting it wrong fails silently.
+    The bootstrap resamples circular blocks, so with `block_len >= n` every
+    resample is a rotation of the same series; a rotation-invariant statistic
+    (any mean) is then identical across draws, the SE collapses to zero, and
+    the MDE reports everything as detectable. That is not a small-sample
+    warning, it is a wrong answer that looks like a strong one — it is why
+    this guard is an error rather than a warning. Monthly rebalance series
+    are where it bites: 21 observations with a 21-day block is silently fatal.
+
+    Args:
+        series_a, series_b: Paired observations, aligned on their index.
+            Intersected before use; the statistic sees each as an array.
+        statistic: Maps one resampled array to a scalar. The reported quantity
+            is always `statistic(a) - statistic(b)`, so express ratios in logs.
+        block_len: Circular block length. Must be < the aligned length.
+        n_boot: Bootstrap resamples.
+        alpha, power: Passed to the MDE.
+        seed: Fixes the resampling.
+
+    Returns:
+        observed, standard_error, mde, ratio (|observed| / mde), detectable
+        (ratio > 1), n_observations and blocks (how many blocks tile the
+        sample — under ~10 treat the SE as indicative only).
+
+    Raises:
+        ValueError: if fewer than two aligned observations, or block_len is
+            not in [1, n).
+    """
+    joined = pd.concat([series_a, series_b], axis=1, join="inner").dropna()
+    n = len(joined)
+    if n < 2:
+        raise ValueError(f"need at least 2 aligned observations; got {n}")
+    if not 1 <= block_len < n:
+        raise ValueError(
+            f"block_len must be in [1, {n}) for a {n}-observation series; got "
+            f"{block_len}. With block_len >= n every resample is a rotation, "
+            "so the bootstrap SE collapses to zero and the MDE silently "
+            "reports every effect as detectable."
+        )
+
+    a = joined.iloc[:, 0].to_numpy(dtype=float)
+    b = joined.iloc[:, 1].to_numpy(dtype=float)
+    observed = float(statistic(a) - statistic(b))
+
+    rng = np.random.default_rng(seed)
+    draws = np.empty(n_boot, dtype=float)
+    for i in range(n_boot):
+        rows = _circular_block_indices(n, block_len, rng)
+        draws[i] = statistic(a[rows]) - statistic(b[rows])
+
+    se = float(draws.std(ddof=1))
+    mde = sharpe_difference_mde(se, alpha=alpha, power=power)
+    return {
+        "observed": observed,
+        "standard_error": se,
+        "mde": mde,
+        "ratio": float(abs(observed) / mde) if mde > 0 else float("inf"),
+        "detectable": bool(mde > 0 and abs(observed) > mde),
+        "n_observations": int(n),
+        "blocks": int(np.ceil(n / block_len)),
     }
