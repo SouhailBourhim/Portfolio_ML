@@ -9,7 +9,7 @@ project shows the symptom: six warm-up fallbacks in `regime_conditional`, and
 posteriors that move ~0.7 on a refit with states merely relabelled.
 
 THE COMPARISON IS RUN CAUSALLY ON BOTH SIDES, which is the whole reason
-`regime_research.filtered_posterior_series` was built first. Item 2.1's caveat:
+`regime.filtered_posterior_series` was built first. Item 2.1's caveat:
 a jump model fitted over a full window has the same in-window lookahead as a
 smoothed HMM, so comparing a full-window jump model against a smoothed HMM would
 measure the estimator difference plus the causality defect and call the sum an
@@ -53,7 +53,7 @@ import pandas as pd
 
 from jump_model import fit_jump_model, label_states_by_volatility, online_jump_states
 from regime import REGIME_FEATURES, fit_hmm
-from regime_research import filtered_posterior_series
+from regime import filtered_posterior_series
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")

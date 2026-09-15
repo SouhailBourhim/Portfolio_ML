@@ -1,7 +1,7 @@
 """
 Filtered regime posteriors: is the forward recursion actually causal?
 
-`src/regime_research.filtered_posterior_series` exists to remove the in-window
+`regime.filtered_posterior_series` exists to remove the in-window
 lookahead `docs/EVALUATION_LIMITS.md` Limit #3 documents. The tests that matter
 are therefore the two that would catch it failing to do so, and they are
 independent of each other:
@@ -31,7 +31,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from regime import REGIME_FEATURES, fit_hmm, predict_regime_posterior_series
-from regime_research import filtered_matches_smoothed_at_final_row, filtered_posterior_series
+from regime import filtered_matches_smoothed_at_final_row, filtered_posterior_series
 
 
 @pytest.fixture(scope="module")

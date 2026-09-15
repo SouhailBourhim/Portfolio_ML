@@ -135,8 +135,8 @@ class TestEstimatorsAreDeterministic:
         from dcc_garch import _dcc_covariance_uncached
 
         window = returns_window.iloc[-300:]
-        first, record_a = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0)
-        second, record_b = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0)
+        first, record_a = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0, 21)
+        second, record_b = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0, 21)
         np.testing.assert_array_equal(first, second)
         assert record_a == record_b, "the fit record must be deterministic too"
 
@@ -168,7 +168,7 @@ class TestCachingDoesNotChangeResults:
         from dcc_garch import _dcc_covariance_uncached
 
         window = returns_window.iloc[-300:]
-        uncached, _ = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0)
+        uncached, _ = _dcc_covariance_uncached(window, 1, 1, 0.02, 0.95, 100.0, 21)
         np.testing.assert_array_equal(dcc_covariance(window), uncached)
 
     def test_mutating_a_returned_value_cannot_poison_the_cache(self, returns_window):

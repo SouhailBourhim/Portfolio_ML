@@ -244,9 +244,20 @@ def attach_regime_feature(
     one posterior-per-date onto every asset for that date is legitimate,
     not an approximation.
 
-    Reuses `regime.fit_hmm` / `regime.predict_regime_posterior_series`
+    Reuses `regime.fit_hmm` / `regime.filtered_posterior_series`
     exactly like `RegimeConditionalStrategy` reuses `fit_hmm` /
-    `predict_regime_posterior` — no new HMM logic here. Parameters mirror
+    `predict_regime_posterior` — no new HMM logic here.
+
+    **Filtered, not smoothed, since 2026-09-15.** This previously called
+    `predict_regime_posterior_series`, whose `predict_proba` returns the
+    forward-BACKWARD posterior P(state_t | x_1…x_T): every historical training
+    row carried a value computed from observations after its own date, while at
+    inference the same column is filtered. That is the train/serve mismatch
+    `docs/EVALUATION_LIMITS.md` Limit #3 documents, measured at up to 0.72–0.82
+    in probability units, moving ~45% of rows and averaging 0.18–0.22 around a
+    regime switch. `filtered_posterior_series` conditions row t on x_1…x_t only.
+    The change lowers F7 training-feature quality on purpose: the model now
+    trains on the same noisier variable it will be scored with. Parameters mirror
     `fit_hmm`'s own signature exactly (rather than accepting a generic
     kwargs dict) so a caller can't accidentally leak an unrelated key —
     e.g. `regime.bull_strategy` from `params.yaml` — into the HMM fit.
@@ -266,7 +277,7 @@ def attach_regime_feature(
         converge — the same defensive idiom every other Phase 4 addition
         uses, never a crash.
     """
-    from regime import REGIME_FEATURES, fit_hmm, predict_regime_posterior_series
+    from regime import REGIME_FEATURES, filtered_posterior_series, fit_hmm
 
     dates = panel.index.get_level_values("Date")
     if market_features is None or market_features.empty:
@@ -284,7 +295,7 @@ def attach_regime_feature(
         min_regime_train_days=min_regime_train_days,
         features=regime_features,
     )
-    posterior = predict_regime_posterior_series(hmm_fit, market_features, regime_features)
+    posterior = filtered_posterior_series(hmm_fit, market_features, regime_features)
 
     result = panel.copy()
     if posterior.empty or "bull" not in posterior.columns:

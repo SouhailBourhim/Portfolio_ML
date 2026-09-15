@@ -123,3 +123,65 @@ class TestDCCRecursionMechanics:
 
         q_final = dcc_garch._dcc_recursion_final_q(std_resid, a=0.0, b=0.999, q_bar=q_bar)
         np.testing.assert_allclose(q_final, q_bar, atol=0.5)
+
+
+class TestTheLimit4Corrections:
+    """Both Limit #4 defects are fixed as of 2026-09-15: the covariance uses the
+    one-step FORECAST rather than the lagged conditional volatility, and averages
+    the 1..H step forecasts over the holding period rather than repeating the
+    one-day value. These pin that the corrections are actually applied, since the
+    difference is a few percent and would not be obvious in any output."""
+
+    @staticmethod
+    def _panel(n=400, seed=0):
+        rng = np.random.default_rng(seed)
+        idx = pd.date_range("2021-01-01", periods=n, freq="B")
+        vol = 0.01 * (1 + 0.5 * np.sin(np.linspace(0, 8, n)))
+        return pd.DataFrame(
+            {c: rng.normal(0.0003, vol) for c in ("A", "B", "C")}, index=idx
+        )
+
+    def test_the_correction_changes_the_matrix(self):
+        panel = self._panel()
+        corrected = dcc_garch.dcc_covariance(panel)
+        legacy = dcc_garch.dcc_covariance(panel, holding_days=0)
+        assert not np.allclose(corrected, legacy), (
+            "holding_days made no difference — the Limit #4 corrections are not "
+            "reaching the returned covariance"
+        )
+
+    def test_the_result_is_still_a_valid_covariance_matrix(self):
+        cov = dcc_garch.dcc_covariance(self._panel())
+        assert np.allclose(cov, cov.T), "covariance is not symmetric"
+        assert np.all(np.linalg.eigvalsh(cov) > -1e-10), "covariance is not PSD"
+        assert np.all(np.isfinite(cov))
+
+    def test_holding_days_one_is_the_forecast_fix_only(self):
+        """H = 1 needs no aggregation, so it isolates the off-by-one: it must
+        differ from the legacy path but by less than the full correction."""
+        panel = self._panel()
+        legacy = np.diag(dcc_garch.dcc_covariance(panel, holding_days=0))
+        one = np.diag(dcc_garch.dcc_covariance(panel, holding_days=1))
+        full = np.diag(dcc_garch.dcc_covariance(panel, holding_days=21))
+        assert not np.allclose(one, legacy)
+        assert not np.allclose(one, full)
+
+    def test_a_longer_hold_pulls_variance_toward_the_unconditional_level(self):
+        """The aggregation is monotone in the horizon, so successive holding
+        periods must move variance in one direction, not oscillate."""
+        panel = self._panel()
+        variances = [
+            float(np.diag(dcc_garch.dcc_covariance(panel, holding_days=h))[0])
+            for h in (1, 5, 21, 63)
+        ]
+        assert variances == sorted(variances) or variances == sorted(variances, reverse=True)
+
+    def test_the_cache_key_separates_different_holding_periods(self):
+        """`dcc_covariance` is memoized on its inputs. If `holding_days` were
+        missing from the key, the first call would poison every later one."""
+        panel = self._panel(seed=3)
+        a = dcc_garch.dcc_covariance(panel, holding_days=21)
+        b = dcc_garch.dcc_covariance(panel, holding_days=0)
+        c = dcc_garch.dcc_covariance(panel, holding_days=21)
+        assert not np.allclose(a, b)
+        np.testing.assert_allclose(a, c)

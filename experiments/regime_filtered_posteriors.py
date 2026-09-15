@@ -29,7 +29,7 @@ that followed it in BOTH windows being compared; that is a statement about
 marginal information, not about how far the training feature sits from the
 servable one.
 
-`src/regime_research.filtered_posterior_series` computes the filtered posterior
+`regime.filtered_posterior_series` computes the filtered posterior
 by an explicit forward recursion, validated against hmmlearn's own smoothed
 output at t = T where the two must agree by construction. This measures the gap
 on every committed feature panel.
@@ -55,7 +55,7 @@ import numpy as np
 import pandas as pd
 
 from regime import REGIME_FEATURES, fit_hmm, predict_regime_posterior_series
-from regime_research import filtered_matches_smoothed_at_final_row, filtered_posterior_series
+from regime import filtered_matches_smoothed_at_final_row, filtered_posterior_series
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")

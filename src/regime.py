@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
+from scipy.special import logsumexp
 
 log = logging.getLogger("regime")
 
@@ -289,3 +290,97 @@ def predict_regime_posterior(
     if series.empty:
         return {"bull": 0.5, "bear": 0.5}
     return {label: float(value) for label, value in series.iloc[-1].items()}
+
+
+# ---------------------------------------------------------------------------
+# Filtered (causal) posteriors — see docs/EVALUATION_LIMITS.md Limit #3.
+#
+# `predict_regime_posterior_series` above returns SMOOTHED posteriors, which is
+# correct for `RegimeConditionalStrategy` (it reads only the last row, where the
+# two coincide) and wrong for `ml_signals.attach_regime_feature`, which trains a
+# model on every row. Limit #3 measured that gap at up to 0.72-0.82 in
+# probability units, moving ~45% of training rows and averaging 0.18-0.22 around
+# a regime switch. `attach_regime_feature` now calls the filtered version below.
+# ---------------------------------------------------------------------------
+
+
+def filtered_posterior_series(
+    hmm_fit: HMMFit,
+    feature_window: pd.DataFrame,
+    features: list[str] = REGIME_FEATURES,
+) -> pd.DataFrame:
+    """
+    Per-row FILTERED regime posterior: P(state_t | x_1 ... x_t).
+
+    The causal counterpart of `regime.predict_regime_posterior_series`, with an
+    identical signature, index and column convention (`"bull"`/`"bear"` via the
+    fit's `label_map`) so it is a drop-in substitution. Returns an empty frame
+    on a non-converged fit or an all-NaN window, exactly as that function does,
+    so callers keep their existing `.empty` fallback.
+
+    The recursion, in log space to avoid underflow over long windows:
+
+        log a_1(i) = log pi_i + log b_i(x_1)
+        log a_t(j) = log b_j(x_t) + logsumexp_i [ log a_{t-1}(i) + log A_ij ]
+        filtered_t = softmax_i log a_t(i)
+
+    Normalising at each step is what makes this filtered rather than a joint
+    likelihood: row t conditions on observations up to t and no further.
+    """
+    if not hmm_fit.converged or hmm_fit.model is None:
+        return pd.DataFrame(columns=["bull", "bear"])
+
+    clean = feature_window[features].dropna()
+    if clean.empty:
+        return pd.DataFrame(columns=["bull", "bear"])
+
+    model = hmm_fit.model
+    X = hmm_fit.scaler.transform(clean.to_numpy())
+    log_emission = model._compute_log_likelihood(X)
+    n_obs, n_states = log_emission.shape
+
+    with np.errstate(divide="ignore"):
+        log_start = np.log(np.asarray(model.startprob_, dtype=float))
+        log_trans = np.log(np.asarray(model.transmat_, dtype=float))
+
+    log_alpha = np.empty((n_obs, n_states), dtype=float)
+    log_alpha[0] = log_start + log_emission[0]
+    log_alpha[0] -= logsumexp(log_alpha[0])
+    for t in range(1, n_obs):
+        prior = logsumexp(log_alpha[t - 1][:, None] + log_trans, axis=0)
+        row = prior + log_emission[t]
+        log_alpha[t] = row - logsumexp(row)
+
+    proba = np.exp(log_alpha)
+    columns = [hmm_fit.label_map[i] for i in range(n_states)]
+    return pd.DataFrame(proba, index=clean.index, columns=columns)
+
+
+def filtered_matches_smoothed_at_final_row(
+    hmm_fit: HMMFit,
+    feature_window: pd.DataFrame,
+    features: list[str] = REGIME_FEATURES,
+    tolerance: float = 1e-8,
+) -> tuple[bool, float]:
+    """
+    Positive control for `filtered_posterior_series`.
+
+    At t = T the forward-backward smoothed posterior IS the filtered one: there
+    are no future observations for the backward pass to contribute. So the last
+    row of this module's output must equal the last row of hmmlearn's
+    `predict_proba` to numerical precision, on any fit and any window. A
+    discrepancy means the recursion, the scaling or the label mapping is wrong,
+    and it is detectable without any ground truth.
+
+    Returns (passed, max_absolute_deviation).
+    """
+    filtered = filtered_posterior_series(hmm_fit, feature_window, features)
+    smoothed = predict_regime_posterior_series(hmm_fit, feature_window, features)
+    if filtered.empty or smoothed.empty:
+        return True, 0.0
+    shared = [c for c in filtered.columns if c in smoothed.columns]
+    deviation = float(
+        np.max(np.abs(filtered.iloc[-1][shared].to_numpy()
+                      - smoothed.iloc[-1][shared].to_numpy()))
+    )
+    return deviation <= tolerance, deviation

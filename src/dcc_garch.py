@@ -53,6 +53,9 @@ from scipy.optimize import minimize
 from sklearn.covariance import LedoitWolf
 
 import telemetry
+from garch_horizon import (
+    multi_horizon_average_variance, one_step_forecast_variance,
+)
 from memo import ContentCache, content_key
 
 log = logging.getLogger("dcc_garch")
@@ -70,12 +73,20 @@ class DCCGarchNonConvergence(Exception):
 
 def _fit_univariate_garch(
     returns: pd.Series, p: int, q: int, rescale_factor: float
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, dict[str, float] | None]:
     """
-    Fit GARCH(p, q) to one asset's returns; return (conditional_vol, std_resid).
+    Fit GARCH(p, q) to one asset's returns; return
+    (conditional_vol, std_resid, params).
 
     Addresses: P2 — per-asset volatility clustering, the first stage DCC needs
     before it can separately model correlation dynamics.
+
+    `params` carries omega, alpha and beta in UNSCALED return units, for the
+    forecast and horizon corrections in `garch_horizon`. It is None for any
+    order other than (1, 1): the one-step recursion those corrections use is
+    written for GARCH(1,1), and a higher order needs additional lagged terms.
+    The caller falls back to the uncorrected path in that case rather than
+    applying a formula that does not describe the fitted model.
     """
     from arch import arch_model
 
@@ -88,7 +99,17 @@ def _fit_univariate_garch(
 
     if result.convergence_flag != 0 or not np.all(np.isfinite(sigma)) or not np.all(np.isfinite(std_resid)):
         raise DCCGarchNonConvergence(f"GARCH({p},{q}) failed to converge on asset '{returns.name}'")
-    return sigma, std_resid
+
+    params = None
+    if p == 1 and q == 1:
+        # omega is a variance, so it unscales by the SQUARE of the factor;
+        # alpha and beta are dimensionless.
+        params = {
+            "omega": float(result.params["omega"]) / rescale_factor ** 2,
+            "alpha": float(result.params["alpha[1]"]),
+            "beta": float(result.params["beta[1]"]),
+        }
+    return sigma, std_resid, params
 
 
 def _dcc_recursion_final_q(
@@ -160,12 +181,26 @@ def dcc_covariance(
     dcc_a_init: float = 0.02,
     dcc_b_init: float = 0.95,
     rescale_factor: float = 100.0,
+    holding_days: int = 21,
 ) -> np.ndarray:
     """
     Fit DCC-GARCH on `train_returns` and return the latest (τ-dated)
     annualized covariance matrix, in `train_returns.columns` order.
 
     Addresses: P1, P2, P3 — see module docstring.
+
+    `holding_days` is the horizon the returned covariance is meant to describe,
+    and defaults to 21 to match the monthly (`ME`) rebalance the engine runs.
+    The variance reported per asset is the MEAN of the 1…H step GARCH forecasts
+    rather than the 1-step value, because that is what a portfolio held for H
+    days experiences — see `docs/EVALUATION_LIMITS.md` Limit #4 and
+    `src/garch_horizon.py`. The one-step forecast itself is used, rather than
+    the lagged conditional volatility this function returned before 2026-09-15,
+    so the estimate reacts to the most recent shock.
+
+    Pass `holding_days=0` to restore the pre-correction behaviour exactly. That
+    exists to make the two directly comparable on the same fit, not as a
+    supported production setting.
 
     Falls back to annualized Ledoit-Wolf shrinkage covariance, with a logged
     WARNING naming the cause, if any asset's GARCH fit or the DCC
@@ -179,7 +214,7 @@ def dcc_covariance(
     # caller receives a mutable array.
     key = content_key(
         "dcc_covariance", train_returns,
-        garch_p, garch_q, dcc_a_init, dcc_b_init, rescale_factor,
+        garch_p, garch_q, dcc_a_init, dcc_b_init, rescale_factor, holding_days,
     )
     # The cache stores (covariance, FitRecord) rather than the covariance
     # alone. A cache hit does not re-run the estimator, so without the stored
@@ -190,7 +225,8 @@ def dcc_covariance(
     covariance, fit_record = _DCC_CACHE.get_or_compute(
         key,
         lambda: _dcc_covariance_uncached(
-            train_returns, garch_p, garch_q, dcc_a_init, dcc_b_init, rescale_factor
+            train_returns, garch_p, garch_q, dcc_a_init, dcc_b_init, rescale_factor,
+            holding_days,
         ),
     )
     telemetry.record(fit_record)
@@ -204,6 +240,7 @@ def _dcc_covariance_uncached(
     dcc_a_init: float,
     dcc_b_init: float,
     rescale_factor: float,
+    holding_days: int,
 ) -> tuple[np.ndarray, telemetry.FitRecord]:
     """The two-stage estimation itself — see `dcc_covariance` for the contract.
 
@@ -218,12 +255,14 @@ def _dcc_covariance_uncached(
     try:
         sigmas = np.zeros((n_obs, n_assets))
         std_resids = np.zeros((n_obs, n_assets))
+        garch_params: list[dict[str, float] | None] = []
         for i, asset in enumerate(assets):
-            sigma, std_resid = _fit_univariate_garch(
+            sigma, std_resid, params = _fit_univariate_garch(
                 train_returns[asset], garch_p, garch_q, rescale_factor
             )
             sigmas[:, i] = sigma
             std_resids[:, i] = std_resid
+            garch_params.append(params)
 
         a, b, q_bar = _fit_dcc(std_resids, dcc_a_init, dcc_b_init)
         q_t = _dcc_recursion_final_q(std_resids, a, b, q_bar)
@@ -231,7 +270,43 @@ def _dcc_covariance_uncached(
         d = np.sqrt(np.diag(q_t))
         r_t = q_t / np.outer(d, d)
 
-        sigma_t = sigmas[-1]
+        # Both corrections from `docs/EVALUATION_LIMITS.md` Limit #4, applied
+        # here rather than taking `sigmas[-1]` as before.
+        #
+        # OFF-BY-ONE: `sigmas[-1]` is conditional_volatility[T-1], which is
+        # sigma_{tau|tau-1} and has not seen r_tau. GARCH exists to react to the
+        # latest shock, and taking the lagged value discards exactly that.
+        #
+        # HORIZON: the optimizer holds for ~`holding_days`, over which GARCH
+        # mean-reverts toward its unconditional level, so the per-period
+        # variance it experiences is the MEAN of the 1..H step forecasts, not
+        # the 1-step value repeated. Measured on this project's own panels, the
+        # uncorrected input overstates risk by ~9% on the highest-volatility
+        # decile and by up to 51% on a single date.
+        #
+        # If any asset is not GARCH(1,1) the correction is skipped for ALL of
+        # them, so the returned matrix is never a mix of corrected and
+        # uncorrected variances.
+        if holding_days >= 1 and all(pr is not None for pr in garch_params):
+            sigma_t = np.empty(n_assets, dtype=float)
+            last_returns = train_returns.to_numpy(dtype=float)[-1]
+            for i, pr in enumerate(garch_params):
+                one_step = one_step_forecast_variance(
+                    pr["omega"], pr["alpha"], pr["beta"],
+                    float(last_returns[i]), float(sigmas[-1, i] ** 2),
+                )
+                avg_var = multi_horizon_average_variance(
+                    pr["omega"], pr["alpha"], pr["beta"], one_step, holding_days
+                )
+                sigma_t[i] = np.sqrt(avg_var)
+        else:
+            if holding_days >= 1:
+                log.warning(
+                    "DCC-GARCH: GARCH(%d,%d) is not (1,1), so the Limit #4 forecast and "
+                    "horizon corrections are skipped for this window.", garch_p, garch_q,
+                )
+            sigma_t = sigmas[-1]
+
         cov_daily = np.outer(sigma_t, sigma_t) * r_t
         cov_annual = cov_daily * TRADING_DAYS_PER_YEAR
 

@@ -199,6 +199,7 @@ stages:
       - src/metrics.py
       - src/regime.py
       - src/dcc_garch.py
+      - src/garch_horizon.py
       - src/run_phase4.py
       - data/gold/log_returns.parquet
       - data/gold/log_returns_etf.parquet
@@ -242,6 +243,7 @@ stages:
       - src/metrics.py
       - src/regime.py
       - src/dcc_garch.py
+      - src/garch_horizon.py
       - src/ml_signals.py
       - src/run_phase4.py
       - src/run_phase4b.py
@@ -297,6 +299,7 @@ stages:
       - src/metrics.py
       - src/regime.py
       - src/dcc_garch.py
+      - src/garch_horizon.py
       - src/ml_signals.py
       - src/run_phase4.py
       - src/run_phase4b.py
@@ -508,6 +511,7 @@ stages:
       - src/backtest.py
       - src/strategies.py
       - src/dcc_garch.py
+      - src/garch_horizon.py
       - src/ml_signals.py
       - src/regime.py
       - src/memo.py

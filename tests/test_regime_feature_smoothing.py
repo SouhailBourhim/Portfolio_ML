@@ -2,24 +2,43 @@
 test_regime_feature_smoothing.py — The regime feature is smoothed, and this
 file says so out loud, with a magnitude.
 
+> **UPDATED 2026-09-15 — the defect this file was written about is FIXED, and
+> this file still passes, on purpose. Read the next two paragraphs before
+> concluding it is stale.**
+
 WHY THIS FILE EXISTS. `regime.predict_regime_posterior_series` calls
 `hmmlearn`'s `model.predict_proba`, which returns SMOOTHED posteriors —
 gamma_t = P(state_t | x_1...x_T) from the forward-backward algorithm. For
 `RegimeConditionalStrategy` that is harmless: it reads only the last row, and
 at t = T the smoothed posterior equals the filtered one. For
-`ml_signals.attach_regime_feature` it is not. Every historical row's
+`ml_signals.attach_regime_feature` it was not. Every historical row's
 `REGIME_BULL_PROB` at date t was computed using observations AFTER t, up to
 the window end, while at inference the same column is a filtered posterior.
-That is an in-window lookahead and a train/serve mismatch: the model trains on
-a cleaner version of a feature than the one it is scored with.
+That was an in-window lookahead and a train/serve mismatch.
+
+WHAT CHANGED, AND WHY THE FILE SURVIVED IT. `attach_regime_feature` now calls
+`regime.filtered_posterior_series`, so the mismatch is gone from the training
+feature. `predict_regime_posterior_series` is NOT deprecated and is still
+smoothed: `RegimeConditionalStrategy` reads only its final row, where smoothed
+and filtered coincide exactly, so it is the right function for that caller and
+the cheaper one. These tests target that function directly, so they keep
+measuring a property that is still true and still worth pinning — if the
+smoothed function ever silently became filtered, the strategy's behaviour would
+change and these tests would say so.
+
+The file's original prediction — that fixing the defect would make
+`test_the_regime_feature_depends_on_rows_after_the_row_it_labels` fail and force
+a deletion — turned out to be wrong in a specific and instructive way. It
+assumed the fix would mean replacing the smoothed function. The fix was to
+change the CALLER, leaving both functions in place for the two different
+questions they answer. The lesson is the reason this paragraph is kept rather
+than trimmed: "this test must be deleted when the bug is fixed" is a prediction
+about the shape of an unwritten fix, and predictions like that age badly.
 
 WHY IT IS A DIAGNOSTIC AND NOT AN `xfail`. An expected-failure test normalises
 a defect — it goes green while the thing it names stays broken, and a reader
 learns nothing from a passing suite. These tests PASS by measuring the
-dependency and bounding it. If someone later switches to filtered posteriors,
-`test_the_regime_feature_depends_on_rows_after_the_row_it_labels` will FAIL,
-and its message tells them to delete this file. A test that must be deleted
-when a bug is fixed is a more honest marker than one permitted to fail forever.
+dependency and bounding it.
 
 WHAT THE MEASUREMENT ISOLATES, and why that took two attempts. The obvious
 diagnostic — call `attach_regime_feature` on a short window and a long one and
