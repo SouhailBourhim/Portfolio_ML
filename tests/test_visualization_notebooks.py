@@ -146,13 +146,24 @@ def test_generator_and_generated_sources_are_in_sync(tmp_path: Path) -> None:
     generator = ROOT / "scripts" / "build_visualization_notebooks.py"
     namespace = {"__name__": "not_main", "__file__": str(generator)}
     exec(compile(generator.read_text(encoding="utf-8"), str(generator), "exec"), namespace)
-    rebuilt = {name: namespace[builder]() for name, builder in {
+    builders = {
         "phase6_currency_correction.ipynb": "build_currency_notebook",
         "phase7_model_decision_explainability.ipynb": "build_explainability_notebook",
         "phase8_validation_and_statistical_evidence.ipynb": "build_validation_notebook",
         "phase9_risk_cost_and_robustness.ipynb": "build_risk_notebook",
         "phase10_global_2004_evidence.ipynb": "build_global_2004_notebook",
-    }.items()}
+        "phase11_statistical_power_and_overfitting.ipynb": "build_phase11_notebook",
+    }
+    # This map duplicates NOTEBOOKS' keys, and phase 11 was added to one and not
+    # the other — so the new notebook sat under the four parametrized guards
+    # while silently having no drift check at all. Assert the two agree, or the
+    # next notebook repeats it.
+    assert builders.keys() == NOTEBOOKS.keys(), (
+        "the builder map and NOTEBOOKS disagree; a notebook registered in only "
+        f"one of them loses a guarantee. Symmetric difference: "
+        f"{sorted(builders.keys() ^ NOTEBOOKS.keys())}"
+    )
+    rebuilt = {name: namespace[builder]() for name, builder in builders.items()}
     for name, notebook in rebuilt.items():
         # Execution outputs are intentionally absent from the deterministic source builder.
         for cell in notebook.cells:
