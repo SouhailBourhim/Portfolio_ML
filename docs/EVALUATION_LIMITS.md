@@ -215,9 +215,45 @@ volatility state relative to what the portfolio actually experiences. The correc
 average of the 1…21-step forecast variances. The same critique applies more mildly to
 `MinVarianceEWMA`.
 
-**Status.** Diagnosed, **not quantified**. Both are candidate explanations for why the DCC rung
-never paid, and neither has been measured — correcting them changes `dcc_garch` results and
-requires a re-run. Stated as an open question rather than a finding.
+**Status — now quantified** (`experiments/garch_horizon_quantified.py`, 2026-09-15).
+`src/garch_horizon.py` implements the multi-period aggregation Drost & Nijman (1993) supply.
+For GARCH(1,1) with persistence *p* and unconditional variance σ²∞, the *h*-step forecast decays
+geometrically, so the per-period variance over an *H*-period hold is
+
+> σ²∞ + (σ²_{t+1|t} − σ²∞) · **A(p, H)**,  where **A(p, H) = (1 − pᴴ) / (H(1 − p))**
+
+A(p, H) is the entire correction in one number. The closed form is checked against the explicit
+forecast recursion on 300 random parameter draws (`tests/test_garch_horizon.py`), zero mismatches.
+
+Fitted per asset on both panels:
+
+| Panel | assets | persistence *p* | A(p, 21) | off-by-one | horizon, mean | horizon, **high-vol decile** | max |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `full_2021` | 9 | 0.939 | 0.672 | ×0.962 | ×1.041 | **×0.912** | 50.9% |
+| `etf_2017` | 5 | 0.984 | 0.861 | ×0.958 | ×1.041 | **×0.953** | 36.4% |
+
+**The horizon defect is real, state-dependent, and largest exactly where it matters.** The
+correction is two-sided, because aggregation pulls toward the unconditional level from both
+directions: on an average day it is worth about +4% on volatility, but **on the highest-volatility
+decile the current one-day input overstates risk by about 9%** on `full_2021`, and the single
+worst date deviates by **51%**. That is precisely the "systematically over-weights the current
+volatility state" this section predicted, now measured: the input is too low when markets are calm
+and too high right after a shock.
+
+A caution about how to size this, recorded because the first attempt got it wrong. Evaluated at
+the final observation only, the combined effect is about 2% — near nothing. That number is an
+artefact of the chosen day being close to average, since the correction's magnitude depends
+entirely on distance from the unconditional level. Sizing a state-dependent defect at one state
+understates it; the distribution is the honest summary.
+
+The **off-by-one** is the smaller of the two, at ×0.96 on both panels, and it is one-directional
+in this sample rather than conservative as the paragraph above assumed.
+
+**Still not done:** applying either correction inside `dcc_garch`. Four DVC stages depend on that
+module and the fix changes every `dcc_garch` result, so it is a deliberate re-run rather than a
+side effect of adding an instrument. The **correlation channel is also uncorrected** — DCC's R_t
+mean-reverts toward its own target over the same 21 days, so a fully consistent multi-period
+covariance would aggregate that too, and this measures only the variance channel.
 
 ---
 
