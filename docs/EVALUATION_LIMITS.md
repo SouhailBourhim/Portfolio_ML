@@ -170,18 +170,86 @@ requires a re-run. Stated as an open question rather than a finding.
 
 ---
 
-## 5. Statistical power, stated up front rather than discovered
+## 5. Statistical power, now measured rather than assumed
 
 `test_frac: 0.35` leaves ~460 frozen-test days on `full_2021`. Intervals containing zero were
 the predictable consequence of the design, not a discovery about the models. The project
 addresses this directly — `docs/ETF_DEEP_HISTORY_EXPERIMENT.md` extends the ETF window to 2004
-and `docs/NESTED_WALKFORWARD_EXPERIMENT.md` narrows the intervals by 28.6% — but a
-minimum-detectable-effect calculation stated in advance would have framed the negative result
-as **designed** rather than as a disappointment.
+and `docs/NESTED_WALKFORWARD_EXPERIMENT.md` narrows the intervals by 28.6%.
+
+**Update.** This section used to say only that a minimum-detectable-effect calculation *would
+have* framed the negative result as designed. It now exists. `metrics.sharpe_difference_test`
+gives the HAC standard error of a Sharpe *difference* (Ledoit & Wolf, 2008), and
+`metrics.sharpe_difference_mde` turns that into the smallest gap the design detects 80% of the
+time at α = 0.10. Recomputed from committed return series in
+`notebooks/phase11_statistical_power_and_overfitting.ipynb`:
+
+| Comparison | Universe | n | Observed gap | MDE (80%) | Observed / MDE |
+|---|---|---:|---:|---:|---:|
+| `regime_conditional` vs `max_sharpe` | `full_2021` | 1040 | −0.112 | 0.506 | 0.22 |
+| `regime_conditional` vs `equal_weight` | `full_2021` | 1040 | 0.004 | 0.458 | 0.01 |
+| `regime_conditional` vs `min_variance_lw` | `etf_2017` | 5387 | −0.016 | 0.059 | 0.26 |
+
+Those rows use the full `dashboard_equity.parquet` window, which is longer than the frozen test
+segment and therefore **flatters** the design. On the ~455-day frozen segment the standard error
+grows by √(1040/455), putting the detectable gap at **0.765** — about seven times the largest
+gap actually observed. Holding the observed effect fixed, the sample would have to reach roughly
+**12,000 trading days (~48 years)** before this protocol could separate the two.
+
+What follows is narrow and worth stating precisely. The negative result is **designed**: the
+verdict was fixed by the sample size before any model was fitted, so "not established" describes
+the protocol, not the models. It does **not** follow that the strategies are equivalent, and it
+does not rescue a candidate that lost — `regime_conditional` still sits behind its comparator on
+the observed point estimate.
 
 The standing wording rule follows from the same place: a point estimate is an *observed
 difference*, an interval is *uncertainty quantification*, and neither becomes "superior" or
 "equivalent" without a paired test of the difference.
+
+---
+
+## 6. What the search-aware procedures can and cannot assert
+
+Sections 1–5 describe limits. This one records the opposite: two procedures that return a
+**positive** statement where White's Reality Check and Hansen's SPA can only decline to reject,
+and one that prices the selection itself. All three are recomputed in the phase 11 notebook from
+the same 240-candidate frozen-test series as `docs/MULTIPLE_TESTING.md`.
+
+**Probability of backtest overfitting** (CSCV; Bailey, Borwein, López de Prado & Zhu), 240
+trials over all 252 balanced partitions of 10 blocks:
+
+| Universe | PBO | Degradation slope | P(loss) |
+|---|---:|---:|---:|
+| `full_2021` | 0.33 | −1.08 | 0.05 |
+| `etf_2017` | 0.71 | −0.99 | 0.00 |
+
+The slope is the finding. At ≈−1, in-sample rank does not merely fail to predict out-of-sample
+rank — it inverts. The configuration that wins the search is, on this evidence, the one that
+best fit the noise of its training split. On `etf_2017` the PBO of 0.71 says the selected
+configuration lands below the median of its peers out-of-sample more often than not. Read this
+as a property of a 240-candidate search on samples this short, not as a defect unique to any
+one model family.
+
+**Model Confidence Set** (size 0.10) and **Romano–Wolf StepM** (size 0.05, against
+`equal_weight`):
+
+| Universe | MCS retained | `equal_weight` | `regime_conditional` | StepM names superior |
+|---|---|---|---|---|
+| `full_2021` | 237 / 242 | retained | retained | 0 / 240 |
+| `etf_2017` | 237 / 242 | **excluded** | retained | 0 / 240 |
+
+The exclusion of `equal_weight` from the `etf_2017` MCS is the one positive assertion the
+evidence supports: the naive floor is eliminated at the stated size, which no Reality Check
+p-value could ever say. Everything else is a non-exclusion. Per AGENTS.md §5.2, a strategy
+retained in the MCS is **not** thereby "equivalent" to the others — 237 of 242 survivors is a
+statement about resolving power, and the same short samples that drive section 5 drive this.
+StepM naming 0 of 240 candidates superior to `equal_weight` is consistent with every earlier
+phase.
+
+**Implementation control.** The project's hand-written Reality Check was cross-checked against
+`arch`'s independent SPA implementation on the four published comparisons; the largest
+disagreement in *p* is **0.0005**. The multiple-testing numbers in `docs/MULTIPLE_TESTING.md`
+are not an artefact of a bespoke bootstrap.
 
 ---
 
