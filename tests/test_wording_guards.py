@@ -157,8 +157,16 @@ def test_rendered_reports_do_not_carry_the_false_cap_claim(rel):
         pytest.skip(f"{rel} or pdftotext absent — rebuild the report to check it.")
 
     result = subprocess.run(
-        ["pdftotext", "-layout", str(pdf), "-"],
-        check=True, capture_output=True, text=True, timeout=300,
+        # -enc UTF-8 and an explicit decode, together, are load-bearing.
+        # Xpdf's pdftotext defaults to Latin-1 and poppler's to UTF-8, so the
+        # bytes differ by which binary is installed; `text=True` then decodes
+        # with the locale's preferred encoding, which under Python's UTF-8 mode
+        # raised UnicodeDecodeError on the French accents INSIDE the subprocess
+        # reader thread -- leaving returncode 0 and stdout None, so the guard
+        # below saw success and crashed on None. Pin both ends instead.
+        ["pdftotext", "-layout", "-enc", "UTF-8", str(pdf), "-"],
+        check=True, capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=300,
     )
     # Collapse the hard line wrapping LaTeX introduces, so a claim split
     # across two lines is still caught.

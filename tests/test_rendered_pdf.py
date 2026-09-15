@@ -48,8 +48,16 @@ def _pdf_pages() -> list[str]:
     if not shutil.which("pdftotext"):
         pytest.skip("pdftotext unavailable (poppler).")
     out = subprocess.run(
-        ["pdftotext", "-layout", str(PDF), "-"],
-        capture_output=True, text=True, timeout=180,
+        # -enc UTF-8 and an explicit decode, together, are load-bearing.
+        # Xpdf's pdftotext defaults to Latin-1 and poppler's to UTF-8, so the
+        # bytes differ by which binary is installed; `text=True` then decodes
+        # with the locale's preferred encoding, which under Python's UTF-8 mode
+        # raised UnicodeDecodeError on the French accents INSIDE the subprocess
+        # reader thread -- leaving returncode 0 and stdout None, so the guard
+        # below saw success and crashed on None. Pin both ends instead.
+        ["pdftotext", "-layout", "-enc", "UTF-8", str(PDF), "-"],
+        capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=180,
     )
     if out.returncode != 0:
         pytest.skip(f"pdftotext failed: {out.stderr[:200]}")
