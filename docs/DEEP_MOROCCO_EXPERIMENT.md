@@ -173,6 +173,9 @@ per-configuration series kept. This matters, because PBO on the shallow data sho
 degradation slope near −1, and whether that milder on a 20-year panel is the open question this
 experiment is best placed to answer.
 
+**Now answered — see section below.** `experiments/deep_morocco_pbo.py` re-runs all 15
+configurations retaining every series, and the slope does **not** temper.
+
 **A related understatement.** `n_search_trials` records **5**, taken from the DSR ledger, while
 the search actually evaluated 15 CV configurations. The reported DSR of 0.6841 is therefore
 corrected for a multiplicity three times smaller than the real one — the same understatement
@@ -191,3 +194,63 @@ and measured, rather than inferred from CI overlap.
 Unadjusted prices; 5,000-row cap (window ends 2024, splice-to-today deferred); levers fixed (this run
 answers the data question, not the tuning one); a single held-out window. None change the structural
 significance finding, which is consistent with Phase 5 on entirely different data.
+
+---
+
+## PBO on the 20-year panel — the slope does not temper
+
+`experiments/deep_morocco_pbo.py`, run 2026-09-15. The correction above records that CSCV could
+not be computed from the starvation artifact, because it retains two winners rather than every
+searched configuration. This runs the same 15 configurations Stage A evaluated — 6 RF, 9 XGB, the
+grids imported from that module so they cannot drift — through the unchanged backtest, keeps all
+15 frozen-test series, and computes the PBO over C(10,5) = 252 balanced partitions.
+
+| | test days | trials | PBO | degradation slope |
+|---|---:|---:|---:|---:|
+| `full_2021` (EVALUATION_LIMITS §6) | 455 | 240 | 0.333 | −1.082 |
+| `etf_2017` (EVALUATION_LIMITS §6) | 455 | 240 | 0.714 | −0.994 |
+| **`deep_morocco`** | **1,639** | **15** | **0.770** | **−0.925** |
+
+**The question was whether 3.6x more out-of-sample data tempers the near −1 slope. It does not**
+— −0.925 against −1.082 and −0.994. The two readings the correction set out are settled in favour
+of the first: selection degradation here is a property of the problem, not an artefact of ranking
+on a sample too short to rank anything. Every search in this project should shrink accordingly.
+
+PBO moves the *wrong* way, and that is the sharper result. It rises toward 1 with the size of the
+search regardless of genuine skill — the function says so in its own interpretation string — so a
+**smaller** search should score **lower**. This search is 16x smaller than the shallow one and
+scores 0.770 against 0.333. Probability of loss is 0.302, median logit −0.251.
+
+Concretely, of 15 configurations ranked by frozen-test Sharpe, the two the selector actually chose
+land **8th** (`rf_05`, 0.3384) and **10th** (`xgb_09`, 0.2238) — at and below the median of their
+own grid.
+
+### What the grid says, which is more actionable than the slope
+
+Both families prefer less capacity, monotonically, and the selector chose toward more in both:
+
+| XGB | depth 2 | depth 3 | depth 4 |
+|---|---:|---:|---:|
+| lr 0.03 | **0.3810** | 0.3699 | 0.2238 ← *selected* |
+| lr 0.05 | 0.3543 | 0.2117 | 0.1541 |
+| lr 0.10 | 0.2032 | 0.1866 | 0.1139 |
+
+For RF, `min_samples_leaf=20` beats `10` at **every** depth (0.4037>0.3670, 0.3729>0.3298,
+0.3507>0.3384). The best configuration overall is the most regularised RF; the worst five are the
+highest-capacity XGB corners.
+
+**Caveat, and it limits how hard the slope may be pushed.** A grid ordered almost one-dimensionally
+by capacity makes in-sample fit and out-of-sample rank collinear by construction, so part of a
+negative slope reflects that geometry rather than selection instability as such. The effect is
+strong for XGB, where both gradients are monotone, and weaker for RF, where depth is not. The
+robust conclusions are the *comparison* across panels — slope unchanged on 3.6x the data — and the
+practical one: the grid's centre of mass sits at more capacity than either family wants, and
+recentring it is a cheaper improvement than any new model.
+
+### Turnover, connecting this to the cost finding
+
+Average turnover rises with capacity alongside the Sharpe decline: 0.215 for the selected RF, 0.298
+to 0.430 across the XGB configurations, against 0.046 for equal weight. On a 30 bps market the
+configurations that rank worst are also the ones trading most, which is the same mechanism
+`docs/REACHABLE_CLAIMS.md` §4 measures between `regime_conditional` and Markowitz rather than a
+separate finding.
