@@ -154,11 +154,23 @@ class TestSurfacesQuoteTheGeneratedStringsExactly:
             (ROOT / r).read_text(encoding="utf-8") for r in rel if (ROOT / r).is_file()
         )
 
-    def test_the_readme_carries_every_canonical_statement(self, statements):
-        readme = self._text("README.md")
+    # BOTH READMEs carry the block and both are written by
+    # `scripts/build_release_facts.py`. Until 2026-09-16 only `README.md` was
+    # checked here and only `README.md` was generated, so `README.fr.md` drifted
+    # in silence — it still claimed DSR 0,6705 and "6 ajustements sur 1 184"
+    # after the rebuild moved both, and no test could say so.
+    #
+    # They are parametrised rather than concatenated on purpose: joining the two
+    # files would let a statement present in only ONE of them satisfy the
+    # assertion for both, which is exactly the drift this test exists to catch.
+    @pytest.mark.parametrize("rel", ("README.md", "README.fr.md"))
+    def test_the_readme_carries_every_canonical_statement(self, statements, rel):
+        if not (ROOT / rel).is_file():
+            pytest.skip(f"{rel} is not present on this branch")
+        readme = self._text(rel)
         missing = [s for s in statements if s not in readme]
         assert not missing, (
-            f"{len(missing)} canonical statement(s) absent from README.md, verbatim. "
+            f"{len(missing)} canonical statement(s) absent from {rel}, verbatim. "
             f"Regenerate the release-facts block rather than paraphrasing.\n"
             f"First missing: {missing[0][:160]}…"
         )
