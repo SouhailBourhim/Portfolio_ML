@@ -5,7 +5,7 @@
 
 Several estimators in this project degrade rather than crash: DCC-GARCH falls back to Ledoit-Wolf shrinkage on non-convergence, the ML signals fall back to the naive sample mean on a thin panel or a failed fit, and the regime strategy resolves an uncertain posterior to its defensive branch. Each is deliberate — a walk-forward loop must not die on one bad window — but each also means a result can carry a label that is not the whole truth.
 
-On the released data snapshot, **6 of 1,184 strategy fits** used a fallback. Results for the affected strategies are HYBRIDS of the requested model and its substitute — see the tables below.
+On the released data snapshot, **7 of 1,184 strategy fits** used a fallback. Results for the affected strategies are HYBRIDS of the requested model and its substitute — see the tables below.
 
 ## Audit
 
@@ -15,7 +15,7 @@ On the released data snapshot, **6 of 1,184 strategy fits** used a fallback. Res
 | `etf_2017` | `regime_conditional` | 3 / 248 | 63 / 5387 | `regime_conditional`, `regime_conditional [via min_variance_lw]` |
 | `etf_2017` | `rf_signal` | 0 / 248 | 0 / 5387 | `rf_signal` |
 | `etf_2017` | `xgb_signal` | 0 / 248 | 0 / 5387 | `xgb_signal` |
-| `full_2021` | `dcc_garch` | 0 / 48 | 0 / 1040 | `dcc_garch` |
+| `full_2021` | `dcc_garch` | 1 / 48 | 21 / 1040 | `dcc_garch`, `dcc_garch [via ledoit_wolf]` |
 | `full_2021` | `regime_conditional` | 3 / 48 | 65 / 1040 | `regime_conditional`, `regime_conditional [via min_variance_lw]` |
 | `full_2021` | `rf_signal` | 0 / 48 | 0 / 1040 | `rf_signal` |
 | `full_2021` | `xgb_signal` | 0 / 48 | 0 / 1040 | `xgb_signal` |
@@ -25,7 +25,7 @@ Source artifacts, both versioned and hashed into the snapshot manifest:
 
 ## What this does and does not say
 
-- **Does:** on this snapshot, at this revision, **6 of the 1,184 fits counted above were produced by a SUBSTITUTE estimator**, not by the model its label names. Those series are hybrids; the tables below separate them.
+- **Does:** on this snapshot, at this revision, **7 of the 1,184 fits counted above were produced by a SUBSTITUTE estimator**, not by the model its label names. Those series are hybrids; the tables below separate them.
 - **The control that makes this credible** is that the count is witnessed twice, by two stages writing different artifacts: `tests/test_artifact_consistency.py::TestFallbackCountsAgree` requires it to equal the number of non-converged rebalances recorded independently in `dashboard_regime.parquet`. A count that only one artifact can see is what allowed this figure to read zero while the regime timeline recorded six.
 - Degraded-period and excluding-fallback tables are rendered below, because a fallback occurred.
 - **Does NOT:** claim that no model ever falls back. The fallback paths are live, tested code and a different snapshot can exercise them. The scope of the claim is exactly the fits counted above — the telemetry exists to make the wider claim TESTABLE, not to assert it.
@@ -40,6 +40,7 @@ A fallback occurred, so the split below is meaningful and is shown.
 | Universe | Strategy | Full period (hybrid) | Fallback periods | Excluding fallback |
 |---|---|---:|---:|---:|
 | `etf_2017` | `regime_conditional` | 0.9371 (5387d) | 2.1768 (63d) | 0.9255 (5324d) |
+| `full_2021` | `dcc_garch` | 0.9939 (1040d) | 5.428 (21d) | 0.9071 (1019d) |
 | `full_2021` | `regime_conditional` | 0.9571 (1040d) | -3.1282 (65d) | 1.2288 (975d) |
 
 **Full-period figures are the HYBRID** of the requested model and its fallback, never the requested model alone. An excluding-fallback figure is withheld rather than approximated when there are too few active days.
@@ -47,4 +48,5 @@ A fallback occurred, so the split below is meaningful and is shown.
 ### Reasons
 
 - `etf_2017` / `regime_conditional` — 3x: insufficient usable history for the HMM (below min_regime_train_days) — neutral warm-up, the estimator was not fitted — dispatched to the defensive sub-strategy on a neutral 50/50 posterior
+- `full_2021` / `dcc_garch` — 1x: DCCGarchNonConvergence: GARCH(1,1) failed to converge on asset 'IAM.CS'
 - `full_2021` / `regime_conditional` — 3x: insufficient usable history for the HMM (below min_regime_train_days) — neutral warm-up, the estimator was not fitted — dispatched to the defensive sub-strategy on a neutral 50/50 posterior

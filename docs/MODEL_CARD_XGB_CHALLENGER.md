@@ -11,8 +11,8 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `0f0895b08ee7` |
-| Python | 3.11.14 |
+| Code revision (artifacts) | `0bb87e85ca36` ⚠️ generated from a DIRTY tree |
+| Python | 3.11.9 |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, 36 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
 
@@ -50,8 +50,8 @@ caller error could bypass.
 
 | Universe | ML parameters | Levers | CV IC | Test Sharpe | 90% CI |
 |---|---|---|---:|---:|:---:|
-| `etf_2017` | max_depth=4, learning_rate=0.05, n_estimators=200 | shrinkage_weight=1.0, turnover_penalty=0.5 | +0.1144 | 0.9440 | [0.391, 1.537] |
-| `full_2021` | max_depth=2, learning_rate=0.03, n_estimators=200 | shrinkage_weight=0.25, turnover_penalty=1.0 | +0.0150 | 0.8119 | [-0.155, 1.862] |
+| `etf_2017` | max_depth=2, learning_rate=0.1, n_estimators=200 | shrinkage_weight=0.25, turnover_penalty=2.0 | +0.0974 | 1.1162 | [0.544, 1.684] |
+| `full_2021` | max_depth=4, learning_rate=0.03, n_estimators=200 | shrinkage_weight=0.25, turnover_penalty=2.0 | +0.0434 | 1.3213 | [0.365, 2.352] |
 
 Search grid: {"max_depth": [2, 3, 4], "learning_rate": [0.03, 0.05, 0.1], "n_estimators": [200]}, crossed with
 shrinkage [0.25, 0.5, 0.75, 1.0] and turnover penalty
@@ -65,10 +65,10 @@ it is reported rather than smoothed.
 
 | Universe | Benchmark | ΔSharpe | 90% CI | p | Establishes? |
 |---|---|---:|:---:|---:|:---:|
-| `etf_2017` | `regime_conditional` | -0.149 | [-0.308, +0.010] | 0.939 | no |
-| `etf_2017` | `equal_weight` | -0.038 | [-0.177, +0.096] | 0.671 | no |
-| `full_2021` | `regime_conditional` | -0.168 | [-0.577, +0.264] | 0.740 | no |
-| `full_2021` | `equal_weight` | -0.046 | [-0.445, +0.329] | 0.587 | no |
+| `etf_2017` | `regime_conditional` | +0.023 | [-0.085, +0.119] | 0.349 | no |
+| `etf_2017` | `equal_weight` | +0.134 | [+0.045, +0.219] | 0.006 | **yes** |
+| `full_2021` | `regime_conditional` | +0.342 | [-0.043, +0.766] | 0.086 | no |
+| `full_2021` | `equal_weight` | +0.464 | [+0.103, +0.764] | 0.007 | **yes** |
 
 ## Explainability
 

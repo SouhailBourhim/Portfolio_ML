@@ -11,8 +11,8 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `0f0895b08ee7` |
-| Python | 3.11.14 |
+| Code revision (artifacts) | `0bb87e85ca36` ⚠️ generated from a DIRTY tree |
+| Python | 3.11.9 |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, 36 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
 
@@ -42,7 +42,7 @@ the best classical approach is NEGATIVE, and no paired test of that difference
 is presented in either direction.
 
 Across 8 paired comparisons on frozen test data,
-**0** established statistically supported outperformance over
+**3** established statistically supported outperformance over
 this comparator or over equal weighting. Its value here is that it is a fixed,
 fully reconstructible reference point — see *Explainability* below — not that it
 was shown to be better than anything.
@@ -119,12 +119,12 @@ frozen test segment is untouched by any selector.
 |---|---|---:|:---:|
 | `etf_2017` | `regime_conditional` | 1.0934 | [0.502, 1.682] |
 | `etf_2017` | `equal_weight` | 0.9821 | [0.406, 1.583] |
-| `etf_2017` | `rf_signal_tuned` | 1.1020 | [0.525, 1.683] |
-| `etf_2017` | `xgb_signal_tuned` | 0.9440 | [0.391, 1.537] |
+| `etf_2017` | `rf_signal_tuned` | 1.0907 | [0.533, 1.646] |
+| `etf_2017` | `xgb_signal_tuned` | 1.1162 | [0.544, 1.684] |
 | `full_2021` | `regime_conditional` | 0.9798 | [-0.039, 2.071] |
 | `full_2021` | `equal_weight` | 0.8575 | [-0.179, 2.007] |
-| `full_2021` | `rf_signal_tuned` | 0.8522 | [-0.050, 1.896] |
-| `full_2021` | `xgb_signal_tuned` | 0.8119 | [-0.155, 1.862] |
+| `full_2021` | `rf_signal_tuned` | 0.9770 | [-0.001, 2.047] |
+| `full_2021` | `xgb_signal_tuned` | 1.3213 | [0.365, 2.352] |
 
 ### Paired comparisons against this system
 
@@ -135,17 +135,17 @@ The p-value is null-centred.
 
 | Universe | Benchmark | ΔSharpe | 90% CI | p | Establishes? |
 |---|---|---:|:---:|---:|:---:|
-| `etf_2017` | `regime_conditional` | +0.009 | [-0.025, +0.041] | 0.326 | no |
-| `etf_2017` | `equal_weight` | +0.120 | [-0.013, +0.247] | 0.066 | no |
-| `full_2021` | `regime_conditional` | -0.128 | [-0.486, +0.239] | 0.715 | no |
-| `full_2021` | `equal_weight` | -0.005 | [-0.424, +0.389] | 0.513 | no |
+| `etf_2017` | `regime_conditional` | -0.003 | [-0.153, +0.133] | 0.519 | no |
+| `etf_2017` | `equal_weight` | +0.109 | [+0.003, +0.211] | 0.050 | **yes** |
+| `full_2021` | `regime_conditional` | -0.003 | [-0.346, +0.361] | 0.507 | no |
+| `full_2021` | `equal_weight` | +0.120 | [-0.246, +0.474] | 0.290 | no |
 
 | Universe | Benchmark | ΔSharpe | 90% CI | p | Establishes? |
 |---|---|---:|:---:|---:|:---:|
-| `etf_2017` | `regime_conditional` | -0.149 | [-0.308, +0.010] | 0.939 | no |
-| `etf_2017` | `equal_weight` | -0.038 | [-0.177, +0.096] | 0.671 | no |
-| `full_2021` | `regime_conditional` | -0.168 | [-0.577, +0.264] | 0.740 | no |
-| `full_2021` | `equal_weight` | -0.046 | [-0.445, +0.329] | 0.587 | no |
+| `etf_2017` | `regime_conditional` | +0.023 | [-0.085, +0.119] | 0.349 | no |
+| `etf_2017` | `equal_weight` | +0.134 | [+0.045, +0.219] | 0.006 | **yes** |
+| `full_2021` | `regime_conditional` | +0.342 | [-0.043, +0.766] | 0.086 | no |
+| `full_2021` | `equal_weight` | +0.464 | [+0.103, +0.764] | 0.007 | **yes** |
 
 **No comparison establishes outperformance in either direction.** This is not a
 finding of equivalence: failing to reject is not accepting the null, and no
@@ -215,7 +215,7 @@ a strategy that wins gross and loses net is treated as a finding.
 ## Reproducibility
 
 ```bash
-git checkout 0f0895b08ee7
+git checkout 0bb87e85ca36
 ./scripts/dvc.sh pull
 ./.venv/bin/python src/snapshot.py verify
 ```

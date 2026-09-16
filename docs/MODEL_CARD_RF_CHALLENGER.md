@@ -11,8 +11,8 @@
 
 | | |
 |---|---|
-| Code revision (artifacts) | `0f0895b08ee7` |
-| Python | 3.11.14 |
+| Code revision (artifacts) | `0bb87e85ca36` ⚠️ generated from a DIRTY tree |
+| Python | 3.11.9 |
 | Snapshot manifest | `data/gold/snapshot_manifest.json`, 36 files hashed |
 | Card generated from | committed Gold artifacts, not typed |
 
@@ -50,8 +50,8 @@ caller error could bypass.
 
 | Universe | ML parameters | Levers | CV IC | Test Sharpe | 90% CI |
 |---|---|---|---:|---:|:---:|
-| `etf_2017` | max_depth=6, min_samples_leaf=20, n_estimators=200 | shrinkage_weight=0.25, turnover_penalty=0.0 | +0.0671 | 1.1020 | [0.525, 1.683] |
-| `full_2021` | max_depth=3, min_samples_leaf=10, n_estimators=200 | shrinkage_weight=0.25, turnover_penalty=0.0 | +0.0326 | 0.8522 | [-0.050, 1.896] |
+| `etf_2017` | max_depth=6, min_samples_leaf=10, n_estimators=200 | shrinkage_weight=0.25, turnover_penalty=1.0 | +0.0708 | 1.0907 | [0.533, 1.646] |
+| `full_2021` | max_depth=6, min_samples_leaf=20, n_estimators=200 | shrinkage_weight=0.25, turnover_penalty=1.0 | +0.0347 | 0.9770 | [-0.001, 2.047] |
 
 Search grid: {"max_depth": [3, 4, 6], "min_samples_leaf": [10, 20], "n_estimators": [200]}, crossed with
 shrinkage [0.25, 0.5, 0.75, 1.0] and turnover penalty
@@ -65,10 +65,10 @@ it is reported rather than smoothed.
 
 | Universe | Benchmark | ΔSharpe | 90% CI | p | Establishes? |
 |---|---|---:|:---:|---:|:---:|
-| `etf_2017` | `regime_conditional` | +0.009 | [-0.025, +0.041] | 0.326 | no |
-| `etf_2017` | `equal_weight` | +0.120 | [-0.013, +0.247] | 0.066 | no |
-| `full_2021` | `regime_conditional` | -0.128 | [-0.486, +0.239] | 0.715 | no |
-| `full_2021` | `equal_weight` | -0.005 | [-0.424, +0.389] | 0.513 | no |
+| `etf_2017` | `regime_conditional` | -0.003 | [-0.153, +0.133] | 0.519 | no |
+| `etf_2017` | `equal_weight` | +0.109 | [+0.003, +0.211] | 0.050 | **yes** |
+| `full_2021` | `regime_conditional` | -0.003 | [-0.346, +0.361] | 0.507 | no |
+| `full_2021` | `equal_weight` | +0.120 | [-0.246, +0.474] | 0.290 | no |
 
 ## Explainability
 
