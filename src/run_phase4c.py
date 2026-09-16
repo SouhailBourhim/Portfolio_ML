@@ -4,25 +4,25 @@ regularization vs. the Phase 4 hurdle, MLflow-tracked.
 
 WHY THIS PHASE EXISTS. Phase 4B returned an honest negative result — neither
 F7 signal strategy beat its universe's hurdle — but the failure had a
-specific, diagnosable shape rather than "the model doesn't predict anything":
+specific, diagnosable shape rather than "the model doesn't predict anything".
+As measured at the time, under SMOOTHED regime posteriors (see STALE PREMISE
+below — these numbers no longer reproduce):
 
     full_2021   regime_conditional  gross 1.204 -> net 1.122  (turnover 0.113)
     full_2021   rf_signal           gross 1.240 -> net 1.062  (turnover 0.885)
 
-`rf_signal` produced the HIGHEST GROSS SHARPE of any strategy in the entire
-comparison and then handed 0.178 of it back in transaction costs. The signal
-was informative; acting on every revision of it was not affordable. That is a
-portfolio-construction failure, not a prediction failure, and it has textbook
-remedies this phase implements as a clean ablation:
+`rf_signal` produced the highest gross Sharpe in that comparison and then
+handed 0.178 of it back in transaction costs. The signal looked informative;
+acting on every revision of it was not affordable. That is a portfolio-
+construction failure, not a prediction failure, and it has textbook remedies
+this phase implements as a clean ablation:
 
   1. `*_cost`   — turnover-penalized objective. Price the cost of REACHING a
                   portfolio, not just the merit of holding it.
   2. `*_shrunk` — shrink the predicted `mu` toward the naive sample mean.
                   Chopra & Ziemba (1993): estimation error in expected
                   returns damages a mean-variance optimizer roughly an order
-                  of magnitude more than equivalent covariance error — which
-                  also explains why Phase 4 (better covariance) beat its
-                  hurdle while Phase 4B (better mu) did not.
+                  of magnitude more than equivalent covariance error.
   3. `*_rank`   — keep only the model's cross-sectional ORDERING, borrowing
                   level and dispersion from the naive estimate. The strongest
                   form of "trust the ranking, not the magnitudes".
@@ -31,6 +31,39 @@ remedies this phase implements as a clean ablation:
 
 Each variant changes exactly ONE thing relative to `rf_signal` (except the
 deliberate #4 combination), so a win is attributable rather than mysterious.
+
+STALE PREMISE, AND WHAT THE ABLATION ACTUALLY SHOWS. The motivating numbers
+above predate commit 0bb87e8, which switched `attach_regime_feature` from
+SMOOTHED to FILTERED posteriors (docs/EVALUATION_LIMITS.md, Limit #3).
+Smoothed posteriors condition on the whole sample, so every regime-dependent
+strategy above was partly reading its own future. With the lookahead removed:
+
+    full_2021   regime_conditional  gross 1.037 -> net 0.957  (turnover 0.321)
+    full_2021   rf_signal           gross 0.859 -> net 0.679  (turnover 0.948)
+
+Gross Sharpe falls 0.17-0.38 and turnover roughly triples — the signature of
+taking future information out of a state estimate. Two corrections follow:
+
+  - `rf_signal` is NOT the gross leader any more; on full_2021 it is now the
+    worst of the 14. "The signal is good, the trading is expensive" survives
+    only for the cost-aware variants this phase adds, not for raw `rf_signal`.
+  - The covariance ladder lost its win too — phase4_results.json now reports
+    `beats_phase2_hurdle: false`. Do not cite Phase 4 as the case where better
+    covariance cleared its hurdle; as of this writing nothing has.
+
+The ablation still earns its keep, now against a lookahead-free baseline:
+
+    etf_2017    nothing beats plain `min_variance` even GROSS (its 0.9559 is
+                the highest of the 14). No cost problem to solve there — the
+                added machinery produces no gross alpha at all.
+    full_2021   four variants beat the `max_sharpe` baseline's gross 1.1036;
+                `rf_signal_cost` reaches gross 1.1318 and still loses on net,
+                1.0673 vs 1.0690. The turnover penalty cut rf_signal's cost
+                drag from 0.178 to 0.065 and came up ~0.002 short.
+
+So the remedies behave as designed and are still not enough to clear a
+baseline that is itself honest. Figures here orient the reader;
+data/gold/phase4c_results.json is the source of truth.
 
 Addresses: P1 — both levers target estimation-error amplification: the
 turnover penalty stops a noisy `mu` from being expressed as violent weight

@@ -36,8 +36,8 @@ stages:
     deps:
     - path: data/bronze/bam_fx_reference.parquet
       hash: md5
-      md5: 7bdbb650d2c7b605fd64bd4cb017b5ad
-      size: 22609
+      md5: 4f4c9b8bd1501ae92c2a27bb07cd15e8
+      size: 22938
     - path: data/bronze/bvc_dividends
       hash: md5
       md5: f33c41bd81ff15ccfb0876a5dc76f646.dir
@@ -53,16 +53,16 @@ stages:
       size: 243682
     - path: src/clean.py
       hash: md5
-      md5: 154aefdfbe7d64d7ed2e3a67fa280ad9
-      size: 25934
+      md5: b3a5a80d3d26960ecbb6b185f5560f19
+      size: 25952
     - path: src/currency.py
       hash: md5
       md5: 6fb79d85f2c3bf7301f594e3f0a92a30
       size: 40059
     - path: src/dividends.py
       hash: md5
-      md5: 7dd76c483b7d926faaf1379f64625834
-      size: 14360
+      md5: 1046557be0d19de5cd6e28e37594eb84
+      size: 16396
     - path: src/schemas.py
       hash: md5
       md5: 571dff80d91de09c69a78bf836507ae6
@@ -73,20 +73,20 @@ stages:
     outs:
     - path: data/silver/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/silver/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/silver/validation_report.json
       hash: md5
-      md5: 5698ca9fea5a137056127fc69f47fc58
-      size: 4485
+      md5: a02e09cb4acb21ffde6a60af1cd1b747
+      size: 4656
     - path: data/silver/validation_report_log_returns_etf.json
       hash: md5
-      md5: d5f3d3e46bd66575b71431d9d30f2bb8
-      size: 2226
+      md5: 2a7f535ca07223fb5b76bc1101db5e7d
+      size: 2305
   features:
     cmd: python src/features.py
     deps:
@@ -100,16 +100,16 @@ stages:
       size: 128927
     - path: data/silver/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/silver/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: src/features.py
       hash: md5
-      md5: 0b6ad2eb5dba0af63e89849dfa6fca24
-      size: 12330
+      md5: 58aebcba4ba239647fa2a299fade1d63
+      size: 12364
     - path: src/schemas.py
       hash: md5
       md5: 571dff80d91de09c69a78bf836507ae6
@@ -120,15 +120,15 @@ stages:
     outs:
     - path: data/gold/currency_manifest.json
       hash: md5
-      md5: 533b17de53871eb785bb82b53ab71e74
-      size: 4040
+      md5: 9284aa1db599de1e4dc4f0ae9a659982
+      size: 4158
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/macro_features.parquet
       hash: md5
@@ -151,11 +151,11 @@ stages:
       size: 128927
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: src/ml_features.py
       hash: md5
@@ -163,8 +163,8 @@ stages:
       size: 18483
     - path: src/utils.py
       hash: md5
-      md5: d6e753927fdabb31161e4cfc7a57d1a0
-      size: 2936
+      md5: 079adca3b20f9db44bdbe3a84fe02c6b
+      size: 2954
     params:
       params.yaml:
         ml_features.correlation_min_periods: 42
@@ -175,26 +175,26 @@ stages:
     outs:
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: data/gold/ml_features_manifest.json
       hash: md5
-      md5: 7138a806effaaf2909aaf91668992f05
-      size: 4741
+      md5: 05e6885cbae18443bf9eb9bf82f0b3ac
+      size: 4876
   phase2_hurdle:
     cmd: python src/run_backtest.py
     deps:
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: src/backtest.py
       hash: md5
@@ -206,12 +206,12 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: a7a9578c1b4daeaf27a2ba9656307de4
-      size: 36258
+      md5: 3269a0ad333662d4e5365e2eb0ba979c
+      size: 39506
     - path: src/run_backtest.py
       hash: md5
-      md5: 0c487a6acf7cf270a8959cc42926c74c
-      size: 8501
+      md5: 1df8ba23f29c65a8995d6d4fc20760ee
+      size: 8519
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -228,55 +228,59 @@ stages:
     outs:
     - path: data/gold/phase2_hurdle.json
       hash: md5
-      md5: 781059f07451f5686ab077cdb70ad358
-      size: 534
+      md5: a2af42745a91de0bff5ced0ef01b33fa
+      size: 561
   phase4_compare:
     cmd: python src/run_phase4.py
     deps:
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: data/gold/phase2_hurdle.json
       hash: md5
-      md5: 781059f07451f5686ab077cdb70ad358
-      size: 534
+      md5: a2af42745a91de0bff5ced0ef01b33fa
+      size: 561
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
       size: 15621
     - path: src/dcc_garch.py
       hash: md5
-      md5: ab64cd40f12f65314ca5ee643f3e4032
-      size: 10420
+      md5: d4ec659ca5e05049293c354e8bdf3757
+      size: 14317
+    - path: src/garch_horizon.py
+      hash: md5
+      md5: b1162e2b117e61d8a14c1033265db899
+      size: 6230
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: a7a9578c1b4daeaf27a2ba9656307de4
-      size: 36258
+      md5: 3269a0ad333662d4e5365e2eb0ba979c
+      size: 39506
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/run_phase4.py
       hash: md5
-      md5: 76f45b09b4bf39097ea9c3346b8941b9
-      size: 15261
+      md5: 68d529cec6eb6bacf1b3f4fd07717739
+      size: 15295
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -310,63 +314,67 @@ stages:
     outs:
     - path: data/gold/phase4_results.json
       hash: md5
-      md5: ebc0ae88632fed3fa94fdbd88b5ef47a
-      size: 668
+      md5: 9b077765c9ac071d14bf8748dbdd2da5
+      size: 699
   phase4b_compare:
     cmd: python src/run_phase4b.py
     deps:
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: data/gold/phase4_results.json
       hash: md5
-      md5: ebc0ae88632fed3fa94fdbd88b5ef47a
-      size: 668
+      md5: 9b077765c9ac071d14bf8748dbdd2da5
+      size: 699
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
       size: 15621
     - path: src/dcc_garch.py
       hash: md5
-      md5: ab64cd40f12f65314ca5ee643f3e4032
-      size: 10420
+      md5: d4ec659ca5e05049293c354e8bdf3757
+      size: 14317
+    - path: src/garch_horizon.py
+      hash: md5
+      md5: b1162e2b117e61d8a14c1033265db899
+      size: 6230
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: a7a9578c1b4daeaf27a2ba9656307de4
-      size: 36258
+      md5: 3269a0ad333662d4e5365e2eb0ba979c
+      size: 39506
     - path: src/ml_signals.py
       hash: md5
-      md5: 8deb9470629e15379eff17bdf89b4b71
-      size: 40942
+      md5: 393469ab5cf39406e210690890cc3694
+      size: 41694
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/run_phase4.py
       hash: md5
-      md5: 76f45b09b4bf39097ea9c3346b8941b9
-      size: 15261
+      md5: 68d529cec6eb6bacf1b3f4fd07717739
+      size: 15295
     - path: src/run_phase4b.py
       hash: md5
-      md5: c358afc3cc52d45b4b8e14f87bc62180
-      size: 12238
+      md5: 419d21eac2fc22ad449eedf89a91baec
+      size: 12272
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -418,35 +426,35 @@ stages:
     outs:
     - path: data/gold/phase4b_results.json
       hash: md5
-      md5: a6b2c5490082645706bc18b3252dcec2
-      size: 670
+      md5: 8c4fe5a0278fa593e37feb661f6184c1
+      size: 701
   phase5_compare:
     cmd: python src/run_phase5.py
     deps:
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: data/gold/phase4_results.json
       hash: md5
-      md5: ebc0ae88632fed3fa94fdbd88b5ef47a
-      size: 668
+      md5: 9b077765c9ac071d14bf8748dbdd2da5
+      size: 699
     - path: data/gold/reality_check_results.json
       hash: md5
-      md5: 1e059b51e7a8421c89e0875953be23f8
-      size: 10182
+      md5: a1e22b4e71980e014b289fa85cb5aa65
+      size: 10355
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
@@ -457,12 +465,12 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: a7a9578c1b4daeaf27a2ba9656307de4
-      size: 36258
+      md5: 3269a0ad333662d4e5365e2eb0ba979c
+      size: 39506
     - path: src/ml_signals.py
       hash: md5
-      md5: 8deb9470629e15379eff17bdf89b4b71
-      size: 40942
+      md5: 393469ab5cf39406e210690890cc3694
+      size: 41694
     - path: src/model_selection.py
       hash: md5
       md5: 586e41fc323a71247e125dee54a14634
@@ -473,16 +481,16 @@ stages:
       size: 16026
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/run_phase4.py
       hash: md5
-      md5: 76f45b09b4bf39097ea9c3346b8941b9
-      size: 15261
+      md5: 68d529cec6eb6bacf1b3f4fd07717739
+      size: 15295
     - path: src/run_phase5.py
       hash: md5
-      md5: 4271e3a0ac841e7420cc4e8a908b91fb
-      size: 28280
+      md5: 5fca9508341a45c133ee2ed0cebe74ec
+      size: 28350
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -564,43 +572,43 @@ stages:
     outs:
     - path: data/gold/dsr_trial_ledger.json
       hash: md5
-      md5: 8a8b9c94590eda085124544fc3b88fd9
-      size: 7187871
+      md5: 200ec02641559574a2c824189cb6795f
+      size: 7463351
     - path: data/gold/paired_comparison_results.json
       hash: md5
-      md5: d8c78ebab055324f8a79eeb14a82dbf6
-      size: 12083
+      md5: bb1afb4c983b75bd88a6b71280d80738
+      size: 12449
     - path: data/gold/phase5_results.json
       hash: md5
-      md5: 95fd87972c31147f7842bb5a1ac53cea
-      size: 3907
+      md5: 61c7ff3c1b0904d65773c5a118d3d75e
+      size: 4072
     - path: data/gold/phase5_validation_protocol.json
       hash: md5
-      md5: 6ac5af299b593a63e6c962b37ce93e0d
-      size: 12360
+      md5: 61955428d2c7e30e406f0a890448d7dd
+      size: 12760
   dashboard_data:
     cmd: python src/run_dashboard_data.py
     deps:
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: data/gold/phase5_results.json
       hash: md5
-      md5: 95fd87972c31147f7842bb5a1ac53cea
-      size: 3907
+      md5: 61c7ff3c1b0904d65773c5a118d3d75e
+      size: 4072
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
@@ -611,20 +619,20 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: a7a9578c1b4daeaf27a2ba9656307de4
-      size: 36258
+      md5: 3269a0ad333662d4e5365e2eb0ba979c
+      size: 39506
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/run_dashboard_data.py
       hash: md5
-      md5: a22853657dbd8ff3795ee1705a456132
-      size: 17153
+      md5: 082840d52eb80f70f283457e0cad6711
+      size: 17187
     - path: src/run_phase4.py
       hash: md5
-      md5: 76f45b09b4bf39097ea9c3346b8941b9
-      size: 15261
+      md5: 68d529cec6eb6bacf1b3f4fd07717739
+      size: 15295
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -650,79 +658,83 @@ stages:
     outs:
     - path: data/gold/dashboard_equity.parquet
       hash: md5
-      md5: f1d37aa1b87bde17990ed58d1f216e4b
-      size: 458971
+      md5: 0bd1f9c7a31ff6aaecc24f2aa3e0c7c7
+      size: 459795
     - path: data/gold/dashboard_regime.parquet
       hash: md5
-      md5: 70456538d70909c5fe0eefed84566bf6
+      md5: 6de1aaa0744d5baa7b3d636c26603dbd
       size: 11991
     - path: data/gold/dashboard_showcase.json
       hash: md5
-      md5: 850eab55319290dbbfe275ee31ec8e45
-      size: 4013
+      md5: 589d3c7e73bd1b3be743d98da76d9081
+      size: 4175
     - path: data/gold/dashboard_weights.parquet
       hash: md5
-      md5: 78f559bfa9a3dee3ec2d7483918bb0ef
-      size: 17464
+      md5: 51d7e857883b837cd1fc9f761a87c312
+      size: 17499
   phase4c_compare:
     cmd: python src/run_phase4c.py
     deps:
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: data/gold/phase4_results.json
       hash: md5
-      md5: ebc0ae88632fed3fa94fdbd88b5ef47a
-      size: 668
+      md5: 9b077765c9ac071d14bf8748dbdd2da5
+      size: 699
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
       size: 15621
     - path: src/dcc_garch.py
       hash: md5
-      md5: ab64cd40f12f65314ca5ee643f3e4032
-      size: 10420
+      md5: d4ec659ca5e05049293c354e8bdf3757
+      size: 14317
+    - path: src/garch_horizon.py
+      hash: md5
+      md5: b1162e2b117e61d8a14c1033265db899
+      size: 6230
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: a7a9578c1b4daeaf27a2ba9656307de4
-      size: 36258
+      md5: 3269a0ad333662d4e5365e2eb0ba979c
+      size: 39506
     - path: src/ml_signals.py
       hash: md5
-      md5: 8deb9470629e15379eff17bdf89b4b71
-      size: 40942
+      md5: 393469ab5cf39406e210690890cc3694
+      size: 41694
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/run_phase4.py
       hash: md5
-      md5: 76f45b09b4bf39097ea9c3346b8941b9
-      size: 15261
+      md5: 68d529cec6eb6bacf1b3f4fd07717739
+      size: 15295
     - path: src/run_phase4b.py
       hash: md5
-      md5: c358afc3cc52d45b4b8e14f87bc62180
-      size: 12238
+      md5: 419d21eac2fc22ad449eedf89a91baec
+      size: 12272
     - path: src/run_phase4c.py
       hash: md5
-      md5: ea91c942132f5fc8c33bec8e64d7d16e
-      size: 15135
+      md5: 877ded86a9225f966c8a831044d252d1
+      size: 17066
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -776,39 +788,39 @@ stages:
     outs:
     - path: data/gold/phase4c_results.json
       hash: md5
-      md5: 8b54f12acbfa7610df8d1b85ffddd6f4
-      size: 4470
+      md5: 7405a4b508300dd9dd128fe3c142f040
+      size: 4655
   crisis_windows:
     cmd: python experiments/crisis_windows.py
     deps:
     - path: data/gold/dashboard_equity.parquet
       hash: md5
-      md5: f1d37aa1b87bde17990ed58d1f216e4b
-      size: 458971
+      md5: 0bd1f9c7a31ff6aaecc24f2aa3e0c7c7
+      size: 459795
     - path: data/gold/dashboard_regime.parquet
       hash: md5
-      md5: 70456538d70909c5fe0eefed84566bf6
+      md5: 6de1aaa0744d5baa7b3d636c26603dbd
       size: 11991
     - path: experiments/crisis_windows.py
       hash: md5
-      md5: 9de6c84df231946dfaf2cffb90d25cef
-      size: 12473
+      md5: 664a99d8ca95b00dd03234d7ed16cbd0
+      size: 12491
     outs:
     - path: data/gold/crisis_windows.json
       hash: md5
-      md5: 794cec6711548198052360718ca25327
-      size: 8358
+      md5: 9aa4b09ccf17ceb948057bfbdf62151a
+      size: 8651
   snapshot_manifest:
     cmd: python src/snapshot.py write
     deps:
     - path: data/bronze/bam_fx_reference.parquet
       hash: md5
-      md5: 7bdbb650d2c7b605fd64bd4cb017b5ad
-      size: 22609
+      md5: 4f4c9b8bd1501ae92c2a27bb07cd15e8
+      size: 22938
     - path: data/bronze/bam_fx_reference_quality.json
       hash: md5
-      md5: aa15b9ea9e84cecff0b7679327ae2fb9
-      size: 1211
+      md5: fef62f8ff60e4e8af698559425ee3705
+      size: 1252
     - path: data/bronze/bvc_prices.parquet
       hash: md5
       md5: eccfe591ea0c8eb9ce8e1bb63bc2dfe9
@@ -827,100 +839,100 @@ stages:
       size: 243682
     - path: data/gold/crisis_windows.json
       hash: md5
-      md5: 794cec6711548198052360718ca25327
-      size: 8358
+      md5: 9aa4b09ccf17ceb948057bfbdf62151a
+      size: 8651
     - path: data/gold/currency_manifest.json
       hash: md5
-      md5: 533b17de53871eb785bb82b53ab71e74
-      size: 4040
+      md5: 9284aa1db599de1e4dc4f0ae9a659982
+      size: 4158
     - path: data/gold/dashboard_equity.parquet
       hash: md5
-      md5: f1d37aa1b87bde17990ed58d1f216e4b
-      size: 458971
+      md5: 0bd1f9c7a31ff6aaecc24f2aa3e0c7c7
+      size: 459795
     - path: data/gold/dashboard_regime.parquet
       hash: md5
-      md5: 70456538d70909c5fe0eefed84566bf6
+      md5: 6de1aaa0744d5baa7b3d636c26603dbd
       size: 11991
     - path: data/gold/dashboard_showcase.json
       hash: md5
-      md5: 850eab55319290dbbfe275ee31ec8e45
-      size: 4013
+      md5: 589d3c7e73bd1b3be743d98da76d9081
+      size: 4175
     - path: data/gold/dashboard_weights.parquet
       hash: md5
-      md5: 78f559bfa9a3dee3ec2d7483918bb0ef
-      size: 17464
+      md5: 51d7e857883b837cd1fc9f761a87c312
+      size: 17499
     - path: data/gold/dsr_trial_ledger.json
       hash: md5
-      md5: 8a8b9c94590eda085124544fc3b88fd9
-      size: 7187871
+      md5: 200ec02641559574a2c824189cb6795f
+      size: 7463351
     - path: data/gold/fit_report_summary.json
       hash: md5
-      md5: 4bff9985b19ce267a3e1ee0cd4d58971
-      size: 39321
+      md5: 7706771fb45aa623c48fae55af65d6b3
+      size: 40291
     - path: data/gold/fit_reports.parquet
       hash: md5
-      md5: a3ffcb4c91798b2f09a62f33753635bc
-      size: 10931
+      md5: 080d635421dfc312ec753ec60b228766
+      size: 11066
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: data/gold/model_explanations.json
       hash: md5
-      md5: 1545dd5fec216ace47f0c8ba56e73dbb
-      size: 37297
+      md5: acb96f3de067262447778637518ddd04
+      size: 38354
     - path: data/gold/monitoring_baseline.json
       hash: md5
-      md5: cbf1c01d1db474550dbbea5e38a2ef27
-      size: 24641
+      md5: b993108a02d627d599c42cfeb86022ac
+      size: 25377
     - path: data/gold/paired_comparison_results.json
       hash: md5
-      md5: d8c78ebab055324f8a79eeb14a82dbf6
-      size: 12083
+      md5: bb1afb4c983b75bd88a6b71280d80738
+      size: 12449
     - path: data/gold/phase2_hurdle.json
       hash: md5
-      md5: 781059f07451f5686ab077cdb70ad358
-      size: 534
+      md5: a2af42745a91de0bff5ced0ef01b33fa
+      size: 561
     - path: data/gold/phase4_results.json
       hash: md5
-      md5: ebc0ae88632fed3fa94fdbd88b5ef47a
-      size: 668
+      md5: 9b077765c9ac071d14bf8748dbdd2da5
+      size: 699
     - path: data/gold/phase4b_results.json
       hash: md5
-      md5: a6b2c5490082645706bc18b3252dcec2
-      size: 670
+      md5: 8c4fe5a0278fa593e37feb661f6184c1
+      size: 701
     - path: data/gold/phase4c_results.json
       hash: md5
-      md5: 8b54f12acbfa7610df8d1b85ffddd6f4
-      size: 4470
+      md5: 7405a4b508300dd9dd128fe3c142f040
+      size: 4655
     - path: data/gold/phase5_results.json
       hash: md5
-      md5: 95fd87972c31147f7842bb5a1ac53cea
-      size: 3907
+      md5: 61c7ff3c1b0904d65773c5a118d3d75e
+      size: 4072
     - path: data/gold/phase5_validation_protocol.json
       hash: md5
-      md5: 6ac5af299b593a63e6c962b37ce93e0d
-      size: 12360
+      md5: 61955428d2c7e30e406f0a890448d7dd
+      size: 12760
     - path: data/gold/reality_check_results.json
       hash: md5
-      md5: 1e059b51e7a8421c89e0875953be23f8
-      size: 10182
+      md5: a1e22b4e71980e014b289fa85cb5aa65
+      size: 10355
     - path: data/gold/reality_check_series.parquet
       hash: md5
-      md5: bbc3c92794bd23dc53283b46a7e45b1b
-      size: 5423176
+      md5: f5b103f7a8441e96ed9d1bc1d10d10a9
+      size: 5417452
     - path: params.yaml
       hash: md5
       md5: 78a3e7c8877df429424f72d6896e39c3
@@ -931,17 +943,17 @@ stages:
       size: 5969
     - path: requirements.txt
       hash: md5
-      md5: 5a5afe4223e81912162c8e1ce24b53f7
-      size: 4313
+      md5: ac258a5227d659bc3788bf5f9539c74d
+      size: 5144
     - path: src/snapshot.py
       hash: md5
-      md5: 47049978415bf70c923002e3675f3d39
-      size: 15155
+      md5: 8a34a344513efa0cf3f88778f2f277b0
+      size: 15743
     outs:
     - path: data/gold/snapshot_manifest.json
       hash: md5
-      md5: 7829e17998f74e6a8ebe9160774bd281
-      size: 10018
+      md5: 5a9c65296f3ebc34bee2c4e6d5949b1d
+      size: 10464
   smoke:
     cmd: python scripts/smoke_pipeline.py
     deps:
@@ -959,12 +971,12 @@ stages:
       size: 8618
     - path: src/ml_signals.py
       hash: md5
-      md5: 8deb9470629e15379eff17bdf89b4b71
-      size: 40942
+      md5: 393469ab5cf39406e210690890cc3694
+      size: 41694
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -972,15 +984,15 @@ stages:
     outs:
     - path: data/smoke/smoke_results.json
       hash: md5
-      md5: afd9430c4497eb46549f8f33a57bfbb1
-      size: 1205
+      md5: 9143dde9e34f5f5a3c2d8ca2e8dbc533
+      size: 1257
   scrape_dividends:
     cmd: python src/dividends.py
     deps:
     - path: src/dividends.py
       hash: md5
-      md5: 7dd76c483b7d926faaf1379f64625834
-      size: 14360
+      md5: 1046557be0d19de5cd6e28e37594eb84
+      size: 16396
     outs:
     - path: data/bronze/bvc_dividends
       hash: md5
@@ -992,24 +1004,24 @@ stages:
     deps:
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: data/gold/phase5_results.json
       hash: md5
-      md5: 95fd87972c31147f7842bb5a1ac53cea
-      size: 3907
+      md5: 61c7ff3c1b0904d65773c5a118d3d75e
+      size: 4072
     - path: src/explainability.py
       hash: md5
       md5: 13277dc202b0f3d58277110c99851530
@@ -1020,16 +1032,16 @@ stages:
       size: 8618
     - path: src/ml_signals.py
       hash: md5
-      md5: 8deb9470629e15379eff17bdf89b4b71
-      size: 40942
+      md5: 393469ab5cf39406e210690890cc3694
+      size: 41694
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/run_explainability.py
       hash: md5
-      md5: ab982411029fe1bc397e69384ec36f74
-      size: 9575
+      md5: 0fc421a025161534e2990b9963aab626
+      size: 9591
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -1051,31 +1063,31 @@ stages:
     outs:
     - path: data/gold/model_explanations.json
       hash: md5
-      md5: 1545dd5fec216ace47f0c8ba56e73dbb
-      size: 37297
+      md5: acb96f3de067262447778637518ddd04
+      size: 38354
   monitoring_baseline:
     cmd: python src/run_monitoring_baseline.py
     deps:
     - path: data/gold/dashboard_regime.parquet
       hash: md5
-      md5: 70456538d70909c5fe0eefed84566bf6
+      md5: 6de1aaa0744d5baa7b3d636c26603dbd
       size: 11991
     - path: data/gold/dashboard_weights.parquet
       hash: md5
-      md5: 78f559bfa9a3dee3ec2d7483918bb0ef
-      size: 17464
+      md5: 51d7e857883b837cd1fc9f761a87c312
+      size: 17499
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: data/gold/phase5_results.json
       hash: md5
-      md5: 95fd87972c31147f7842bb5a1ac53cea
-      size: 3907
+      md5: 61c7ff3c1b0904d65773c5a118d3d75e
+      size: 4072
     - path: src/monitoring.py
       hash: md5
       md5: 8700bdaae3cacfc8c169c6019e39d7a6
@@ -1090,26 +1102,26 @@ stages:
     outs:
     - path: data/gold/monitoring_baseline.json
       hash: md5
-      md5: cbf1c01d1db474550dbbea5e38a2ef27
-      size: 24641
+      md5: b993108a02d627d599c42cfeb86022ac
+      size: 25377
   fit_reports:
     cmd: python src/run_fit_reports.py
     deps:
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: src/backtest.py
       hash: md5
@@ -1117,20 +1129,24 @@ stages:
       size: 15621
     - path: src/dcc_garch.py
       hash: md5
-      md5: ab64cd40f12f65314ca5ee643f3e4032
-      size: 10420
+      md5: d4ec659ca5e05049293c354e8bdf3757
+      size: 14317
+    - path: src/garch_horizon.py
+      hash: md5
+      md5: b1162e2b117e61d8a14c1033265db899
+      size: 6230
     - path: src/memo.py
       hash: md5
       md5: fe36eac64ccc01617c4641d6744136f1
       size: 8618
     - path: src/ml_signals.py
       hash: md5
-      md5: 8deb9470629e15379eff17bdf89b4b71
-      size: 40942
+      md5: 393469ab5cf39406e210690890cc3694
+      size: 41694
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/run_fit_reports.py
       hash: md5
       md5: a506a8b8b4c1e8d8ecfef3c6b16d98d9
@@ -1160,30 +1176,30 @@ stages:
     outs:
     - path: data/gold/fit_report_summary.json
       hash: md5
-      md5: 4bff9985b19ce267a3e1ee0cd4d58971
-      size: 39321
+      md5: 7706771fb45aa623c48fae55af65d6b3
+      size: 40291
     - path: data/gold/fit_reports.parquet
       hash: md5
-      md5: a3ffcb4c91798b2f09a62f33753635bc
-      size: 10931
+      md5: 080d635421dfc312ec753ec60b228766
+      size: 11066
   reality_check:
     cmd: python src/run_reality_check.py
     deps:
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: src/memo.py
       hash: md5
@@ -1191,24 +1207,24 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: a7a9578c1b4daeaf27a2ba9656307de4
-      size: 36258
+      md5: 3269a0ad333662d4e5365e2eb0ba979c
+      size: 39506
     - path: src/ml_signals.py
       hash: md5
-      md5: 8deb9470629e15379eff17bdf89b4b71
-      size: 40942
+      md5: 393469ab5cf39406e210690890cc3694
+      size: 41694
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/run_phase5.py
       hash: md5
-      md5: 4271e3a0ac841e7420cc4e8a908b91fb
-      size: 28280
+      md5: 5fca9508341a45c133ee2ed0cebe74ec
+      size: 28350
     - path: src/run_reality_check.py
       hash: md5
-      md5: 78d618ad52ebce89ef6f08fd06548320
-      size: 16648
+      md5: 2f3f2a94580a5e90571adb83f71d2122
+      size: 16680
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -1263,19 +1279,19 @@ stages:
     outs:
     - path: data/gold/reality_check_results.json
       hash: md5
-      md5: 1e059b51e7a8421c89e0875953be23f8
-      size: 10182
+      md5: a1e22b4e71980e014b289fa85cb5aa65
+      size: 10355
     - path: data/gold/reality_check_series.parquet
       hash: md5
-      md5: bbc3c92794bd23dc53283b46a7e45b1b
-      size: 5423176
+      md5: f5b103f7a8441e96ed9d1bc1d10d10a9
+      size: 5417452
   fetch_bam_fx:
     cmd: python scripts/backfill_bam_fx.py
     deps:
     - path: scripts/backfill_bam_fx.py
       hash: md5
-      md5: 5a35fd4c10aa47fb7de31be15ad29db9
-      size: 12188
+      md5: 746f776232fb75a4542cc72b12b1f778
+      size: 12240
     - path: src/bam_fx.py
       hash: md5
       md5: 887a0b4cb3075efb39711a8ca6093b1f
@@ -1283,30 +1299,30 @@ stages:
     outs:
     - path: data/bronze/bam_fx_reference.parquet
       hash: md5
-      md5: 7bdbb650d2c7b605fd64bd4cb017b5ad
-      size: 22609
+      md5: 4f4c9b8bd1501ae92c2a27bb07cd15e8
+      size: 22938
     - path: data/bronze/bam_fx_reference_no_publication.json
       hash: md5
-      md5: 889ae0278519259dfe553fdaddac76b3
-      size: 2166
+      md5: 9deada554508f6d7158de039232e7009
+      size: 2373
     - path: data/bronze/bam_fx_reference_quality.json
       hash: md5
-      md5: aa15b9ea9e84cecff0b7679327ae2fb9
-      size: 1211
+      md5: fef62f8ff60e4e8af698559425ee3705
+      size: 1252
   nested_walkforward:
     cmd: python experiments/nested_walkforward.py
     deps:
     - path: data/gold/currency_manifest.json
       hash: md5
-      md5: 533b17de53871eb785bb82b53ab71e74
-      size: 4040
+      md5: 9284aa1db599de1e4dc4f0ae9a659982
+      size: 4158
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/ml_features_full.parquet
       hash: md5
-      md5: dcc369903acb5139b52782c098d33614
+      md5: 9d05075aecb956bb650535b2ddcf0778
       size: 119827
     - path: experiments/nested_walkforward.py
       hash: md5
@@ -1322,12 +1338,12 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: c94dcb2d5752bee3db110279360abc8b
-      size: 36292
+      md5: 3269a0ad333662d4e5365e2eb0ba979c
+      size: 39506
     - path: src/ml_signals.py
       hash: md5
-      md5: 8deb9470629e15379eff17bdf89b4b71
-      size: 40942
+      md5: 393469ab5cf39406e210690890cc3694
+      size: 41694
     - path: src/model_selection.py
       hash: md5
       md5: 586e41fc323a71247e125dee54a14634
@@ -1342,8 +1358,8 @@ stages:
       size: 16026
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/run_phase4.py
       hash: md5
       md5: 68d529cec6eb6bacf1b3f4fd07717739
@@ -1415,27 +1431,27 @@ stages:
     outs:
     - path: data/gold/nested_walkforward_results.json
       hash: md5
-      md5: 60aff6afe4ea9eee43b5966d3585fcde
-      size: 7943
+      md5: c3d4a15564ad78fa6f0ba7be83f39484
+      size: 7948
   etf_cap_sweep:
     cmd: python experiments/etf_cap_verdict.py
     deps:
     - path: data/gold/currency_manifest.json
       hash: md5
-      md5: 533b17de53871eb785bb82b53ab71e74
-      size: 4040
+      md5: 9284aa1db599de1e4dc4f0ae9a659982
+      size: 4158
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: data/gold/ml_features_etf.parquet
       hash: md5
-      md5: 97e87574aa4c10ab983b116c8a04d847
-      size: 482732
+      md5: 1751c09a3b0b69f93101d04381c394d4
+      size: 482708
     - path: experiments/etf_cap_verdict.py
       hash: md5
-      md5: 343a098aea46d64b2f2eadac81f376cd
-      size: 10415
+      md5: 918a22b7b08b7ffe02ac2fe8e231e522
+      size: 10433
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
@@ -1446,16 +1462,16 @@ stages:
       size: 8618
     - path: src/metrics.py
       hash: md5
-      md5: a7a9578c1b4daeaf27a2ba9656307de4
-      size: 36258
+      md5: 3269a0ad333662d4e5365e2eb0ba979c
+      size: 39506
     - path: src/provenance.py
       hash: md5
-      md5: c94889064caa35b611042df3346ed175
-      size: 9555
+      md5: 2eaeaed38a73b96f4265d2916776dd55
+      size: 9587
     - path: src/regime.py
       hash: md5
-      md5: d84d5bef91aa32bbec802791dc68698d
-      size: 12557
+      md5: 2d6e51fc2f56c5d54a273b88b73ad18e
+      size: 16608
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -1481,39 +1497,39 @@ stages:
     outs:
     - path: data/gold/etf_cap_verdict.json
       hash: md5
-      md5: badecc9edb608d25a38d6cca8248972f
-      size: 6812
+      md5: 4d9a6cb5edfae437ad6de7a8075b1a81
+      size: 7071
   nonsync_covariance:
     cmd: python experiments/nonsync_covariance.py
     deps:
     - path: data/gold/currency_manifest.json
       hash: md5
-      md5: 533b17de53871eb785bb82b53ab71e74
-      size: 4040
+      md5: 9284aa1db599de1e4dc4f0ae9a659982
+      size: 4158
     - path: data/gold/log_returns.parquet
       hash: md5
-      md5: ecd2b5115becc1fef0e752883ed81bd0
+      md5: cfb99906eaa5ab928a2ae8712ed475bc
       size: 117821
     - path: data/gold/log_returns_etf.parquet
       hash: md5
-      md5: 400e0385ddefa858cf73dbf285e3c8a4
+      md5: 7ce10aba200cf47482bac5ccb4aa2965
       size: 317942
     - path: experiments/nonsync_covariance.py
       hash: md5
-      md5: f89d140f7037569737a5aafb51622742
-      size: 28041
+      md5: c8756ee78b9ba881d39c1d00bcf5c57a
+      size: 28059
     - path: src/backtest.py
       hash: md5
       md5: 33b264c68692a63a937944418bb0e1f5
       size: 15621
     - path: src/metrics.py
       hash: md5
-      md5: a7a9578c1b4daeaf27a2ba9656307de4
-      size: 36258
+      md5: 3269a0ad333662d4e5365e2eb0ba979c
+      size: 39506
     - path: src/provenance.py
       hash: md5
-      md5: c94889064caa35b611042df3346ed175
-      size: 9555
+      md5: 2eaeaed38a73b96f4265d2916776dd55
+      size: 9587
     - path: src/strategies.py
       hash: md5
       md5: a54b41030dfb63fffb6124491bfc3506
@@ -1535,8 +1551,8 @@ stages:
     outs:
     - path: data/gold/nonsync_covariance.json
       hash: md5
-      md5: e0e15d477977300e622811d43c4b3339
-      size: 13423
+      md5: a22ded1c6610056d0d12a79b3864f842
+      size: 13874
   risk_free_sensitivity:
     cmd: python experiments/risk_free_sensitivity.py
     deps:
@@ -1546,28 +1562,28 @@ stages:
       size: 109548
     - path: data/gold/currency_manifest.json
       hash: md5
-      md5: 533b17de53871eb785bb82b53ab71e74
-      size: 4040
+      md5: 9284aa1db599de1e4dc4f0ae9a659982
+      size: 4158
     - path: data/gold/dashboard_equity.parquet
       hash: md5
-      md5: f1d37aa1b87bde17990ed58d1f216e4b
-      size: 458971
+      md5: 0bd1f9c7a31ff6aaecc24f2aa3e0c7c7
+      size: 459795
     - path: experiments/risk_free_sensitivity.py
       hash: md5
-      md5: 6e7ae484ac1f3049ba1b0c6c2fd01ebe
-      size: 12374
+      md5: 5495be836ec9e60cad6324d72e78b435
+      size: 12392
     - path: src/provenance.py
       hash: md5
-      md5: c94889064caa35b611042df3346ed175
-      size: 9555
+      md5: 2eaeaed38a73b96f4265d2916776dd55
+      size: 9587
     params:
       params.yaml:
         backtest.risk_free_annual: 0.0
     outs:
     - path: data/gold/risk_free_sensitivity.json
       hash: md5
-      md5: 069988fb1e0f955c8015a682e40defd3
-      size: 9117
+      md5: 6a785cce38b927aeea2090a7947c8067
+      size: 9419
   ingest_global:
     cmd: python -c "import sys; sys.path.insert(0, 'src'); from global_universe 
       import ROOT, ingest_global_prices, load_global_config; cfg = 
@@ -1880,13 +1896,13 @@ stages:
       size: 4620871
     - path: src/run_global_2004_interpretation.py
       hash: md5
-      md5: 5c9c3bdeda16ea5db5a4f6944b743127
-      size: 11587
+      md5: 043c5012ff49fd513dba0fda8242451f
+      size: 11619
     params:
       params.yaml:
         backtest.risk_free_annual: 0.0
     outs:
     - path: data/gold/global_2004_interpretation.json
       hash: md5
-      md5: 710570750534340a510817c05de8d1b1
-      size: 5488
+      md5: d7125c74ac0036f61f2b62196e364c7d
+      size: 5571
