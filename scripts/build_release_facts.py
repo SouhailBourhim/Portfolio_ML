@@ -1,5 +1,5 @@
 """
-build_release_facts.py — write the canonical claims into the README and the report.
+build_release_facts.py — write the canonical claims into the READMEs and the report.
 
 Addresses: P4 — the claims are GENERATED into both surfaces from
 `src/release_facts.py` rather than typed into each, so
@@ -24,7 +24,16 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from release_facts import load_facts, statement_list  # noqa: E402
 
-README = ROOT / "README.md"
+# BOTH READMEs carry the statement block, and both already carry the markers.
+# Only `README.md` was ever written, so `README.fr.md` drifted exactly as
+# `docs/rapport_final/` had: it still claimed DSR 0,6705 and "6 ajustements sur
+# 1 184" after the 2026-09-16 rebuild moved both, and nothing failed, because no
+# test reads it either. The statements are French in both files, so the same
+# block is written verbatim to each.
+README_PATHS = (
+    ROOT / "README.md",
+    ROOT / "README.fr.md",
+)
 # BOTH report trees input `chapters/faits_publies`. Writing only the first left
 # `docs/rapport_final/` carrying an unmanaged copy that drifted out of sync —
 # the same gap that let a hand-typed `0 fallback` survive there (CLAUDE.md
@@ -102,14 +111,21 @@ def main() -> int:
     statements = statement_list(ROOT)
 
     block = build_readme_block(statements)
-    text = README.read_text(encoding="utf-8")
-    if BEGIN in text and END in text:
-        head, rest = text.split(BEGIN, 1)
-        _, tail = rest.split(END, 1)
-        text = head + block + tail
-    else:
-        text = text.rstrip() + "\n\n" + block + "\n"
-    README.write_text(text, encoding="utf-8")
+    written_readme: list[Path] = []
+    for path in README_PATHS:
+        # A README absent on this branch is skipped; every one that IS present
+        # must be written, for the reason recorded above README_PATHS.
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        if BEGIN in text and END in text:
+            head, rest = text.split(BEGIN, 1)
+            _, tail = rest.split(END, 1)
+            text = head + block + tail
+        else:
+            text = text.rstrip() + "\n\n" + block + "\n"
+        path.write_text(text, encoding="utf-8")
+        written_readme.append(path)
 
     tex = build_tex(statements, facts)
     written_tex: list[Path] = []
@@ -123,7 +139,8 @@ def main() -> int:
         path.write_text(tex, encoding="utf-8")
         written_tex.append(path)
 
-    print(f"  {README.relative_to(ROOT)}  ({len(statements)} statements)")
+    for path in written_readme:
+        print(f"  {path.relative_to(ROOT)}  ({len(statements)} statements)")
     for path in written_tex:
         print(f"  {path.relative_to(ROOT)}")
     return 0
