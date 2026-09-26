@@ -1,0 +1,336 @@
+<title>Revue de soutenance Portfolio ML</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --ground: #F6F7F9;
+    --surface: #FFFFFF;
+    --ink: #10151F;
+    --muted: #5A6475;
+    --line: #DFE3EA;
+    --navy: #1B3A6B;
+    --accent: #2F6FE0;
+    --amber: #9A6310;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1219;
+      --surface: #161B25;
+      --ink: #E8EBF0;
+      --muted: #97A1B2;
+      --line: #262D3A;
+      --navy: #9EC0F5;
+      --accent: #7FA9F0;
+      --amber: #D9A24A;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1219;
+    --surface: #161B25;
+    --ink: #E8EBF0;
+    --muted: #97A1B2;
+    --line: #262D3A;
+    --navy: #9EC0F5;
+    --accent: #7FA9F0;
+    --amber: #D9A24A;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 1120px; margin-inline: auto; padding-inline: 20px; padding-block: 0 72px; }
+
+  header.top { border-bottom: 1px solid var(--line); padding-block: 40px 28px; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700; font-size: clamp(28px, 4.4vw, 44px); line-height: 1.1;
+    letter-spacing: -.02em; margin: 0 0 14px; text-wrap: balance;
+  }
+  .lede { margin: 0; max-width: 62ch; color: var(--muted); font-size: 17px; }
+
+  .facts { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 26px; }
+  .facts div { display: flex; flex-direction: column; gap: 2px; }
+  .facts b {
+    font-family: Archivo, Arial, sans-serif; font-size: 26px; font-weight: 600;
+    color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .facts span { font-size: 13px; color: var(--muted); }
+
+  nav.acts {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; gap: 4px; overflow-x: auto; scrollbar-width: thin;
+    background: color-mix(in srgb, var(--ground) 92%, transparent);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--line);
+    padding-block: 10px;
+  }
+  nav.acts a {
+    flex: 0 0 auto; text-decoration: none; color: var(--muted);
+    font-size: 13.5px; padding: 5px 11px; border-radius: 999px; white-space: nowrap;
+  }
+  nav.acts a:hover, nav.acts a:focus-visible { color: var(--ink); background: var(--surface); }
+
+  h2.act {
+    display: flex; flex-direction: column; gap: 2px;
+    margin: 56px 0 20px; padding-bottom: 10px;
+    border-bottom: 2px solid var(--navy);
+    font-family: Archivo, Arial, sans-serif; font-weight: 600; font-size: 21px;
+    letter-spacing: -.01em;
+  }
+  h2.act small { font-family: "Source Sans 3", sans-serif; font-weight: 400; font-size: 14px; color: var(--muted); }
+
+  .slide {
+    display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    gap: 24px; align-items: start;
+    padding-block: 22px;
+    border-top: 1px solid var(--line);
+  }
+  .slide:first-of-type { border-top: none; }
+  .shot {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 3px;
+    overflow: hidden; line-height: 0;
+  }
+  .shot img { width: 100%; max-width: 100%; height: auto; display: block; }
+
+  .note header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .num {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .budget {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .note p { margin: 0; font-size: 15.5px; max-width: 46ch; }
+
+  footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  footer p { max-width: 70ch; }
+
+  @media (max-width: 760px) {
+    .slide { grid-template-columns: 1fr; gap: 14px; }
+    .note p { max-width: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Projet de fin d’année · INPT × EURAFRIC Information</p>
+    <h1>Revue de la présentation de soutenance</h1>
+    <p class="lede">Version vulgarisée, destinée à un jury sans bagage financier : chaque diapositive
+      apparaît ici avec le texte à dire et son budget de parole. À lire avant la répétition.</p>
+    <div class="facts">
+      <div><b>25</b><span>diapositives, annexes comprises</span></div>
+      <div><b>23 min 25</b><span>de parole cumulée, hors questions</span></div>
+      <div><b>4</b><span>actes : vocabulaire, problème, réponse, résultats</span></div>
+    </div>
+  </header>
+
+  <nav class="acts"><a href="#acte-1">Ouverture</a><a href="#acte-3">1 · Le vocabulaire</a><a href="#acte-7">2 · Le problème</a><a href="#acte-11">3 · Notre réponse</a><a href="#acte-16">4 · Les résultats</a><a href="#acte-21">Clôture</a><a href="#acte-24">Annexes</a></nav>
+
+  <h2 class="act" id="acte-1"><span>Ouverture</span><small>Le cadrage et la feuille de route</small></h2>
+<article class="slide" id="s1">
+  <div class="shot"><img src="slides/01.png" alt="Diapositive 1" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">01</span><span class="budget">40 s</span></header>
+    <p>Bonjour. Nous présentons un projet de fin d’année mené à l’INPT avec EURAFRIC Information : un système qui répartit un capital entre actifs, et surtout un dispositif capable de dire si cette répartition est réellement meilleure.</p>
+  </div>
+</article>
+<article class="slide" id="s2">
+  <div class="shot"><img src="slides/02.png" alt="Diapositive 2" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">02</span><span class="budget">30 s</span></header>
+    <p>Quatre temps. Je commence par le vocabulaire, parce que la suite n’a de sens qu’avec quatre ou cinq mots précis. Puis le problème, notre réponse, les résultats.</p>
+  </div>
+</article>
+<h2 class="act" id="acte-3"><span>1 · Le vocabulaire</span><small>Les notions sans lesquelles la suite ne se suit pas</small></h2>
+<article class="slide" id="s3">
+  <div class="shot"><img src="slides/03.png" alt="Diapositive 3" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">03</span><span class="budget">1 min 00</span></header>
+    <p>Un portefeuille, c’est un capital réparti entre plusieurs actifs. La seule chose que notre système décide, ce sont ces pourcentages — les poids. Il ne prédit pas un cours ; il répond à « combien mettre où ». Et il reprend cette décision chaque mois, ce qui coûte des frais à chaque fois.</p>
+  </div>
+</article>
+<article class="slide" id="s4">
+  <div class="shot"><img src="slides/04.png" alt="Diapositive 4" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">04</span><span class="budget">1 min 00</span></header>
+    <p>Pour comparer deux portefeuilles, le rendement seul ne suffit pas. Ces deux courbes finissent au même niveau, mais l’une tremble trois fois plus. Le ratio de Sharpe mesure exactement cela : le rendement obtenu par unité de risque subi. C’est la note qui servira à tout comparer.</p>
+  </div>
+</article>
+<article class="slide" id="s5">
+  <div class="shot"><img src="slides/05.png" alt="Diapositive 5" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">05</span><span class="budget">1 min 00</span></header>
+    <p>L’idée de Markowitz, prix Nobel : en combinant des actifs qui ne bougent pas ensemble, on réduit le risque sans perdre de rendement. La courbe bleue est l’ensemble des meilleurs compromis. Le point important : le modèle a besoin de deux ingrédients qu’on ne connaît jamais vraiment — il les estime.</p>
+  </div>
+</article>
+<article class="slide" id="s6">
+  <div class="shot"><img src="slides/06.png" alt="Diapositive 6" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">06</span><span class="budget">1 min 10</span></header>
+    <p>Quatre mots qui décident si un résultat vaut quelque chose. Un backtest rejoue l’histoire. Une fuite de données, c’est utiliser sans le vouloir une information du futur. Le surapprentissage, c’est apprendre le bruit. Et le data snooping : à force d’essayer, on finit toujours par trouver un gagnant apparent. Tout notre protocole est construit contre ces quatre risques.</p>
+  </div>
+</article>
+<h2 class="act" id="acte-7"><span>2 · Le problème</span><small>Pourquoi répartir un capital est difficile</small></h2>
+<article class="slide" id="s7">
+  <div class="shot"><img src="slides/07.png" alt="Diapositive 7" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">07</span><span class="budget">1 min 00</span></header>
+    <p>Voilà la question. Elle est posée sous contraintes réelles de gestion : pas de vente à découvert, aucun actif au-delà de 25 %, frais déduits, décision mensuelle. Et nous l’étudions sur trois terrains évalués séparément — nous ne mélangeons jamais des dirhams et des dollars.</p>
+  </div>
+</article>
+<article class="slide" id="s8">
+  <div class="shot"><img src="slides/08.png" alt="Diapositive 8" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">08</span><span class="budget">1 min 10</span></header>
+    <p>Pourquoi c’est difficile. Quatre échecs connus de l’approche classique : elle prend des estimations bruitées pour des certitudes, elle suppose que demain ressemble à hier, elle s’effondre en crise, et elle se laisse flatter par la répétition des essais. Chacun appelle une réponse technique précise — c’est notre plan de construction.</p>
+  </div>
+</article>
+<article class="slide" id="s9">
+  <div class="shot"><img src="slides/09.png" alt="Diapositive 9" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">09</span><span class="budget">1 min 00</span></header>
+    <p>Une image pour le troisième échec. En temps normal, actions et valeurs refuges se comportent différemment. En crise, les actions se resserrent : la corrélation monte jusqu’à 0,94 en mars 2020. Le portefeuille se comporte alors comme un seul actif — la diversification disparaît quand on en a le plus besoin.</p>
+  </div>
+</article>
+<article class="slide" id="s10">
+  <div class="shot"><img src="slides/10.png" alt="Diapositive 10" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">10</span><span class="budget">1 min 20</span></header>
+    <p>Le piège central, et c’est notre message principal. Nous avons évalué 240 stratégies, liste figée avant tout calcul. Le meilleur candidat dépasse la référence de 0,093 de Sharpe. Sur le papier, c’est publiable. Les tests de sélection multiple répondent p = 0,90 : c’est le maximum d’une recherche, pas une découverte. Sans ce test, nous aurions annoncé un faux résultat.</p>
+  </div>
+</article>
+<h2 class="act" id="acte-11"><span>3 · Notre réponse</span><small>La chaîne, des données aux garde-fous</small></h2>
+<article class="slide" id="s11">
+  <div class="shot"><img src="slides/11.png" alt="Diapositive 11" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">11</span><span class="budget">50 s</span></header>
+    <p>Notre réponse est une chaîne complète, à sens unique, de la donnée brute à la décision publiée. Trois règles la gouvernent : aucun chiffre saisi à la main, aucune décision qui regarde l’avenir, aucune affirmation sans test.</p>
+  </div>
+</article>
+<article class="slide" id="s12">
+  <div class="shot"><img src="slides/12.png" alt="Diapositive 12" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">12</span><span class="budget">1 min 15</span></header>
+    <p>Les données d’abord. Trois couches : le brut qu’on ne réécrit jamais, une couche de mise en cohérence, et une couche finale — la seule que les modèles ont le droit de lire. Cela nous a permis de corriger deux biais réels : les dividendes de la Bourse de Casablanca, et la conversion en dirhams au taux officiel de Bank Al-Maghrib. Les deux ont changé nos résultats ; nous les avons appliqués quand même.</p>
+  </div>
+</article>
+<article class="slide" id="s13">
+  <div class="shot"><img src="slides/13.png" alt="Diapositive 13" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">13</span><span class="budget">1 min 10</span></header>
+    <p>Les modèles, par paliers. On part des références classiques, on rend la structure de risque dynamique, puis on ajoute un modèle de régimes — un HMM qui reconnaît tout seul si le marché est calme ou sous tension — et enfin des challengers Random Forest et XGBoost. Chaque étage doit battre le précédent pour être retenu.</p>
+  </div>
+</article>
+<article class="slide" id="s14">
+  <div class="shot"><img src="slides/14.png" alt="Diapositive 14" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">14</span><span class="budget">1 min 05</span></header>
+    <p>L’épreuve. À chaque date de décision, le modèle est réentraîné avec les seules données déjà disponibles, puis subit le mois suivant sans le connaître. On écarte les jours à cheval sur la frontière, on garde une dernière période totalement intacte, et chaque mouvement est facturé avant d’être compté.</p>
+  </div>
+</article>
+<article class="slide" id="s15">
+  <div class="shot"><img src="slides/15.png" alt="Diapositive 15" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">15</span><span class="budget">1 min 00</span></header>
+    <p>Trois verrous entre un bon chiffre et une affirmation : la comparaison est appariée jour par jour ; le fait d’avoir essayé 240 configurations est corrigé statistiquement ; et la référence à battre a été fixée à l’avance, jamais réécrite après coup. C’est ce qui rend nos résultats vérifiables.</p>
+  </div>
+</article>
+<h2 class="act" id="acte-16"><span>4 · Les résultats</span><small>Ce que le dispositif établit</small></h2>
+<article class="slide" id="s16">
+  <div class="shot"><img src="slides/16.png" alt="Diapositive 16" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">16</span><span class="budget">1 min 00</span></header>
+    <p>Les résultats, hors échantillon et nets de frais. Les stratégies se tiennent, y compris à travers 2008, 2020 et 2022 — aucune ne décroche. La vraie question n’est donc pas « est-ce que ça marche », mais « l’écart entre ces courbes est-il réel ». C’est exactement ce que la chaîne sait trancher.</p>
+  </div>
+</article>
+<article class="slide" id="s17">
+  <div class="shot"><img src="slides/17.png" alt="Diapositive 17" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">17</span><span class="budget">1 min 10</span></header>
+    <p>Premier résultat concret. Le modèle de régimes n’a jamais reçu la liste des crises : il apprend seul. Sur les cinq crises de la période, fixées à l’avance d’après des dates externes, il les a toutes reconnues. 92 % des mois de crise classés « sous tension », contre 29 % hors crise. C’est un diagnostic directement lisible par un gérant.</p>
+  </div>
+</article>
+<article class="slide" id="s18">
+  <div class="shot"><img src="slides/18.png" alt="Diapositive 18" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">18</span><span class="budget">1 min 05</span></header>
+    <p>Deuxième résultat, et le plus actionnable. À moteur identique, relâcher la règle « aucun actif au-delà de 25 % » coûte 10 % de Sharpe. C’est davantage que l’effet de n’importe quel modèle testé. Une règle de gouvernance simple absorbe l’erreur d’estimation mieux que la sophistication.</p>
+  </div>
+</article>
+<article class="slide" id="s19">
+  <div class="shot"><img src="slides/19.png" alt="Diapositive 19" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">19</span><span class="budget">1 min 10</span></header>
+    <p>Troisième résultat, celui dont nous sommes le plus fiers. Avec un backtest seul, nous aurions écrit « notre XGBoost améliore le Sharpe de 0,093 ». Notre chaîne répond : c’est le maximum d’une recherche, les tests ne le retiennent pas. Un prototype qui ne sait pas invalider ses propres résultats n’a pas de valeur pour une direction des risques.</p>
+  </div>
+</article>
+<article class="slide" id="s20">
+  <div class="shot"><img src="slides/20.png" alt="Diapositive 20" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">20</span><span class="budget">1 min 20</span></header>
+    <p>La lecture d’ensemble, en toute transparence. À gauche, ce que nous établissons. À droite, ce que nous n’établissons pas : sur nos univers et nos fenêtres, aucune couche ML ne démontre de surperformance significative face à son comparateur. C’est une réponse, pas un échec — la question posée était « peut-on le savoir », et nous savons. Les deux colonnes viennent du même dispositif : c’est ce qui rend la première crédible.</p>
+  </div>
+</article>
+<h2 class="act" id="acte-21"><span>Clôture</span><small>Le livrable, les suites, la conclusion</small></h2>
+<article class="slide" id="s21">
+  <div class="shot"><img src="slides/21.png" alt="Diapositive 21" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">21</span><span class="budget">55 s</span></header>
+    <p>Le livrable n’est pas un notebook. Un tableau de bord, une API en lecture seule dont les chiffres sont lus depuis les artefacts, des données versionnées, une intégration continue, un conteneur, et près de 900 tests automatisés qui gardent les invariants.</p>
+  </div>
+</article>
+<article class="slide" id="s22">
+  <div class="shot"><img src="slides/22.png" alt="Diapositive 22" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">22</span><span class="budget">55 s</span></header>
+    <p>Ce qui reste. Élargir l’univers marocain, faire valider le dispositif par une équipe indépendante, modéliser la couverture du risque de change, et passer à l’échelle sur davantage d’actifs — c’est là qu’un optimiseur a le plus de marge pour exprimer une vue.</p>
+  </div>
+</article>
+<article class="slide" id="s23">
+  <div class="shot"><img src="slides/23.png" alt="Diapositive 23" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">23</span><span class="budget">40 s</span></header>
+    <p>En conclusion : un système complet d’allocation, évalué sans tricher, capable de reconnaître les crises, de montrer ce qui améliore réellement un portefeuille — et de refuser ce qui n’est que du hasard. Merci de votre attention.</p>
+  </div>
+</article>
+<h2 class="act" id="acte-24"><span>Annexes</span><small>À garder en réserve pour les questions</small></h2>
+<article class="slide" id="s24">
+  <div class="shot"><img src="slides/24.png" alt="Diapositive 24" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">24</span></header>
+    <p>ANNEXE — à garder pour les questions. Les chiffres exacts par univers, et la mise en garde : les Sharpe ne se comparent pas d’un univers à l’autre (devises, fenêtres et nombres d’actifs différents).</p>
+  </div>
+</article>
+<article class="slide" id="s25">
+  <div class="shot"><img src="slides/25.png" alt="Diapositive 25" loading="lazy"></div>
+  <div class="note">
+    <header><span class="num">25</span></header>
+    <p>ANNEXE — intégrité et périmètre. 7 ajustements sur 1 184 ont utilisé un estimateur de repli : ils sont comptés et signalés comme hybrides plutôt que publiés sous une étiquette qu’ils ne méritent pas. Et le cadrage : prototype de recherche académique, aucune recommandation d’investissement.</p>
+  </div>
+</article>
+
+  <footer>
+    <p>Les diapositives sont exportées depuis
+      <code>output/presentation/Soutenance_PFA_Vulgarisee_FR.pptx</code> et les notes sont lues
+      depuis ce même fichier : cette page ne contient aucun texte saisi séparément. Tout chiffre
+      affiché sur une diapositive provient d’un artefact versionné du dépôt.</p>
+    <p>Prototype de recherche académique — ni conseil financier, ni recommandation, ni exécution d’ordres.</p>
+  </footer>
+</div>
