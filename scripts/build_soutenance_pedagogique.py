@@ -139,10 +139,12 @@ NOTES = [
     "statistiquement ; et la référence à battre a été fixée à l’avance, jamais "
     "réécrite après coup. C’est ce qui rend nos résultats vérifiables. [~60 s]",
 
-    "Les résultats, hors échantillon et nets de frais. Les stratégies se tiennent, y "
-    "compris à travers 2008, 2020 et 2022 — aucune ne décroche. La vraie question "
-    "n’est donc pas « est-ce que ça marche », mais « l’écart entre ces courbes "
-    "est-il réel ». C’est exactement ce que la chaîne sait trancher. [~60 s]",
+    "Les résultats, hors échantillon et nets de frais. La bande bleue claire, c’est "
+    "l’ensemble des références classiques : son bord bas est la moins bonne, son "
+    "bord haut la meilleure. La ligne foncée est notre système à régimes. Il reste "
+    "dans la bande du début à la fin, 2008, 2020 et 2022 compris. La vraie question "
+    "n’est donc pas « est-ce que ça marche », mais « l’écart est-il réel ou dans le "
+    "bruit » — et c’est exactement ce que la chaîne sait trancher. [~60 s]",
 
     "Premier résultat concret. Le modèle de régimes n’a jamais reçu la liste des "
     "crises : il apprend seul. Sur les cinq crises de la période, fixées à l’avance "
@@ -617,15 +619,15 @@ def build() -> Path:
 
     # 16 — results : out-of-sample ───────────────────────────────────────────
     s = d.slide("Résultats", "Hors échantillon et net de frais, le système tient la distance",
-                sous="À gauche l’univers mixte marocain, à droite vingt ans d’ETF "
-                     "internationaux couvrant 2008, 2020 et 2022.")
-    picture(s, FIG_REPORT / "courbes_equity.png", 48, 118, 864, 320)
-    panel(s, 48, 448, 864, 62, PANEL)
-    text(s, 70, 462, 820, 40,
-         "Les stratégies se tiennent : aucune ne décroche, y compris à travers les "
-         "crises. La question n’est donc pas « est-ce que ça marche »,\n"
-         "mais « l’écart entre ces courbes est-il réel ou dans le bruit » — "
-         "et c’est précisément ce que la chaîne sait trancher.",
+                sous="Deux terrains évalués séparément : quatre ans au Maroc, vingt ans "
+                     "à l’international — 2008, 2020 et 2022 compris.")
+    picture(s, FIG_FR / "courbes_equity_fr.png", 48, 104, 864, 364)
+    panel(s, 48, 476, 864, 52, PANEL)
+    text(s, 70, 489, 820, 34,
+         "La bande couvre les trois références classiques, du moins au mieux. Le système ML "
+         "reste dedans d’un bout à l’autre, crises comprises :\nla question n’est donc pas "
+         "« est-ce que ça marche », mais « l’écart est-il réel ou dans le bruit » — et c’est "
+         "ce que la chaîne sait trancher.",
          12, color=GREY, spacing=1.3)
 
     # 17 — finding 1 : regime detection ──────────────────────────────────────

@@ -273,7 +273,92 @@ def snooping_240() -> None:
     plt.close(fig)
 
 
-# -- 6. crisis detection, with French crisis names ---------------------------
+# -- 6. out-of-sample equity curves, decluttered -----------------------------
+
+def courbes_equity_fr() -> None:
+    """The same out-of-sample evidence as the report's figure, drawn for a room.
+
+    The chapter-5 version plots four near-coincident noisy lines with a legend
+    box sitting on top of them and every rebalance date on the x-axis; projected,
+    it reads as a single grey smudge. The claim the slide actually makes is
+    "everything tracks, nothing breaks away", and a band states that better than
+    four overlapping strokes: the three classical baselines become their own
+    min–max envelope, leaving one emphasised line against it.
+
+    Nothing is aggregated away silently — the band is labelled with the three
+    strategies it contains, and their exact Sharpe ratios are on annex slide A.
+    """
+    import matplotlib.dates as mdates
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+    from matplotlib.ticker import FixedLocator, FixedFormatter
+
+    eq = pd.read_parquet(GOLD / "dashboard_equity.parquet")
+    classiques = ["equal_weight", "min_variance_lw", "max_sharpe"]
+    panneaux = [
+        ("full_2021", "Univers mixte marocain — 9 actifs, en dirhams", 1),
+        ("etf_2017", "ETF internationaux — 5 actifs, en dollars", 4),
+    ]
+    # Round values a reader recognises on a log axis; the ones inside each
+    # panel's own range become its ticks, so a four-year panel and a twenty-year
+    # one both get labelled gridlines instead of a lone "100".
+    ECHELLE = [50, 60, 70, 80, 90, 100, 125, 150, 200, 250, 300, 400,
+               500, 600, 800, 1000, 1250, 1600, 2000]
+    BAND, BAND_EDGE = "#C9D6E8", "#9FB3CE"
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.8, 4.3))
+    fig.subplots_adjust(wspace=0.16)
+
+    for ax, (uni, titre, pas) in zip(axes, panneaux):
+        sub = eq[eq.universe == uni]
+        courbes = {}
+        for strat in classiques + ["regime_conditional"]:
+            r = sub[sub.strategy == strat].sort_values("Date")
+            assert not r.empty, f"{strat} absent de {uni} dans dashboard_equity.parquet"
+            courbes[strat] = pd.Series(
+                ((1 + r["net_return"]).cumprod() * 100).values, index=r["Date"].values
+            )
+        ref = pd.DataFrame({s: courbes[s] for s in classiques})
+        dates = ref.index
+
+        ax.fill_between(dates, ref.min(axis=1), ref.max(axis=1),
+                        facecolor=BAND, edgecolor=BAND_EDGE, linewidth=0.7, zorder=2)
+        ax.plot(courbes["regime_conditional"].index, courbes["regime_conditional"].values,
+                color=NAVY, lw=2.2, zorder=3, solid_joinstyle="round")
+
+        ax.set_yscale("log")
+        bas = min(ref.min(axis=1).min(), courbes["regime_conditional"].min())
+        haut = max(ref.max(axis=1).max(), courbes["regime_conditional"].max())
+        paliers = [t for t in ECHELLE if bas <= t <= haut]
+        while len(paliers) > 6:                      # keep the axis readable
+            paliers = paliers[::2]
+        ax.yaxis.set_major_locator(FixedLocator(paliers))
+        ax.yaxis.set_major_formatter(FixedFormatter([f"{t}" for t in paliers]))
+        ax.yaxis.set_minor_locator(FixedLocator([]))
+        ax.xaxis.set_major_locator(mdates.YearLocator(pas))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+
+        ax.set_title(titre, fontsize=11.5, color=INK, pad=12)
+        ax.grid(axis="y", color="#E3E7ED", lw=0.8)
+        ax.set_axisbelow(True)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.tick_params(labelsize=10.5)
+
+    axes[0].set_ylabel("Valeur d’un placement de 100, nette de frais", fontsize=10.5)
+    fig.legend(
+        handles=[
+            Line2D([], [], color=NAVY, lw=2.4, label="Système ML à régimes"),
+            Patch(facecolor=BAND, edgecolor=BAND_EDGE,
+                  label="Références classiques (1/N · variance minimale · Markowitz)"),
+        ],
+        loc="lower center", ncol=2, frameon=False, fontsize=11,
+        bbox_to_anchor=(0.5, -0.06), handlelength=2.4, columnspacing=2.4,
+    )
+    fig.savefig(OUT / "courbes_equity_fr.png")
+    plt.close(fig)
+
+
+# -- 7. crisis detection, with French crisis names ---------------------------
 
 def detection_crises_fr() -> None:
     """The report's detection chart carries the English crisis labels from the
@@ -310,7 +395,7 @@ def detection_crises_fr() -> None:
     plt.close(fig)
 
 
-# -- 7. landscape crops of the product screenshots ---------------------------
+# -- 8. landscape crops of the product screenshots ---------------------------
 
 def captures_recadrees() -> None:
     """Crop the full-page captures to their legible top half.
@@ -329,7 +414,8 @@ def captures_recadrees() -> None:
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for builder in (allocation_expliquee, sharpe_explique, escalier_modeles,
-                    chaine_simple, snooping_240, detection_crises_fr, captures_recadrees):
+                    chaine_simple, snooping_240, courbes_equity_fr, detection_crises_fr,
+                    captures_recadrees):
         builder()
         print(f"built {builder.__name__}")
 
