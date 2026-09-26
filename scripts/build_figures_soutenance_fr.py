@@ -395,7 +395,131 @@ def detection_crises_fr() -> None:
     plt.close(fig)
 
 
-# -- 8. landscape crops of the product screenshots ---------------------------
+# -- 8. what five times more Moroccan data actually bought --------------------
+
+def ic_maroc_profond() -> None:
+    """The deep-Morocco result, stated as the quantity that actually moved.
+
+    The experiment's honest headline is two-sided: the *model* got measurably
+    sharper on ~5x the data, and the *portfolio* gain did not follow. The
+    information coefficient is the half that moved, so it is what the chart
+    shows; the caption carries the half that did not.
+    """
+    d = json.loads((GOLD / "deep_morocco_results.json").read_text(encoding="utf-8"))
+    ic = d["information_coefficient"]
+    uni = d["universe"]
+    bas, haut = (float(x) for x in ic["phase5_reference"].split("-"))
+    rf, xgb = ic["rf"]["mean_ic"], ic["xgb"]["mean_ic"]
+
+    fig, ax = plt.subplots(figsize=(10.6, 3.8))
+    lignes = [
+        ("XGBoost — panel profond\n12 actions, 2005–2024", xgb, AMBER),
+        ("Random Forest — panel profond\n12 actions, 2005–2024", rf, NAVY),
+    ]
+    for i, (nom, val, col) in enumerate(lignes):
+        y = i + 1
+        ax.barh(y, val, height=0.46, color=col)
+        ax.text(val + 0.0022, y, ("%.3f" % val).replace(".", ","),
+                va="center", fontsize=12, fontweight="bold", color=col)
+        ax.text(-0.002, y, nom, va="center", ha="right", fontsize=10.5, color=INK)
+
+    ax.barh(0, haut - bas, left=bas, height=0.46, color="#C6CDD8")
+    ax.text(haut + 0.0022, 0,
+            ("%.3f" % bas).replace(".", ",") + " – " + ("%.3f" % haut).replace(".", ","),
+            va="center", fontsize=12, fontweight="bold", color=GREY)
+    ax.text(-0.002, 0, "Référence — univers actuel\n9 actifs, 4 ans", va="center",
+            ha="right", fontsize=10.5, color=INK)
+
+    ax.set_xlim(0, max(rf, xgb) * 1.34)
+    ax.set_ylim(-0.6, 2.6)
+    ax.set_yticks([])
+    ax.xaxis.set_major_formatter(
+        plt.FuncFormatter(lambda v, _: ("%.2f" % v).replace(".", ",")))
+    ax.set_xlabel("Coefficient d’information — corrélation entre ce que le modèle prédit "
+                  "et ce qui arrive", fontsize=10.5)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.grid(axis="x", color="#E9ECF1", lw=0.8)
+    ax.set_axisbelow(True)
+    ax.set_title("Cinq fois plus de données marocaines rendent le modèle 2 à 4 fois plus net",
+                 fontsize=13.5, fontweight="bold", color=NAVY, pad=14, loc="left", x=-0.30)
+    ax.text(1.0, -0.30,
+            f"{uni['pooled_rows']:,}".replace(",", " ") + " observations contre "
+            + f"{uni['comparison_current']['pooled_rows_approx']:,}".replace(",", " ")
+            + " aujourd’hui. Le signal s’améliore ; le gain de portefeuille, lui, n’est pas établi.",
+            transform=ax.transAxes, ha="right", fontsize=10, color=GREY, style="italic")
+    fig.savefig(OUT / "ic_maroc_profond.png")
+    plt.close(fig)
+
+
+# -- 9. one real decision, traced end to end ---------------------------------
+
+def trace_decision() -> None:
+    """A single published decision, from market signal to constrained weights.
+
+    Explainability is easy to assert and hard to show. This draws the actual
+    trace the system emitted on its last decision date — the HMM inputs it read,
+    the regime it chose, the sub-strategy that follows from that regime, and the
+    weights the constraints then shaped — all from `model_explanations.json`.
+    """
+    d = json.loads((GOLD / "model_explanations.json").read_text(encoding="utf-8"))
+    p = d["universes"]["full_2021"]["primary"]
+    h, dec, cons = p["hmm"], p["decision"], p["constraints"]
+    inp = h["inputs_at_decision_date"]
+    date = p["decision_date"]
+    assert not p["fallback_used"], "trace slide assumes a fit with no estimator fallback"
+
+    etapes = [
+        ("1 · Ce que le système lit",
+         f"rendement du marché : {inp['MARKET_RETURN'] * 100:.2f} %\n"
+         f"volatilité courte : {inp['MARKET_VOL_SHORT'] * 100:.1f} %\n"
+         f"corrélation moyenne : {inp['AVG_PAIRWISE_CORR']:.2f}"
+         .replace(".", ",").replace("-", "−"),
+         NAVY),
+        ("2 · Le régime qu’il en déduit",
+         "« marché sous tension »\n(modèle de régimes, non supervisé)"
+         if dec["selected_regime"] == "bear" else "« marché calme »", RED),
+        ("3 · La posture qui en découle",
+         "variance minimale (Ledoit–Wolf)\nla sous-stratégie défensive", TEAL),
+        ("4 · Ce que les contraintes imposent",
+         f"{cons['assets_at_cap'][0]} bloqué au plafond de "
+         f"{cons['max_weight']:.0%}".replace("%", " %") + "\n"
+         f"{cons['assets_at_zero'][0]} écarté du portefeuille", AMBER),
+    ]
+
+    fig = plt.figure(figsize=(11.6, 4.6))
+    gauche = fig.add_axes([0.0, 0.0, 0.47, 1.0])
+    gauche.set_xlim(0, 1)
+    gauche.set_ylim(0, 4.35)
+    gauche.set_axis_off()
+    for i, (titre, corps, col) in enumerate(etapes):
+        y = 3.25 - i * 1.02
+        _box(gauche, 0.02, y, 0.96, 0.86, titre, corps, fill="#FFFFFF", edge=col,
+             tcolor=col, fs=10.5, fss=9)
+        if i < len(etapes) - 1:
+            _arrow(gauche, 0.5, y - 0.02, 0.5, y - 0.14, col)
+    gauche.text(0.02, 4.12, f"Décision du {date[8:10]}/{date[5:7]}/{date[0:4]}",
+                fontsize=12.5, fontweight="bold", color=INK)
+
+    droite = fig.add_axes([0.56, 0.12, 0.42, 0.74])
+    poids = sorted(p["weights"].items(), key=lambda kv: kv[1])
+    noms = [n.replace(".CS", "") for n, _ in poids]
+    vals = [v * 100 for _, v in poids]
+    couleurs = [AMBER if abs(v - cons["max_weight"] * 100) < 1e-6 else "#9FB3CE" for v in vals]
+    droite.barh(noms, vals, color=couleurs, height=0.66)
+    for n, v in zip(noms, vals):
+        droite.text(v + 0.5, n, ("%.1f" % v).replace(".", ",") + " %",
+                    va="center", fontsize=9.5, color=GREY)
+    droite.set_xlim(0, cons["max_weight"] * 100 * 1.35)
+    droite.set_xticks([])
+    droite.spines[["top", "right", "bottom"]].set_visible(False)
+    droite.tick_params(axis="y", length=0, labelsize=10)
+    droite.set_title("5 · Les poids publiés", fontsize=11.5, fontweight="bold",
+                     color=INK, loc="left", pad=10)
+    fig.savefig(OUT / "trace_decision.png")
+    plt.close(fig)
+
+
+# -- 10. landscape crops of the product screenshots --------------------------
 
 def captures_recadrees() -> None:
     """Crop the full-page captures to their legible top half.
@@ -415,7 +539,7 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for builder in (allocation_expliquee, sharpe_explique, escalier_modeles,
                     chaine_simple, snooping_240, courbes_equity_fr, detection_crises_fr,
-                    captures_recadrees):
+                    ic_maroc_profond, trace_decision, captures_recadrees):
         builder()
         print(f"built {builder.__name__}")
 

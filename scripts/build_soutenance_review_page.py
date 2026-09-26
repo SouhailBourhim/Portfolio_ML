@@ -41,11 +41,11 @@ OUT = ROOT / "output" / "presentation" / "revue_soutenance"
 SECTIONS = [
     (1, "Ouverture", "Le cadrage et la feuille de route"),
     (3, "1 · Le vocabulaire", "Les notions sans lesquelles la suite ne se suit pas"),
-    (7, "2 · Le problème", "Pourquoi répartir un capital est difficile"),
-    (11, "3 · Notre réponse", "La chaîne, des données aux garde-fous"),
+    (6, "2 · Le problème", "Pourquoi répartir un capital est difficile"),
+    (10, "3 · Notre réponse", "La démarche, la chaîne, les garde-fous"),
     (16, "4 · Les résultats", "Ce que le dispositif établit"),
-    (21, "Clôture", "Le livrable, les suites, la conclusion"),
-    (24, "Annexes", "À garder en réserve pour les questions"),
+    (22, "Clôture", "L’explicabilité, le livrable, les suites"),
+    (26, "Annexes", "À garder en réserve pour les questions"),
 ]
 
 DUREE = re.compile(r"\[~(\d+)\s*s\]")

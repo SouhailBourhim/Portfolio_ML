@@ -79,15 +79,13 @@ NOTES = [
     "subi. C’est la note qui servira à tout comparer. [~60 s]",
 
     "L’idée de Markowitz, prix Nobel : en combinant des actifs qui ne bougent pas "
-    "ensemble, on réduit le risque sans perdre de rendement. La courbe bleue est "
-    "l’ensemble des meilleurs compromis. Le point important : le modèle a besoin de "
-    "deux ingrédients qu’on ne connaît jamais vraiment — il les estime. [~60 s]",
-
-    "Quatre mots qui décident si un résultat vaut quelque chose. Un backtest rejoue "
-    "l’histoire. Une fuite de données, c’est utiliser sans le vouloir une "
-    "information du futur. Le surapprentissage, c’est apprendre le bruit. Et le "
-    "data snooping : à force d’essayer, on finit toujours par trouver un gagnant "
-    "apparent. Tout notre protocole est construit contre ces quatre risques. [~70 s]",
+    "ensemble, on réduit le risque sans perdre de rendement. Mais le modèle a besoin "
+    "de deux ingrédients qu’on ne connaît jamais vraiment — il les estime. À droite, "
+    "les quatre mots qui décident si un résultat vaut quelque chose : un backtest "
+    "rejoue l’histoire ; une fuite de données, c’est utiliser sans le vouloir une "
+    "information du futur ; le surapprentissage, c’est apprendre le bruit ; et le "
+    "data snooping, c’est trouver un gagnant à force d’essayer. Tout notre protocole "
+    "est construit contre ces quatre risques. [~85 s]",
 
     "Voilà la question. Elle est posée sous contraintes réelles de gestion : pas de "
     "vente à découvert, aucun actif au-delà de 25 %, frais déduits, décision "
@@ -112,6 +110,13 @@ NOTES = [
     "sélection multiple répondent p = 0,90 : c’est le maximum d’une recherche, pas "
     "une découverte. Sans ce test, nous aurions annoncé un faux résultat. [~80 s]",
 
+    "Un mot sur la méthode avant le contenu. Le projet s’est déroulé en huit phases, "
+    "chacune close par un livrable écrit et des artefacts versionnés : infrastructure "
+    "de données, backtesting classique, variables, régimes, signaux adaptatifs, coûts, "
+    "évaluation hors échantillon, puis robustesse et gouvernance. Nous sommes trois, "
+    "encadrés par M. Maqil, avec une revue croisée avant chaque livrable. Une phase "
+    "n’est close que si son résultat est reproductible. [~45 s]",
+
     "Notre réponse est une chaîne complète, à sens unique, de la donnée brute à la "
     "décision publiée. Trois règles la gouvernent : aucun chiffre saisi à la main, "
     "aucune décision qui regarde l’avenir, aucune affirmation sans test. [~50 s]",
@@ -134,9 +139,8 @@ NOTES = [
     "écarte les jours à cheval sur la frontière, on garde une dernière période "
     "totalement intacte, et chaque mouvement est facturé avant d’être compté. [~65 s]",
 
-    "Trois verrous entre un bon chiffre et une affirmation : la comparaison est "
-    "appariée jour par jour ; le fait d’avoir essayé 240 configurations est corrigé "
-    "statistiquement ; et la référence à battre a été fixée à l’avance, jamais "
+    "Trois verrous, rapidement : comparaison appariée jour par jour ; correction "
+    "statistique des 240 configurations essayées ; référence fixée à l’avance, jamais "
     "réécrite après coup. C’est ce qui rend nos résultats vérifiables. [~60 s]",
 
     "Les résultats, hors échantillon et nets de frais. La bande bleue claire, c’est "
@@ -163,12 +167,29 @@ NOTES = [
     "pas. Un prototype qui ne sait pas invalider ses propres résultats n’a pas de "
     "valeur pour une direction des risques. [~70 s]",
 
+    "Une question que le jury se pose sûrement : et si le problème était simplement le "
+    "manque d’historique marocain ? Nous l’avons testé. Un panel de recherche de douze "
+    "actions de la Bourse de Casablanca sur vingt ans, cinq fois plus d’observations "
+    "que notre univers actuel. Résultat : le pouvoir prédictif du modèle est multiplié "
+    "par deux à quatre, et les deux algorithmes le confirment indépendamment. Le modèle "
+    "devient donc mesurablement plus fin. Mais le gain de portefeuille, lui, ne suit "
+    "pas encore : ce qui bloque, c’est la transformation du signal en allocation, pas "
+    "la quantité de données. [~70 s]",
+
     "La lecture d’ensemble, en toute transparence. À gauche, ce que nous "
     "établissons. À droite, ce que nous n’établissons pas : sur nos univers et nos "
     "fenêtres, aucune couche ML ne démontre de surperformance significative face à "
     "son comparateur. C’est une réponse, pas un échec — la question posée était "
     "« peut-on le savoir », et nous savons. Les deux colonnes viennent du même "
     "dispositif : c’est ce qui rend la première crédible. [~80 s]",
+
+    "Un point que les jurys de gouvernance attendent : pourquoi ce poids-là ? Voici une "
+    "décision réelle, celle du 24 juillet 2026. Le système lit trois signaux de marché, "
+    "en déduit un régime de tension, en tire une posture défensive — la variance "
+    "minimale — puis les contraintes façonnent les poids : l’ETF obligataire bute sur "
+    "le plafond de 25 %, le QQQ est écarté. Rien n’est approximé : c’est une trace, pas "
+    "une reconstruction a posteriori. Et pour les challengers, les attributions sont "
+    "exactes. [~55 s]",
 
     "Le livrable n’est pas un notebook. Un tableau de bord, une API en lecture seule "
     "dont les chiffres sont lus depuis les artefacts, des données versionnées, une "
@@ -193,6 +214,25 @@ NOTES = [
     "estimateur de repli : ils sont comptés et signalés comme hybrides plutôt que "
     "publiés sous une étiquette qu’ils ne méritent pas. Et le cadrage : prototype de "
     "recherche académique, aucune recommandation d’investissement.",
+
+    "ANNEXE — si on nous demande si nos corrélations sont fiables. Casablanca ferme "
+    "avant Wall Street : la corrélation du jour même sous-estime le lien réel, et la "
+    "corrélation décalée d’un jour est dix-neuf fois plus forte. L’effet est absent "
+    "sur un univers témoin entièrement américain, donc il vient bien du décalage "
+    "horaire. Conséquence : le choix de l’estimateur de covariance déplace "
+    "l’allocation à chaque rééquilibrage — mais aucun test apparié n’établit qu’un "
+    "estimateur batte l’autre.",
+
+    "ANNEXE — si on nous demande si notre protocole est lui-même sur-ajusté. Nous "
+    "avons refait l’évaluation avec un protocole imbriqué, qui refait la sélection "
+    "dans chaque repli, et nous avons dégonflé le Sharpe du nombre d’essais. Le "
+    "classement dépend du protocole ; nous le disons plutôt que de choisir celui qui "
+    "nous arrange.",
+
+    "ANNEXE — la pile technique, si la question vient du côté informatique : DVC pour "
+    "les données, MLflow pour les expériences, Dagster pour l’orchestration, FastAPI "
+    "et Streamlit pour la diffusion, Docker et l’intégration continue pour "
+    "l’industrialisation. Un dépôt cloné reproduit les mêmes chiffres.",
 ]
 
 
@@ -202,6 +242,11 @@ def fr(value: float, dp: int = 4, signed: bool = False) -> str:
     """One number, French convention: decimal comma and a true minus sign."""
     text = f"{value:+.{dp}f}" if signed else f"{value:.{dp}f}"
     return text.replace(".", ",").replace("-", "−")
+
+
+def jour(iso: str) -> str:
+    """An ISO date as a French reader expects it: 2026-07-24 -> 24/07/2026."""
+    return f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]}"
 
 
 def pct(value: float, dp: int = 1, signed: bool = True) -> str:
@@ -335,6 +380,9 @@ def evidence() -> dict:
     q2 = json.loads((GOLD / "global_2004_q2_results.json").read_text(encoding="utf-8"))
     ready = json.loads((GOLD / "global_2004_readiness.json").read_text(encoding="utf-8"))
 
+    deep = json.loads((GOLD / "deep_morocco_results.json").read_text(encoding="utf-8"))
+    nonsync = json.loads((GOLD / "nonsync_covariance.json").read_text(encoding="utf-8"))
+
     best_by_cap = {c: max(r.items(), key=lambda kv: kv[1]["sharpe_net"])
                    for c, r in cap["results"].items()}
     badge = re.search(r"tests-(\d+)", (ROOT / "README.md").read_text(encoding="utf-8"))
@@ -350,6 +398,21 @@ def evidence() -> dict:
         "q2": q2,
         "ready": ready,
         "n_tests": int(badge.group(1)),
+        "morocco": {
+            "n_assets": deep["universe"]["n_assets"],
+            "start": deep["universe"]["start"],
+            "end": deep["universe"]["end"],
+            "rows": deep["universe"]["pooled_rows"],
+            "rows_now": deep["universe"]["comparison_current"]["pooled_rows_approx"],
+            "ratio_rows": deep["universe"]["pooled_rows"]
+            / deep["universe"]["comparison_current"]["pooled_rows_approx"],
+            "ic_rf": deep["information_coefficient"]["rf"]["mean_ic"],
+            "ic_xgb": deep["information_coefficient"]["xgb"]["mean_ic"],
+            "ic_ref": deep["information_coefficient"]["phase5_reference"],
+        },
+        "nonsync": nonsync["target"]["stage_a_summary"],
+        "nonsync_alloc": nonsync["target"]["allocation_distance_vs_daily_lw"]["weekly_lw"],
+        "nonsync_paired": nonsync["target"]["stage_c_paired_vs_daily_lw"]["weekly_lw"],
     }
 
 
@@ -401,7 +464,7 @@ def build() -> Path:
                  "l’on peut prouver qu’elle n’est pas le fruit du hasard.", 468)
 
     # 03 — vocabulary 1 ──────────────────────────────────────────────────────
-    s = d.slide("Le vocabulaire · 1/4", "Un portefeuille, une allocation, un rééquilibrage",
+    s = d.slide("Le vocabulaire · 1/3", "Un portefeuille, une allocation, un rééquilibrage",
                 sous="Le système ne choisit pas « quand acheter » : il choisit des pourcentages, "
                      "tous les mois.")
     picture(s, FIG_FR / "allocation_expliquee.png", 48, 118, 864, 320)
@@ -412,7 +475,7 @@ def build() -> Path:
          12.5, bold=True, color=INK, spacing=1.25)
 
     # 04 — vocabulary 2 : Sharpe ─────────────────────────────────────────────
-    s = d.slide("Le vocabulaire · 2/4", "Le ratio de Sharpe : la note qui compte",
+    s = d.slide("Le vocabulaire · 2/3", "Le ratio de Sharpe : la note qui compte",
                 sous="Gagner beaucoup en dormant mal ne vaut pas gagner autant tranquillement.")
     picture(s, FIG_FR / "sharpe_explique.png", 48, 118, 600, 340)
     card(s, 668, 130, 244, 150, "Rendement",
@@ -422,37 +485,33 @@ def build() -> Path:
     d.caption(s, "Dans toute la présentation, les Sharpe sont nets de frais de transaction et "
                  "calculés hors échantillon — sur des données que le modèle n’a jamais vues.", 478)
 
-    # 05 — vocabulary 3 : diversification & Markowitz ────────────────────────
-    s = d.slide("Le vocabulaire · 3/4", "Markowitz : ne pas mettre tous ses œufs au même endroit",
-                sous="Prix Nobel 1990. L’idée : combiner des actifs qui ne bougent pas ensemble "
+    # 05 — vocabulary 3 : Markowitz and the four words ───────────────────────
+    s = d.slide("Le vocabulaire · 3/3",
+                "Markowitz — et les quatre mots qui décident du reste",
+                sous="Prix Nobel 1990 : combiner des actifs qui ne bougent pas ensemble "
                      "réduit le risque sans sacrifier le rendement.")
-    picture(s, FIG_REPORT / "frontiere_efficiente.png", 48, 118, 560, 350)
-    card(s, 628, 126, 284, 156, "La frontière efficiente",
-         "Chaque point gris est un portefeuille possible. La courbe bleue rassemble "
-         "les meilleurs : à risque donné, aucun ne rapporte plus.", NAVY)
-    card(s, 628, 296, 284, 172, "Ce dont le modèle a besoin",
-         "Le rendement attendu de chaque actif, et la façon dont ils bougent "
-         "les uns par rapport aux autres (la « covariance »).\n"
-         "Ces deux entrées sont estimées — donc incertaines.", AMBER)
+    picture(s, FIG_REPORT / "frontiere_efficiente.png", 40, 120, 468, 336)
+    text(s, 40, 464, 468, 34,
+         "Chaque point gris est un portefeuille possible ; la courbe bleue rassemble les "
+         "meilleurs.\nLe modèle a besoin de deux entrées — rendements attendus et covariances "
+         "— toutes deux estimées, donc incertaines.", 10.5, color=GREY, spacing=1.3)
 
-    # 06 — vocabulary 4 : backtest & overfitting ─────────────────────────────
-    s = d.slide("Le vocabulaire · 4/4", "Backtest, fuite de données, surapprentissage",
-                sous="Les trois mots qui décident si un résultat de finance quantitative "
-                     "vaut quelque chose.")
+    panel(s, 532, 118, 380, 380)
+    text(s, 556, 140, 336, 20, "LES QUATRE MOTS", 10, bold=True, color=BLUE)
     defs = [
-        ("Backtest", "Rejouer l’histoire : on simule la stratégie sur le passé et on regarde "
-                     "ce qu’elle aurait gagné.", NAVY),
-        ("Fuite de données", "Utiliser, même par accident, une information postérieure à la "
-                                "décision. Le backtest devient magnifique — et faux.", RED),
-        ("Surapprentissage", "Le modèle apprend le bruit du passé au lieu de la règle. "
-                             "Il excelle sur l’histoire, échoue sur l’avenir.", AMBER),
-        ("Data snooping", "À force d’essayer des stratégies, on finit par en trouver une qui "
-                          "brille par pur hasard.", TEAL),
+        ("Backtest", "rejouer la stratégie sur le passé", NAVY),
+        ("Fuite de données", "utiliser sans le vouloir une information du futur", RED),
+        ("Surapprentissage", "apprendre le bruit du passé au lieu de la règle", AMBER),
+        ("Data snooping", "à force d’essayer, trouver un gagnant dû au hasard", TEAL),
     ]
-    for i, (titre, corps, col) in enumerate(defs):
-        x, y = 48 + (i % 2) * 444, 128 + (i // 2) * 176
-        card(s, x, y, 420, 158, titre, corps, col, cs=12)
-    d.caption(s, "Ces quatre notions structurent tout le protocole d’évaluation du projet.", 476)
+    y = 178
+    for titre, corps, col in defs:
+        rule(s, 556, y + 7, 22, col)
+        text(s, 590, y, 306, 20, titre, 12.5, bold=True, color=INK)
+        text(s, 590, y + 22, 302, 40, corps, 11, color=GREY, spacing=1.28)
+        y += 78
+    text(s, 556, 466, 336, 24,
+         "Ces quatre notions structurent tout notre protocole.", 10.5, color=GREY)
 
     # 07 — the problem ───────────────────────────────────────────────────────
     s = d.slide("Le problème · contexte", "La question posée par le projet")
@@ -526,6 +585,33 @@ def build() -> Path:
     d.caption(s, "C’est le biais qui explique une grande partie des stratégies publiées "
                  "qui ne fonctionnent jamais en réel. Le projet le traite comme un adversaire, "
                  "pas comme un détail.", 470)
+
+    # 10b — how the team worked ──────────────────────────────────────────────
+    s = d.slide("Notre réponse · la démarche",
+                "Huit phases, chacune livrée et vérifiable",
+                sous="Rien n’a été construit d’un bloc : chaque phase produit un livrable "
+                     "écrit et des artefacts versionnés avant que la suivante commence.")
+    phases = [
+        ("1", "Infrastructure de données"), ("2", "Backtesting Markowitz"),
+        ("3", "Ingénierie des variables"), ("4", "Régimes et covariance"),
+        ("4B", "Signaux ML adaptatifs"), ("4C", "Optimisation sensible aux coûts"),
+        ("5", "Évaluation hors échantillon"), ("6–8", "Suite, robustesse, gouvernance"),
+    ]
+    for i, (num, nom) in enumerate(phases):
+        x, y = 48 + (i % 4) * 220, 130 + (i // 4) * 116
+        panel(s, x, y, 200, 96)
+        text(s, x + 18, y + 16, 60, 26, num, 16, bold=True, color=BLUE)
+        text(s, x + 18, y + 46, 168, 42, nom, 11.5, color=INK, spacing=1.25)
+        if i % 4 < 3:
+            text(s, x + 204, y + 36, 14, 20, "→", 13, color=GREY)
+    card(s, 48, 376, 420, 122, "L’équipe",
+         "Trois élèves ingénieurs de l’INPT, encadrés par M. Abdelmouttalib Maqil "
+         "chez EURAFRIC Information. Le travail est partagé par phase, avec revue "
+         "croisée avant chaque livrable.", NAVY, cs=11)
+    card(s, 492, 376, 420, 122, "La règle de travail",
+         "Une phase n’est close que si son résultat est reproductible : données "
+         "versionnées, tests au vert, et documents régénérés depuis les artefacts, "
+         "jamais retapés.", TEAL, cs=11)
 
     # 11 — our answer ────────────────────────────────────────────────────────
     s = d.slide("Notre réponse", "Une chaîne complète, de la donnée brute à la décision publiée")
@@ -693,6 +779,24 @@ def build() -> Path:
                  "historique et conversion en dirhams ont été corrigés même lorsque "
                  "cela dégradait le résultat affiché.", 462)
 
+    # 19b — finding 4 : the Moroccan angle ───────────────────────────────────
+    dm = e["morocco"]
+    s = d.slide("Résultat · 4", "Davantage de données marocaines : le modèle s’aiguise vraiment",
+                sous="Un panel de recherche reconstitué sur vingt ans de Bourse de Casablanca, "
+                     "pour répondre à « et si le problème, c’était simplement le manque "
+                     "d’historique ? ».")
+    picture(s, FIG_FR / "ic_maroc_profond.png", 48, 112, 596, 332)
+    kpi(s, 672, 128, 240, str(dm["n_assets"]),
+        "actions de la Bourse de Casablanca, de "
+        + dm["start"][:4] + " à " + dm["end"][:4], NAVY)
+    kpi(s, 672, 252, 240, "×" + f"{dm['ratio_rows']:.0f}".replace(".", ","),
+        "plus d’observations que l’univers actuel", TEAL)
+    kpi(s, 672, 376, 240, "×2 à ×4",
+        "de pouvoir prédictif en plus, confirmé par les deux algorithmes", AMBER, size=26)
+    d.caption(s, "La limite n’est donc pas seulement la quantité de données : c’est la "
+                 "transformation du signal en allocation. C’est exactement ce que la première "
+                 "perspective propose d’industrialiser.", 466)
+
     # 20 — what is established, and what is not ──────────────────────────────
     s = d.slide("Lecture d’ensemble", "Ce que nous établissons — et ce que nous n’établissons pas")
     panel(s, 48, 124, 480, 326, PANEL)
@@ -722,6 +826,18 @@ def build() -> Path:
          11.5, color=GREY, spacing=1.35)
     d.caption(s, "Les deux colonnes viennent du même dispositif. C’est ce qui rend "
                  "la première crédible.", 466)
+
+    # 20b — explainability ───────────────────────────────────────────────────
+    s = d.slide("Explicabilité", "Pourquoi ce poids-là ? Une décision réelle, tracée de bout en bout",
+                sous="Aucune boîte noire : le système ne se contente pas de sortir des "
+                     "pourcentages, il expose la chaîne de raisonnement qui les produit.")
+    picture(s, FIG_FR / "trace_decision.png", 48, 112, 700, 342)
+    card(s, 768, 124, 144, 158, "Système principal",
+         "Trace déterministe : rien n’est approché, tout est relu.", NAVY, ts=11.5, cs=10.5)
+    card(s, 768, 296, 144, 158, "Challengers",
+         "Attributions additives exactes pour RF et XGBoost.", AMBER, ts=11.5, cs=10.5)
+    d.caption(s, "C’est ce qu’exige une gouvernance de modèles : pouvoir remonter d’un poids "
+                 "publié jusqu’à la donnée qui l’a causé — et le montrer à un auditeur.", 468)
 
     # 21 — the delivered system ──────────────────────────────────────────────
     s = d.slide("Le livrable", "Un prototype réellement utilisable, pas un notebook")
@@ -850,6 +966,76 @@ def build() -> Path:
          "ajoutée établie. Ce livrable est un prototype de recherche académique : "
          "ni conseil financier, ni recommandation client, ni exécution d’ordres.",
          12, color=GREY, spacing=1.35)
+
+    # Annexe C — non-synchronous trading ─────────────────────────────────────
+    ns, na, npd = e["nonsync"], e["nonsync_alloc"], e["nonsync_paired"]
+    s = d.slide("Annexe · C", "Les places ne ferment pas à la même heure — et ça se mesure",
+                sous="Casablanca clôture avant Wall Street. La corrélation du jour même "
+                     "sous-estime alors le lien réel entre les deux marchés.")
+    kpi(s, 48, 140, 260, "×" + fr(ns["non_us"]["lag1_over_same_day"], 1),
+        "la corrélation BVC/SPY décalée d’un jour, rapportée à celle du jour même "
+        "(actifs américains : effet absent)", NAVY, size=28)
+    kpi(s, 340, 140, 260, pct(ns["non_us"]["mean_pct_zero_days"] * 100, 1, signed=False),
+        "des séances BVC sans aucune variation de prix", RED, size=28)
+    kpi(s, 632, 140, 280, pct(na["pct_rebalances_materially_different"] * 100, 0, signed=False),
+        "des rééquilibrages changent d’allocation selon l’estimateur de covariance retenu",
+        AMBER, size=28)
+    panel(s, 48, 306, 864, 104, CALLOUT)
+    text(s, 70, 326, 816, 22, "CE QUE NOUS EN CONCLUONS — ET CE QUE NOUS N’EN CONCLUONS PAS",
+         10, bold=True, color=AMBER)
+    text(s, 70, 354, 816, 48,
+         "La mesure de covariance est une sensibilité de premier ordre : elle déplace "
+         "l’allocation à chaque rééquilibrage.\nEn revanche, aucun test apparié n’établit "
+         "qu’un estimateur bat l’autre en Sharpe (p = " + fr(npd["p_value_no_outperformance"], 2)
+         + ") — l’écart observé ne doit pas être lu comme une supériorité.",
+         12, color=INK, spacing=1.3)
+    d.caption(s, "Détecté sur l’univers mixte et absent de l’univers témoin entièrement "
+                 "américain : la signature vient bien du décalage horaire, pas du hasard.", 428)
+
+    # Annexe D — nested walk-forward ─────────────────────────────────────────
+    nw = f["nested"]
+    s = d.slide("Annexe · D", "Et si notre protocole d’évaluation était lui-même sur-ajusté ?",
+                sous="Un second protocole, imbriqué, refait la sélection à l’intérieur de "
+                     "chaque repli et dégonfle le Sharpe du nombre d’essais.")
+    kpi(s, 48, 150, 260, fr(nw["dsr"], 3),
+        "ratio de Sharpe dégonflé (DSR) après correction du nombre d’essais", NAVY)
+    kpi(s, 340, 150, 260, str(nw["n_trials"]),
+        "configurations dans la famille de recherche corrigée", TEAL)
+    kpi(s, 632, 150, 280, f"{nw['n_oos_rows']:,}".replace(",", " "),
+        "séances hors échantillon, du " + jour(nw["oos_start"]) + " au " + jour(nw["oos_end"]),
+        AMBER, size=26)
+    panel(s, 48, 296, 864, 110, PANEL)
+    text(s, 70, 316, 816, 22, "CE QU’IL FAUT EN RETENIR", 10, bold=True, color=BLUE)
+    text(s, 70, 344, 816, 50,
+         "Le classement des stratégies dépend du protocole d’évaluation retenu et de la "
+         "fenêtre hors échantillon associée.\nNous le disons plutôt que de choisir le "
+         "protocole qui nous arrange — c’est précisément le genre de choix "
+         "qu’une correction de data snooping est censée neutraliser.",
+         12, color=INK, spacing=1.3)
+    d.caption(s, "Univers full_2021, libellé en " + nw["base_currency"]
+                 + " · meilleure configuration : " + nw["best"] + ".", 424)
+
+    # Annexe E — the stack ───────────────────────────────────────────────────
+    s = d.slide("Annexe · E", "La pile technique",
+                sous="Tout est conteneurisé et rejouable : un dépôt cloné reproduit les "
+                     "mêmes chiffres, sans intervention manuelle.")
+    briques = [
+        ("Données", "DVC + stockage objet\ncontrats de schéma", NAVY),
+        ("Expériences", "MLflow\ntélémétrie par ajustement", TEAL),
+        ("Orchestration", "Dagster\ndépendances explicites", BLUE),
+        ("Diffusion", "FastAPI + Streamlit\nlecture seule", AMBER),
+        ("Industrialisation", "Docker · CI GitHub\nportes de release", GREEN),
+    ]
+    for i, (titre, corps, col) in enumerate(briques):
+        x = 48 + i * 176
+        panel(s, x, 124, 160, 118)
+        rule(s, x + 16, 142, 28, col)
+        text(s, x + 16, 158, 130, 20, titre, 11.5, bold=True, color=col)
+        text(s, x + 16, 182, 132, 50, corps, 10, color=GREY, spacing=1.3)
+    picture(s, FIG_REPORT / "mlflow_ui.png", 48, 258, 420, 214)
+    picture(s, FIG_REPORT / "dagster_assets.png", 492, 258, 420, 214)
+    text(s, 48, 480, 420, 20, "Suivi des expériences (MLflow)", 11, bold=True, color=INK)
+    text(s, 492, 480, 420, 20, "Graphe d’actifs de données (Dagster)", 11, bold=True, color=INK)
 
     d.attach_notes(NOTES)
     d.save(OUT)
