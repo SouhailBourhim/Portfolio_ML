@@ -53,10 +53,17 @@ chapters/*.tex                 → chapters/  (ou le dossier du modèle)
 \input{chapters/Chapter3}       % Architecture : chaîne de données, garde-fous
 \input{chapters/Chapter4}       % Modélisation et protocole d'évaluation
 \input{chapters/Chapter5}       % Résultats, validation, produit livré
+\input{chapters/ChapterMaroc}   % Le marché marocain : vingt ans de données BVC
 \input{chapters/Chapter6}       % Révisions et gouvernance de la preuve
 \input{chapters/Chapter7}       % Démonstrateur et préparation industrielle
+\input{chapters/Chapter8}       % L'univers global_2004 : un test équitable
 \input{chapters/Conclusion}
 ```
+
+`ChapterMaroc.tex` porte un nom thématique et non numéroté : la numérotation
+imprimée suit l'ordre d'inclusion ci-dessus, et renommer les `ChapterN.tex`
+casserait les garde-fous qui les lisent par leur nom
+(`tests/test_final_report.py`).
 
 Le glossaire peut aussi être renvoyé en annexe si le modèle le prévoit : il est
 autonome et ne dépend d'aucun compteur.

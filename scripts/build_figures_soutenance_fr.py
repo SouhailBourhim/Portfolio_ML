@@ -34,6 +34,18 @@ GOLD = ROOT / "data" / "gold"
 OUT = ROOT / "output" / "presentation" / "_figures_fr"
 FIG_REPORT = ROOT / "docs" / "rapport_final" / "assets" / "figures"
 
+
+def _save(fig, stem: str, *, report: bool = False) -> None:
+    """Write the deck's PNG, and for shared figures the report's vector PDF.
+
+    Two figures serve both surfaces — the deep-Morocco chapter of the report
+    reuses the deck's IC chart and its power chart. Emitting both here keeps one
+    definition of each figure instead of a second copy that drifts.
+    """
+    fig.savefig(OUT / f"{stem}.png")
+    if report:
+        fig.savefig(FIG_REPORT / f"{stem}.pdf")
+
 INK = "#111827"
 NAVY = "#1B3A6B"
 BLUE = "#3D8DFF"
@@ -447,7 +459,78 @@ def ic_maroc_profond() -> None:
             + f"{uni['comparison_current']['pooled_rows_approx']:,}".replace(",", " ")
             + " aujourd’hui. Le signal s’améliore ; le gain de portefeuille, lui, n’est pas établi.",
             transform=ax.transAxes, ha="right", fontsize=10, color=GREY, style="italic")
-    fig.savefig(OUT / "ic_maroc_profond.png")
+    _save(fig, "ic_maroc_profond", report=True)
+    plt.close(fig)
+
+
+# -- 8b. what the deep panel bought in resolving power ------------------------
+
+def puissance_maroc() -> None:
+    """Observed gap over minimum detectable effect, canonical vs deep panel.
+
+    The negative verdict on `full_2021` was fixed by the sample size before any
+    model was fitted — the ratios there run 0.01–0.26. On the deep Moroccan
+    panel the same ratio reaches 0.57. That is the chapter's point: five times
+    the data more than doubled the resolving power without carrying it across
+    the threshold, which is a different statement from "ruled out".
+
+    Sources: docs/EVALUATION_LIMITS.md §5 and the CORRECTION 2026-09-15 section
+    of docs/DEEP_MOROCCO_EXPERIMENT.md, both recomputed in
+    notebooks/phase11_statistical_power_and_overfitting.ipynb.
+    """
+    canonique = [
+        ("régimes vs Markowitz — univers canonique", 0.22),
+        ("régimes vs équipondéré — univers canonique", 0.01),
+        ("régimes vs variance min. — ETF", 0.26),
+    ]
+    profond = [
+        ("forêt aléatoire vs régimes", 0.57),
+        ("forêt aléatoire vs Markowitz", 0.33),
+        ("forêt aléatoire vs équipondéré", 0.20),
+        ("gradient boosting vs équipondéré", 0.06),
+    ]
+
+    fig, ax = plt.subplots(figsize=(10.4, 4.6))
+    # barh counts upward, so the canonical block is laid out first to leave the
+    # deep-panel block on top, where the chapter's point is.
+    y, labels, valeurs, couleurs = [], [], [], []
+    for i, (nom, val) in enumerate(reversed(canonique)):
+        y.append(i)
+        labels.append(nom)
+        valeurs.append(val)
+        couleurs.append("#A9B5C6")
+    for i, (nom, val) in enumerate(reversed(profond), start=len(canonique) + 1):
+        y.append(i)
+        labels.append(nom)
+        valeurs.append(val)
+        couleurs.append(NAVY)
+
+    ax.barh(y, valeurs, color=couleurs, height=0.62)
+    for yy, val in zip(y, valeurs):
+        ax.text(val + 0.015, yy, ("%.2f" % val).replace(".", ","),
+                va="center", fontsize=10.5, fontweight="bold",
+                color=NAVY if val >= 0.3 else GREY)
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, fontsize=10)
+    ax.axvline(1.0, color=RED, ls="--", lw=1.6)
+    ax.text(0.985, len(y) - 0.4, "seuil de détection  ", ha="right", va="center",
+            fontsize=10.5, color=RED, fontweight="bold")
+    ax.set_xlim(0, 1.08)
+    ax.xaxis.set_major_formatter(
+        plt.FuncFormatter(lambda v, _: ("%.1f" % v).replace(".", ",")))
+    ax.set_xlabel("Écart observé rapporté à l’effet minimal détectable", fontsize=10.5)
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(facecolor=NAVY, label="Panel marocain profond"),
+                       Patch(facecolor="#A9B5C6", label="Univers publiés")],
+              loc="lower right", frameon=False, fontsize=10.5)
+    ax.set_title("Cinq fois plus de données doublent le pouvoir de résolution — "
+                 "sans franchir le seuil",
+                 fontsize=13, fontweight="bold", color=NAVY, pad=14, loc="left", x=-0.42)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    ax.grid(axis="x", color="#E9ECF1", lw=0.8)
+    ax.set_axisbelow(True)
+    _save(fig, "puissance_maroc", report=True)
     plt.close(fig)
 
 
@@ -539,7 +622,8 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for builder in (allocation_expliquee, sharpe_explique, escalier_modeles,
                     chaine_simple, snooping_240, courbes_equity_fr, detection_crises_fr,
-                    ic_maroc_profond, trace_decision, captures_recadrees):
+                    ic_maroc_profond, puissance_maroc, trace_decision,
+                    captures_recadrees):
         builder()
         print(f"built {builder.__name__}")
 
